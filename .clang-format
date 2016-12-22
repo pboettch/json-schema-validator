@@ -1,0 +1,15 @@
+---
+BasedOnStyle:  LLVM
+AccessModifierOffset: -2
+#AlignConsecutiveAssignments: true
+#AlignConsecutiveDeclarations: true
+AllowShortFunctionsOnASingleLine: Inline
+BreakBeforeBraces: Linux
+ColumnLimit:     0
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+IndentWidth:     2
+ObjCBlockIndentWidth: 2
+SpaceAfterCStyleCast: true
+TabWidth:        2
+UseTab:          ForIndentation
+...
