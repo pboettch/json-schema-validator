@@ -31,7 +31,7 @@ cd build
 cmake .. \
     -DNLOHMANN_JSON_DIR=<path/to/json.hpp> \
     -DJSON_SCHEMA_TEST_SUITE_PATH=<path/to/JSON-Schema-test-suite> # optional
-make
+make # install
 ```
 
 ## Code

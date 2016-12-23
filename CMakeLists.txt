@@ -29,6 +29,13 @@ target_link_libraries(json-schema-validator
     INTERFACE
         json)
 
+install(
+    FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema-validator.hpp
+    DESTINATION
+        ${CMAKE_INSTALL_PREFIX}/include
+)
+
 # simple json-schema-validator-executable
 add_executable(json-schema-validate app/json-schema-validate.cpp)
 target_link_libraries(json-schema-validate json-schema-validator)
