@@ -14,7 +14,7 @@ C++](https://github.com/nlohmann/json). This validator is based on this
 library, hence the name.
 
 The name is for the moment purely marketing, because there is, IMHO, not much
-modern C++ inside.
+modern C++ inside. But I think the whole thing could be rewritten mode "modern".
 
 External documentation is missing as well. However the API of the validator
 will be rather simple.
@@ -22,6 +22,8 @@ will be rather simple.
 # How to use
 
 ## Build
+
+Directly
 
 ```Bash
 git clone https://github.com/pboettch/json-schema-validator.git
@@ -32,6 +34,20 @@ cmake .. \
     -DNLOHMANN_JSON_DIR=<path/to/json.hpp> \
     -DJSON_SCHEMA_TEST_SUITE_PATH=<path/to/JSON-Schema-test-suite> # optional
 make # install
+ctest # if test-suite has been given
+```
+or from another CMakeLists.txt as a subdirectory:
+
+```CMake
+# create an interface-target called json-hpp
+add_library(json-hpp INTERFACE)
+target_include_directories(json-hpp
+    INTERFACE
+        path/to/json.hpp)
+set(JSON_SCHEMA_TEST_SUITE_PATH "path/to/json-schema-test-suite")
+
+enable_testing() # if you want to inherit tests
+add_subdirectory(path-to-this-project json-schema-validator)
 ```
 
 ## Code

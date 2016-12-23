@@ -2,20 +2,23 @@ project(json-schema-validator CXX)
 
 cmake_minimum_required(VERSION 3.2)
 
+# if used as a subdirectory just define a json-hpp-target (INTERFACE)
+if(NOT TARGET json-hpp)
 # find nlohmann's json.hpp
-find_path(NLOHMANN_JSON_DIR
-    NAMES
-        json.hpp)
+    find_path(NLOHMANN_JSON_DIR
+        NAMES
+            json.hpp)
 
-if(NOT NLOHMANN_JSON_DIR)
-    message(FATAL_ERROR "please set NLOHMANN_JSON_DIR to a path in which NLohmann's json.hpp can be found.")
+    if(NOT NLOHMANN_JSON_DIR)
+        message(FATAL_ERROR "please set NLOHMANN_JSON_DIR to a path in which NLohmann's json.hpp can be found.")
+    endif()
+
+# create an interface-library for simple cmake-linking
+    add_library(json-hpp INTERFACE)
+    target_include_directories(json-hpp
+        INTERFACE
+            ${NLOHMANN_JSON_DIR})
 endif()
-
-# create an interface-library for simple linking
-add_library(json INTERFACE)
-target_include_directories(json
-    INTERFACE
-        ${NLOHMANN_JSON_DIR})
 
 # and one for the validator
 add_library(json-schema-validator INTERFACE)
@@ -27,7 +30,7 @@ target_compile_options(json-schema-validator
         -Wall -Wextra) # bad, better use something else based on compiler type
 target_link_libraries(json-schema-validator
     INTERFACE
-        json)
+        json-hpp)
 
 install(
     FILES
@@ -44,6 +47,7 @@ target_link_libraries(json-schema-validate json-schema-validator)
 add_executable(json-schema-test app/json-schema-test.cpp)
 target_link_libraries(json-schema-test json-schema-validator)
 
+# test-zone
 enable_testing()
 
 # find schema-test-suite
@@ -63,7 +67,7 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
         )
     endforeach()
 else()
-    message(STATUS "Please test JSON_SCHEMA_TEST_SUITE_PATH to a path in which you've cloned JSON-Schema-Test-Suite (github.com/json-schema-org/JSON-Schema-Test-Suite).")
+    message(STATUS "Consider setting JSON_SCHEMA_TEST_SUITE_PATH to a path in which JSON-Schema-Test-Suite is located (github.com/json-schema-org/JSON-Schema-Test-Suite).")
 endif()
 
 
