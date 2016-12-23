@@ -177,9 +177,6 @@ class json_validator
 
 	void validate_array(json &instance, const json &schema, const std::string &name)
 	{
-		not_yet_implemented(schema, "items", "array");
-		not_yet_implemented(schema, "additionalItems", "array");
-
 		validate_type(schema, "array", name);
 
 		// maxItems
@@ -205,11 +202,64 @@ class json_validator
 						throw std::out_of_range(name + " should have only unique items.");
 				}
 			}
+
+		// items and additionalItems
+		// default to empty schemas
+		auto items_iter = schema.find("items");
+		json items = {};
+		if (items_iter != schema.end())
+			items = items_iter.value();
+
+		auto additionalItems_iter = schema.find("additionalItems");
+		json additionalItems = {};
+		if (additionalItems_iter != schema.end())
+			additionalItems = additionalItems_iter.value();
+
+		size_t i = 0;
+		bool validation_done = false;
+
+		for (auto &value : instance) {
+			std::string sub_name = name + "[" + std::to_string(i) + "]";
+
+			switch (items.type()) {
+
+			case json::value_t::array:
+
+				if (i < items.size())
+					validate(value, items[i], sub_name);
+				else {
+					switch (additionalItems.type()) { // items is an array
+					                                  // we need to take into consideration additionalItems
+					case json::value_t::object:
+						validate(value, additionalItems, sub_name);
+						break;
+
+					case json::value_t::boolean:
+						if (additionalItems == false)
+							throw std::out_of_range("additional values in array are not allowed for " + sub_name);
+						else
+							validation_done = true;
+						break;
+
+					default:
+						break;
+					}
 				}
 
-				if (instance.size() != array_to_set.size())
-					throw std::out_of_range(name + " should have only unique items.");
+				break;
+
+			case json::value_t::object: // items is a schema
+				validate(value, items, sub_name);
+				break;
+
+			default:
+				break;
 			}
+			if (validation_done)
+				break;
+
+			i++;
+		}
 	}
 
 	void validate_object(json &instance, const json &schema, const std::string &name)
