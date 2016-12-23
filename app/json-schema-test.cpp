@@ -14,8 +14,6 @@ int main(void)
 		return EXIT_FAILURE;
 	}
 
-	json_validator validator;
-
 	size_t total_failed = 0,
 	       total = 0;
 
@@ -33,7 +31,9 @@ int main(void)
 			bool valid = true;
 
 			try {
-				validator.validate(test_case["data"], schema);
+				json_validator validator;
+				validator.set_schema("#", schema);
+				validator.validate(test_case["data"]);
 			} catch (const std::out_of_range &e) {
 				valid = false;
 				std::cout << "    Test Case Exception (out of range): " << e.what() << "\n";
@@ -62,7 +62,7 @@ int main(void)
 		std::cout << "-------------\n";
 	}
 
-	std::cout << (total - total_failed) << " of " << total << " have succeeded - " << total_failed << " failed\n";
+	std::cout << "Total RESULT: " << (total - total_failed) << " of " << total << " have succeeded - " << total_failed << " failed\n";
 
 	return total_failed;
 }

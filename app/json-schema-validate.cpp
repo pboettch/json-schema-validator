@@ -42,10 +42,11 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	json_validator validator;
 
 	try {
-		validator.validate(document, schema);
+		json_validator validator;
+		validator.set_schema("#", schema);
+		validator.validate(document);
 	} catch (std::exception &e) {
 		std::cerr << "schema validation failed\n";
 		std::cerr << e.what() << "\n";

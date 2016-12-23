@@ -314,6 +314,7 @@ class json_validator
 				additionalProperties = Object;
 		}
 
+		// patternProperties
 		json patternProperties = {};
 		if (schema.find("patternProperties") != schema.end())
 			patternProperties = schema["patternProperties"];
@@ -400,56 +401,108 @@ class json_validator
 		}
 	}
 
-public:
-	void validate(json &instance, const json &schema, const std::string &name = "root")
+	void validate(json &instance, const json &schema_, const std::string &name)
 	{
-		not_yet_implemented(schema, "allOf", "all");
-		not_yet_implemented(schema, "anyOf", "all");
-		not_yet_implemented(schema, "oneOf", "all");
-		not_yet_implemented(schema, "not", "all");
-		not_yet_implemented(schema, "definitions", "all");
-		not_yet_implemented(schema, "$ref", "all");
+		not_yet_implemented(schema_, "allOf", "all");
+		not_yet_implemented(schema_, "anyOf", "all");
+		not_yet_implemented(schema_, "oneOf", "all");
+		not_yet_implemented(schema_, "not", "all");
 
-		validate_enum(instance, schema, name);
+//		std::cerr << instance << " VS\n";
+//		std::cerr << schema_ << "\n";
+//		std::cerr << "\n";
+
+		const json *schema = &schema_;
+
+		do {
+			const auto &ref = schema->find("$ref");
+			if (ref != schema->end()) {
+				std::string r = ref.value();
+
+				// do we have stored a schema which correspond to this reference
+				if (schema_references.find(r) == schema_references.end()) { // no
+
+					if (r[0] != '#')
+						throw std::logic_error("remote references are not yet implemented for ref " + r);
+
+					schema = schema_references["#"]; // root schema
+
+					// Aieee, need so much better parsing than this TODO
+					r = r.substr(1); // skip '#'
+
+					std::regex re("\\/([a-zA-Z0-9~%]+)");
+					for (auto match = std::sregex_iterator(r.begin(), r.end(), re), end = std::sregex_iterator();
+					     match != end;
+					     ++match) {
+
+						std::string name = match->str().substr(1);
+
+						const auto &sub = schema->find(name);
+						if (sub == schema->end())
+							throw std::invalid_argument("reference schema " + r + " not found\n");
+
+						schema = &(*sub);
+					}
+
+					schema_references[r] = schema;
+				} else
+					schema = schema_references[r];
+			} else
+				break;
+		} while (1); // loop in case of nested refs
+
+		validate_enum(instance, *schema, name);
 
 		switch (instance.type()) {
 		case json::value_t::object:
-			validate_object(instance, schema, name);
+			validate_object(instance, *schema, name);
 			break;
 
 		case json::value_t::array:
-			validate_array(instance, schema, name);
+			validate_array(instance, *schema, name);
 			break;
 
 		case json::value_t::string:
-			validate_string(instance, schema, name);
+			validate_string(instance, *schema, name);
 			break;
 
 		case json::value_t::number_unsigned:
-			validate_unsigned(instance, schema, name);
+			validate_unsigned(instance, *schema, name);
 			break;
 
 		case json::value_t::number_integer:
-			validate_integer(instance, schema, name);
+			validate_integer(instance, *schema, name);
 			break;
 
 		case json::value_t::number_float:
-			validate_float(instance, schema, name);
+			validate_float(instance, *schema, name);
 			break;
 
 		case json::value_t::boolean:
-			validate_boolean(instance, schema, name);
+			validate_boolean(instance, *schema, name);
 			break;
 
 		case json::value_t::null:
-			validate_null(instance, schema, name);
+			validate_null(instance, *schema, name);
 			break;
 
 		default:
-			throw std::out_of_range("type '" + schema["type"].get<std::string>() +
-			                        "' has no validator yet");
+			assert(0 && "unexpected instance type for validation");
 			break;
 		}
+	}
+
+public:
+	std::map<std::string, const json *> schema_references;
+
+	void set_schema(const std::string &ref, const json &schema)
+	{
+		schema_references[ref] = &schema; /* replace or insert */
+	}
+
+	void validate(json &instance)
+	{
+		validate(instance, *schema_references["#"], "root");
 	}
 };
 }
