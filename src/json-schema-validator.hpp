@@ -4,7 +4,7 @@
 #include <json.hpp>
 
 #include <regex>
-#include <unordered_set>
+#include <set>
 
 // make yourself a home - welcome to nlohmann's namespace
 namespace nlohmann
@@ -198,9 +198,13 @@ class json_validator
 		const auto &uniqueItems = schema.find("uniqueItems");
 		if (uniqueItems != schema.end())
 			if (uniqueItems.value() == true) {
-				std::unordered_set<json> array_to_set;
+				std::set<json> array_to_set;
 				for (auto v : instance) {
-					array_to_set.insert(v);
+					auto ret = array_to_set.insert(v);
+					if (ret.second == false)
+						throw std::out_of_range(name + " should have only unique items.");
+				}
+			}
 				}
 
 				if (instance.size() != array_to_set.size())
