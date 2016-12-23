@@ -172,13 +172,23 @@ class json_validator
 		validate_type(schema, "null", name);
 	}
 
-	void validate_array(json & /*instance*/, const json &schema, const std::string &name)
+	void validate_array(json &instance, const json &schema, const std::string &name)
 	{
-		not_yet_implemented(schema, "maxItems", "array");
-		not_yet_implemented(schema, "minItems", "array");
 		not_yet_implemented(schema, "uniqueItems", "array");
 		not_yet_implemented(schema, "items", "array");
 		not_yet_implemented(schema, "additionalItems", "array");
+
+		// maxItems
+		const auto &maxItems = schema.find("maxItems");
+		if (maxItems != schema.end())
+			if (instance.size() > maxItems.value())
+				throw std::out_of_range(name + " has too many items.");
+
+		// minItems
+		const auto &minItems = schema.find("minItems");
+		if (minItems != schema.end())
+			if (instance.size() < minItems.value())
+				throw std::out_of_range(name + " has too many items.");
 
 		validate_type(schema, "array", name);
 	}
