@@ -462,11 +462,24 @@ class json_validator
 
 						std::string name = match->str().substr(1);
 
-						const auto &sub = schema->find(name);
-						if (sub == schema->end())
-							throw std::invalid_argument("reference schema " + r + " not found\n");
+						switch (schema->type()) {
+						case json::value_t::array: {
+							auto index = std::stoul(name);
+							if (index >= schema->size())
+								throw std::out_of_range("reference schema " + r + " is out of range for array-reference\n");
+							schema = &((*schema)[index]);
+						} break;
 
-						schema = &(*sub);
+						case json::value_t::object: {
+							const auto &sub = schema->find(name);
+							if (sub == schema->end())
+								throw std::invalid_argument("reference schema " + r + " not found for object\n");
+
+							schema = &(*sub);
+						} break;
+						default:
+							break;
+						}
 					}
 
 					schema_references[r] = schema;
