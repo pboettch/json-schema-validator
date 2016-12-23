@@ -185,8 +185,6 @@ class json_validator
 
 	void validate_object(json &instance, const json &schema, const std::string &name)
 	{
-		not_yet_implemented(schema, "maxProperties", "object");
-		not_yet_implemented(schema, "minProperties", "object");
 		not_yet_implemented(schema, "dependencies", "object");
 
 		validate_type(schema, "object", name);
@@ -211,6 +209,18 @@ class json_validator
 				/* create element from default value */
 				instance[it.key()] = default_value.value();
 			}
+
+		// maxProperties
+		const auto &maxProperties = schema.find("maxProperties");
+		if (maxProperties != schema.end())
+			if (instance.size() > maxProperties.value())
+				throw std::out_of_range(name + " has too many properties.");
+
+		// minProperties
+		const auto &minProperties = schema.find("minProperties");
+		if (minProperties != schema.end())
+			if (instance.size() < minProperties.value())
+				throw std::out_of_range(name + " has too few properties.");
 
 		// additionalProperties
 		enum {

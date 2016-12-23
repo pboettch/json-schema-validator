@@ -84,9 +84,9 @@ int main(void)
 There is an application which can be used for testing the validator with the
 [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 
-Currently more 150 tests are still failing, because simply not all keyword and
+Currently **145** tests are still failing, because simply not all keywords and
 their functionalities have been implemented. Some of the missing feature will
-require a rework.
+require a rework. Some will only work with external libraries. (remote references)
 
 # Additional features
 
