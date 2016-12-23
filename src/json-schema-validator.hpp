@@ -185,8 +185,6 @@ class json_validator
 
 	void validate_object(json &instance, const json &schema, const std::string &name)
 	{
-		not_yet_implemented(schema, "dependencies", "object");
-
 		validate_type(schema, "object", name);
 
 		json properties = {};
@@ -280,15 +278,45 @@ class json_validator
 			};
 		}
 
-		// check for required elements which are not present
+		// required
 		const auto &required = schema.find("required");
-		if (required == schema.end())
+		if (required != schema.end())
+			for (const auto &element : required.value()) {
+				if (instance.find(element) == instance.end()) {
+					throw std::invalid_argument("required element '" + element.get<std::string>() +
+					                            "' not found in object '" + name + "'");
+				}
+			}
+
+		// dependencies
+		const auto &dependencies = schema.find("dependencies");
+		if (dependencies == schema.end())
 			return;
 
-		for (const auto &element : required.value()) {
-			if (instance.find(element) == instance.end()) {
-				throw std::invalid_argument("required element '" + element.get<std::string>() +
-				                            "' not found in object '" + name + "'");
+		for (auto dep = dependencies.value().cbegin();
+		     dep != dependencies.value().cend();
+		     ++dep) {
+
+			// property not present in this instance - next
+			if (instance.find(dep.key()) == instance.end())
+				continue;
+
+			std::string sub_name = name + ".dependency-of-" + dep.key();
+
+			switch (dep.value().type()) {
+
+			case json::value_t::object:
+				validate(instance, dep.value(), sub_name);
+				break;
+
+			case json::value_t::array:
+				for (const auto &prop: dep.value())
+					if (instance.find(prop) == instance.end())
+						throw std::invalid_argument("failed dependency for " + sub_name + ". Need property " + prop.get<std::string>());
+				break;
+
+			default:
+				break;
 			}
 		}
 	}
