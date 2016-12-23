@@ -58,7 +58,7 @@ int main(void)
 		total += group_total;
 		std::cout << "Group RESULT: " << test_group["description"] << " "
 		          << (group_total - group_failed) << " of " << group_total
-				  << " have succeeded - " << group_failed << " failed\n";
+		          << " have succeeded - " << group_failed << " failed\n";
 		std::cout << "-------------\n";
 	}
 

@@ -4,6 +4,7 @@
 #include <json.hpp>
 
 #include <regex>
+#include <unordered_set>
 
 // make yourself a home - welcome to nlohmann's namespace
 namespace nlohmann
@@ -87,6 +88,7 @@ class json_validator
 
 		validate_type(schema, "string", name);
 
+		// minLength
 		auto attr = schema.find("minLength");
 		if (attr != schema.end())
 			if (instance.get<std::string>().size() < attr.value()) {
@@ -96,6 +98,7 @@ class json_validator
 				throw std::out_of_range(s.str());
 			}
 
+		// maxLength
 		attr = schema.find("maxLength");
 		if (attr != schema.end())
 			if (instance.get<std::string>().size() > attr.value()) {
@@ -174,9 +177,10 @@ class json_validator
 
 	void validate_array(json &instance, const json &schema, const std::string &name)
 	{
-		not_yet_implemented(schema, "uniqueItems", "array");
 		not_yet_implemented(schema, "items", "array");
 		not_yet_implemented(schema, "additionalItems", "array");
+
+		validate_type(schema, "array", name);
 
 		// maxItems
 		const auto &maxItems = schema.find("maxItems");
@@ -190,7 +194,18 @@ class json_validator
 			if (instance.size() < minItems.value())
 				throw std::out_of_range(name + " has too many items.");
 
-		validate_type(schema, "array", name);
+		// uniqueItems
+		const auto &uniqueItems = schema.find("uniqueItems");
+		if (uniqueItems != schema.end())
+			if (uniqueItems.value() == true) {
+				std::unordered_set<json> array_to_set;
+				for (auto v : instance) {
+					array_to_set.insert(v);
+				}
+
+				if (instance.size() != array_to_set.size())
+					throw std::out_of_range(name + " should have only unique items.");
+			}
 	}
 
 	void validate_object(json &instance, const json &schema, const std::string &name)
@@ -320,7 +335,7 @@ class json_validator
 				break;
 
 			case json::value_t::array:
-				for (const auto &prop: dep.value())
+				for (const auto &prop : dep.value())
 					if (instance.find(prop) == instance.end())
 						throw std::invalid_argument("failed dependency for " + sub_name + ". Need property " + prop.get<std::string>());
 				break;
