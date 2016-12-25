@@ -21,15 +21,18 @@ if(NOT TARGET json-hpp)
 endif()
 
 # and one for the validator
-add_library(json-schema-validator INTERFACE)
+add_library(json-schema-validator
+    src/json-schema-draft4.json.cpp
+    src/json-uri.cpp
+    src/json-validator.cpp)
 target_include_directories(json-schema-validator
-    INTERFACE
+    PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_options(json-schema-validator
-    INTERFACE
+    PUBLIC
         -Wall -Wextra) # bad, better use something else based on compiler type
 target_link_libraries(json-schema-validator
-    INTERFACE
+    PUBLIC
         json-hpp)
 
 install(
@@ -43,10 +46,6 @@ install(
 add_executable(json-schema-validate app/json-schema-validate.cpp)
 target_link_libraries(json-schema-validate json-schema-validator)
 
-# json-schema-validator-tester
-add_executable(json-schema-test app/json-schema-test.cpp)
-target_link_libraries(json-schema-test json-schema-validator)
-
 # test-zone
 enable_testing()
 
@@ -56,6 +55,14 @@ find_path(JSON_SCHEMA_TEST_SUITE_PATH
         tests/draft4)
 
 if(JSON_SCHEMA_TEST_SUITE_PATH)
+    # json-schema-validator-tester
+    add_executable(json-schema-test app/json-schema-test.cpp)
+    target_link_libraries(json-schema-test json-schema-validator)
+    target_compile_definitions(json-schema-test
+        PRIVATE
+            JSON_SCHEMA_TEST_SUITE_PATH="${JSON_SCHEMA_TEST_SUITE_PATH}")
+
+
     # create tests foreach test-file
     file(GLOB_RECURSE TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/draft4/*.json)
 

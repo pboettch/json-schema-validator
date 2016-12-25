@@ -1,22 +1,57 @@
-#include "json-schema-validator.hpp"
+/*
+ * Modern C++ JSON schema validator
+ *
+ * Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+ *
+ * Copyright (c) 2016 Patrick Boettcher <patrick.boettcher@posteo.de>.
+ *
+ * Permission is hereby  granted, free of charge, to any  person obtaining a
+ * copy of this software and associated  documentation files (the "Software"),
+ * to deal in the Software  without restriction, including without  limitation
+ * the rights to  use, copy,  modify, merge,  publish, distribute,  sublicense,
+ * and/or  sell copies  of  the Software,  and  to  permit persons  to  whom
+ * the Software  is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE  IS PROVIDED "AS  IS", WITHOUT WARRANTY  OF ANY KIND,  EXPRESS
+ * OR IMPLIED,  INCLUDING BUT  NOT  LIMITED TO  THE  WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR  A PARTICULAR PURPOSE AND  NONINFRINGEMENT. IN
+ * NO EVENT  SHALL THE AUTHORS  OR COPYRIGHT  HOLDERS  BE  LIABLE FOR  ANY
+ * CLAIM,  DAMAGES OR  OTHER LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT
+ * OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR
+ * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#include <json-schema.hpp>
 
 #include <fstream>
-
-#include <cstdlib>
+#include <set>
 
 using nlohmann::json;
-using nlohmann::json_validator;
+using nlohmann::json_uri;
+using nlohmann::json_schema_draft4::json_validator;
 
 static void usage(const char *name)
 {
-	std::cerr << "Usage: " << name << " <json-document> < <schema>\n";
+	std::cerr << "Usage: " << name << " <schema> < <document>\n";
 	exit(EXIT_FAILURE);
 }
+
+
+#if 0
+	resolver r(nlohmann::json_schema_draft4::root_schema,
+			   nlohmann::json_schema_draft4::root_schema["id"]);
+	schema_refs_.insert(r.schema_refs.begin(), r.schema_refs.end());
+	assert(r.undefined_refs.size() == 0);
+#endif
 
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
 		usage(argv[0]);
+
+	json_validator validator;
 
 	std::fstream f(argv[1]);
 	if (!f.good()) {
@@ -24,8 +59,8 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 	}
 
+	// 1) Read the schema for the document you want to validate
 	json schema;
-
 	try {
 		f >> schema;
 	} catch (std::exception &e) {
@@ -33,19 +68,46 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
+	// 2) insert this schema to the validator
+	//    this resolves remote-schemas, sub-schemas and references
+	bool error = false;
+	do {
+		// inserting with json_uri("#") means this is the document's root-schema
+		auto missing_schemas = validator.insert_schema(schema, json_uri("#"));
+
+		// schema was inserted and all references have been fulfilled
+		if (missing_schemas.size() == 0)
+			break;
+
+		// schema was not inserted because it references unknown schemas
+		// 3) load missing schemas and insert them
+		for (auto ref : missing_schemas) {
+			std::cerr << "missing schema URL " << ref << " - trying to load it\n";
+
+			std::fstream lf(ref.path());
+			if (!lf.good()) {
+				std::cerr << "could not open " << ref.url() << "\n";
+				error = true;
+				break;
+			}
+			json extra;
+			try {
+				lf >> extra;
+			} catch (std::exception &e) {
+				std::cerr << e.what() << " at " << lf.tellp() << "\n";
+				return EXIT_FAILURE;
+			}
+
+			validator.insert_schema(extra, json_uri(ref.url()));
+			std::cerr << "OK";
+		}
+	} while (!error);
+
+	// 4) do the actual validation of the document
 	json document;
 
 	try {
-		std::cin >> document;
-	} catch (std::exception &e) {
-		std::cerr << e.what() << " at " << f.tellp() << "\n";
-		return EXIT_FAILURE;
-	}
-
-
-	try {
-		json_validator validator;
-		validator.set_schema("#", schema);
+		document << std::cin;
 		validator.validate(document);
 	} catch (std::exception &e) {
 		std::cerr << "schema validation failed\n";
@@ -53,7 +115,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	std::cerr << std::setw(2) << document << "\n";
+	std::cerr << "document is valid\n";
 
 	return EXIT_SUCCESS;
 }
