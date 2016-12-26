@@ -538,11 +538,6 @@ void json_validator::validate_object(json &instance, const json &schema, const s
 
 void json_validator::validate(json &instance, const json &schema_, const std::string &name)
 {
-	not_yet_implemented(schema_, "allOf", "all");
-	not_yet_implemented(schema_, "anyOf", "all");
-	not_yet_implemented(schema_, "oneOf", "all");
-	not_yet_implemented(schema_, "not", "all");
-
 	const json *schema = &schema_;
 
 	do {
@@ -557,6 +552,11 @@ void json_validator::validate(json &instance, const json &schema_, const std::st
 		} else
 			break;
 	} while (1); // loop in case of nested refs
+
+	not_yet_implemented(*schema, "allOf", "all");
+	not_yet_implemented(*schema, "anyOf", "all");
+	not_yet_implemented(*schema, "oneOf", "all");
+	not_yet_implemented(*schema, "not", "all");
 
 	validate_enum(instance, *schema, name);
 
