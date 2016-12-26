@@ -57,12 +57,12 @@ class resolver
 			switch (i.value().type()) {
 
 			case json::value_t::object: // child is object, it is a schema
-				resolve(i.value(), id.append(i.key()));
+				resolve(i.value(), id.append( json_uri::escape(i.key())) );
 				break;
 
 			case json::value_t::array: {
 				std::size_t index = 0;
-				auto child_id = id.append(i.key());
+				auto child_id = id.append(json_uri::escape(i.key()));
 				for (auto &v : i.value()) {
 					if (v.type() == json::value_t::object) // array element is object
 						resolve(v, child_id.append(std::to_string(index)) );

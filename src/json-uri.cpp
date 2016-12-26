@@ -25,7 +25,8 @@
  */
 #include "json-schema.hpp"
 
-namespace nlohmann {
+namespace nlohmann
+{
 
 void json_pointer::from_string(const std::string &r)
 {
@@ -124,4 +125,63 @@ std::ostream &operator<<(std::ostream &os, const json_uri &u)
 	return os << u.to_string();
 }
 
+std::string json_uri::unescape(const std::string &src)
+{
+	std::string l = src;
+	std::size_t pos = src.size() - 1;
+
+	do {
+		pos = l.rfind('~', pos);
+
+		if (pos == std::string::npos)
+			break;
+
+		if (pos < l.size() - 1) {
+			switch (l[pos + 1]) {
+			case '0':
+				l.replace(pos, 2, "~");
+				break;
+
+			case '1':
+				l.replace(pos, 2, "/");
+				break;
+
+			default:
+				break;
+			}
+		}
+
+		if (pos == 0)
+			break;
+		pos--;
+	} while (pos != std::string::npos);
+
+	// TODO - percent handling
+
+	return l;
 }
+
+std::string json_uri::escape(const std::string &src)
+{
+	std::vector<std::pair<std::string, std::string>> chars = {
+	    {"~", "~0"},
+	    {"/", "~1"},
+	    {"%", "%25"}};
+
+	std::string l = src;
+
+	for (const auto &c : chars) {
+		std::size_t pos = 0;
+		do {
+			pos = l.find(c.first, pos);
+			if (pos == std::string::npos)
+				break;
+			l.replace(pos, 1, c.second);
+			pos += c.second.size();
+		} while (1);
+	}
+
+	return l;
+}
+
+} // nlohmann

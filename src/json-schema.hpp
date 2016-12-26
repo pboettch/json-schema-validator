@@ -116,6 +116,12 @@ public:
 
 	const std::string url() const;
 
+	// decode and encode strings for ~ and % escape sequences
+	static std::string unescape(const std::string &);
+	static std::string escape(const std::string &);
+
+	// create a new json_uri based in this one and the given uri
+	// resolves relative changes (pathes or pointers) and resets part if proto or hostname changes
 	json_uri derive(const std::string &uri) const
 	{
 		json_uri u = *this;
@@ -123,6 +129,7 @@ public:
 		return u;
 	}
 
+	// append a pointer-field to the pointer-part of this uri
 	json_uri append(const std::string &field) const
 	{
 		json_uri u = *this;
@@ -145,7 +152,6 @@ public:
 	friend std::ostream &operator<<(std::ostream &os, const json_uri &u);
 };
 
-//
 namespace json_schema_draft4
 {
 
