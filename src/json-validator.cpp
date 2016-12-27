@@ -326,8 +326,7 @@ void json_validator::validate(json &instance)
 	validate(instance, *root_schema_, "root");
 }
 
-json_validator::json_validator(const json &schema, std::function<void(const json_uri &, json &)> loader)
-    : schema_loader_(loader)
+void json_validator::set_root_schema(const json &schema)
 {
 	insert_schema(schema, json_uri("#"));
 }

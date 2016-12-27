@@ -170,24 +170,16 @@ class json_validator
 	void insert_schema(const json &input, const json_uri &id);
 
 public:
-	json_validator(const json &schema, std::function<void(const json_uri &, json &)> loader);
+	json_validator(std::function<void(const json_uri &, json &)> loader = nullptr)
+	    : schema_loader_(loader)
+	{
+	}
 
+	// insert and set a root-schema
+	void set_root_schema(const json &);
+
+	// validate a json-document based on the root-schema
 	void validate(json &instance);
-
-	// insert default values items into object
-	// if the key is not present before checking their
-	// validity in regards to their schema
-	//
-	// breaks JSON-Schema-Test-Suite if true
-	//  *PARTIALLY IMPLEMENTED* only for properties of objects
-	bool default_value_insertion = false;
-
-	// recursively insert default values and create parent objects if
-	// they would be empty
-	//
-	// breaks JSON-Schema-Test-Suite if true
-	//  *NOT YET IMPLEMENTED* -> maybe the same as the above option, need more thoughts
-	bool recursive_default_value_insertion = false;
 };
 
 } // json_schema_draft4

@@ -80,9 +80,17 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	// 2) insert this schema to the validator
-	//    this resolves remote-schemas, sub-schemas and references via the given loader-function
-	json_validator validator(schema, loader);
+	// 2) create the validator and
+	json_validator validator(loader);
+
+	try {
+		// insert this schema as the root to the validator
+		// this resolves remote-schemas, sub-schemas and references via the given loader-function
+		validator.set_root_schema(schema);
+	} catch (std::exception &e) {
+		std::cerr << "setting root schema failed\n";
+		std::cerr << e.what() << "\n";
+	}
 
 	// 3) do the actual validation of the document
 	json document;

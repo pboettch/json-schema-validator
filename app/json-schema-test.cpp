@@ -80,7 +80,9 @@ int main(void)
 
 		const auto &schema = test_group["schema"];
 
-		json_validator validator(schema, loader);
+		json_validator validator(loader);
+
+        validator.set_root_schema(schema);
 
 		for (auto &test_case : test_group["tests"]) {
 			std::cout << "  Testing Case " << test_case["description"] << "\n";

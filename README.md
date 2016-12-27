@@ -2,22 +2,37 @@
 
 # What is it?
 
-This is a C++ header-only library for validating JSON documents based on a
+This is a C++ library for validating JSON documents based on a
 [JSON Schema](http://json-schema.org/) which itself should validate with
 [draft-4 of JSON Schema Validation](http://json-schema.org/schema).
 
-First a disclaimer: *Everything here should be considered work in progress and
+First a disclaimer: *It is work in progress and
 contributions or hints or discussions are welcome.*
 
 Niels Lohmann et al develop a great JSON parser for C++ called [JSON for Modern
 C++](https://github.com/nlohmann/json). This validator is based on this
 library, hence the name.
 
-The name is for the moment purely marketing, because there is, IMHO, not much
-modern C++ inside. But I think the whole thing could be rewritten mode "modern".
+The name is for the moment purely marketing, because there is, IMHO, not so much
+modern C++ inside. There is plenty of space to make it more modern.
 
 External documentation is missing as well. However the API of the validator
 will be rather simple.
+
+# Design goals
+
+The main goal of this validator is to produce *human-comprehensible* error
+messages if a JSON-document/instance does not comply with its schema. This is
+done with exceptions thrown at the users with a helpful message telling what's
+wrong with the document while validating.
+
+Another goal was to use Niels Lohmann's JSON-library. This is why the validator
+lives in his namespace.
+
+# Weaknesses
+
+Schema-reference resolution is not recursivity-proven: If there is a nested
+cross-schema reference, it will not stop.  (Though I haven't tested it)
 
 # How to use
 
@@ -44,9 +59,11 @@ add_library(json-hpp INTERFACE)
 target_include_directories(json-hpp
     INTERFACE
         path/to/json.hpp)
-set(JSON_SCHEMA_TEST_SUITE_PATH "path/to/json-schema-test-suite")
 
+# set this path to schema-test-suite to get tests compiled - optional
+set(JSON_SCHEMA_TEST_SUITE_PATH "path/to/json-schema-test-suite")
 enable_testing() # if you want to inherit tests
+
 add_subdirectory(path-to-this-project json-schema-validator)
 ```
 
@@ -58,20 +75,37 @@ See also `app/json-schema-validate.cpp`.
 #include "json-schema-validator.hpp"
 
 using nlohmann::json;
-using nlohmann::json_validator;
+using nlohmann::json_uri;
+using nlohmann::json_schema_draft4::json_validator;
+
+static void loader(const json_uri &uri, json &schema)
+{
+    // get the schema from uri and feed it into schema
+    // if not possible, otherwise, throw an excpetion
+}
 
 int main(void)
 {
-	json schema, document;
+    json schema;
 
-    /* fill in the schema */
-    /* fill in the document */
+    /* json-parse the schema */
 
-	json_validator validator;
+    json_validator validator(loader); // create validator with a loader-callback
 
     try {
-        validator.validate(document, scheam);
-    } catch (const std::out_of_range &e) {
+        validator.set_root_schema(schema); // insert root-schema
+    } catch (const std::exception &e) {
+        std::cerr << "Validation failed, here is why: " << e.what() << "\n";
+        return EXIT_FAILURE;
+    }
+
+    json document;
+
+    /* json-parse the document */
+
+    try {
+        validator.validate(document); // validate the document
+    } catch (const std::exception &e) {
         std::cerr << "Validation failed, here is why: " << e.what() << "\n";
         return EXIT_FAILURE;
     }
@@ -84,15 +118,19 @@ int main(void)
 There is an application which can be used for testing the validator with the
 [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
 
-Currently **72** of ~**308** tests are still failing, because simply not all keywords and
-their functionalities have been implemented. Some of the missing feature will
-require a rework. Some will only work with external libraries. (remote references)
+If you have cloned this repository providing a path the repository-root via the
+cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
+
+Currently **31** of **304** tests are failing:
+
+- 22 of them are `format`-strings which are not supported.
+- 3 of them are because `pattern` is not implemented for strings
+- and 6 bugs
 
 # Additional features
 
-## Default value population
+## Default values
 
-For my use case I need something to populate default values into the JSON
-instance of properties which are not set by the user.
+The goal is to create an empty document, based on schema-defined
+default-values, recursively populated.
 
-This feature can be enable by setting the `default_value_insertion` to true.
