@@ -605,25 +605,25 @@ void json_validator::validate_object(json &instance, const json &schema, const s
 	for (auto child = instance.begin(); child != instance.end(); ++child) {
 		std::string child_name = name + "." + child.key();
 
+		bool property_or_patternProperties_has_validated = false;
 		// is this a property which is described in the schema
 		const auto &object_prop = properties.find(child.key());
 		if (object_prop != properties.end()) {
 			// validate the element with its schema
 			validate(child.value(), object_prop.value(), child_name);
-			continue;
+			property_or_patternProperties_has_validated = true;
 		}
 
-		bool patternProperties_has_matched = false;
 		for (auto pp = patternProperties.begin();
 		     pp != patternProperties.end(); ++pp) {
 			std::regex re(pp.key(), std::regex::ECMAScript);
 
 			if (std::regex_search(child.key(), re)) {
 				validate(child.value(), pp.value(), child_name);
-				patternProperties_has_matched = true;
+				property_or_patternProperties_has_validated = true;
 			}
 		}
-		if (patternProperties_has_matched)
+		if (property_or_patternProperties_has_validated)
 			continue;
 
 		switch (additionalProperties) {
