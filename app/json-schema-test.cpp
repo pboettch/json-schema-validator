@@ -31,18 +31,36 @@ using nlohmann::json;
 using nlohmann::json_uri;
 using nlohmann::json_schema_draft4::json_validator;
 
+static void loader(const json_uri &uri, json &schema)
+{
+	std::map<std::string, std::string> external_schemas =
+	    {
+	        {"http://localhost:1234/integer.json", JSON_SCHEMA_TEST_SUITE_PATH "/remotes/integer.json"},
+	        {"http://localhost:1234/subSchemas.json", JSON_SCHEMA_TEST_SUITE_PATH "/remotes/subSchemas.json"},
+	        {"http://localhost:1234/folder/folderInteger.json", JSON_SCHEMA_TEST_SUITE_PATH "/remotes/folder/folderInteger.json"},
+	    };
+
+	if (uri.to_string() == "http://json-schema.org/draft-04/schema#") {
+		schema = nlohmann::json_schema_draft4::draft4_schema_builtin;
+		return;
+	}
+
+	std::string fn = external_schemas[uri.url()];
+
+	std::fstream s(fn.c_str());
+	if (!s.good())
+		throw std::invalid_argument("could not open " + uri.url() + " for schema loading\n");
+
+	try {
+		schema << s;
+	} catch (std::exception &e) {
+		throw e;
+	}
+}
+
 int main(void)
 {
 	json validation; // a validation case following the JSON-test-suite-schema
-
-	std::map<std::string, std::string> external_schemas;
-
-	external_schemas["http://localhost:1234/integer.json"] =
-	    JSON_SCHEMA_TEST_SUITE_PATH "/remotes/integer.json";
-	external_schemas["http://localhost:1234/subSchemas.json"] =
-	    JSON_SCHEMA_TEST_SUITE_PATH "/remotes/subSchemas.json";
-	external_schemas["http://localhost:1234/folder/folderInteger.json"] =
-	    JSON_SCHEMA_TEST_SUITE_PATH "/remotes/folder/folderInteger.json";
 
 	try {
 		std::cin >> validation;
@@ -62,44 +80,7 @@ int main(void)
 
 		const auto &schema = test_group["schema"];
 
-		json_validator validator;
-		do {
-			std::set<json_uri> undefined;
-			try {
-				undefined = validator.insert_schema(schema, json_uri("#"));
-
-			} catch (std::exception &e) {
-				std::cout << "    Test Case Exception (root-schema-inserting): " << e.what() << "\n";
-			}
-
-			if (undefined.size() == 0)
-				break;
-
-			for (auto ref : undefined) {
-				std::cerr << "missing schema URL " << ref << " - trying to load it\n";
-
-				if (ref.to_string() == "http://json-schema.org/draft-04/schema#")
-					validator.insert_schema(nlohmann::json_schema_draft4::draft4_schema_builtin, ref);
-				else {
-					std::string fn = external_schemas[ref.url()];
-
-					std::fstream s(fn.c_str());
-					if (!s.good()) {
-						std::cerr << "could not open " << ref.url() << "\n";
-						return EXIT_FAILURE;
-					}
-					json extra;
-					extra << s;
-
-					try {
-						validator.insert_schema(extra, ref.url());
-					} catch (std::exception &e) {
-						std::cout << "    Test Case Exception (schema-loading/inserting): " << e.what() << "\n";
-					}
-				}
-			}
-
-		} while (1);
+		json_validator validator(schema, loader);
 
 		for (auto &test_case : test_group["tests"]) {
 			std::cout << "  Testing Case " << test_case["description"] << "\n";
@@ -109,17 +90,14 @@ int main(void)
 			try {
 				validator.validate(test_case["data"]);
 			} catch (const std::out_of_range &e) {
-
 				valid = false;
 				std::cout << "    Test Case Exception (out of range): " << e.what() << "\n";
 
 			} catch (const std::invalid_argument &e) {
-
 				valid = false;
 				std::cout << "    Test Case Exception (invalid argument): " << e.what() << "\n";
 
 			} catch (const std::logic_error &e) {
-
 				valid = !test_case["valid"]; /* force test-case failure */
 				std::cout << "    Not yet implemented: " << e.what() << "\n";
 			}

@@ -28,8 +28,6 @@
 
 #include <json.hpp>
 
-#include <set>
-
 // make yourself a home - welcome to nlohmann's namespace
 namespace nlohmann
 {
@@ -161,6 +159,7 @@ class json_validator
 {
 	std::vector<std::shared_ptr<json>> schema_store_;
 	std::shared_ptr<json> root_schema_;
+	std::function<void(const json_uri &, json &)> schema_loader_ = nullptr;
 
 	std::map<json_uri, const json *> schema_refs_;
 
@@ -168,8 +167,10 @@ class json_validator
 	void validate_array(json &instance, const json &schema_, const std::string &name);
 	void validate_object(json &instance, const json &schema_, const std::string &name);
 
+	void insert_schema(const json &input, const json_uri &id);
+
 public:
-	std::set<json_uri> insert_schema(const json &input, json_uri id);
+	json_validator(const json &schema, std::function<void(const json_uri &, json &)> loader);
 
 	void validate(json &instance);
 

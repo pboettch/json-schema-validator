@@ -271,43 +271,51 @@ namespace nlohmann
 namespace json_schema_draft4
 {
 
-std::set<json_uri> json_validator::insert_schema(const json &input, json_uri id)
+void json_validator::insert_schema(const json &input, const json_uri &id)
 {
 	// allocate create a copy for later storage - if resolving reference works
 	std::shared_ptr<json> schema = std::make_shared<json>(input);
 
-	// resolve all local schemas and references
-	resolver r(*schema, id);
+	do {
+		// resolve all local schemas and references
+		resolver r(*schema, id);
 
-	// check whether all undefined schema references can be resolved with existing ones
-	std::set<json_uri> undefined;
-	for (auto &ref : r.undefined_refs)
-		if (schema_refs_.find(ref) == schema_refs_.end()) { // exact schema reference not found
-			undefined.insert(ref);
+		// check whether all undefined schema references can be resolved with existing ones
+		std::set<json_uri> undefined;
+		for (auto &ref : r.undefined_refs)
+			if (schema_refs_.find(ref) == schema_refs_.end()) // exact schema reference not found
+				undefined.insert(ref);
+
+		if (undefined.size() == 0) { // no undefined references
+			// now insert all schema-references
+			// check whether all schema-references are new
+			for (auto &sref : r.schema_refs) {
+				if (schema_refs_.find(sref.first) != schema_refs_.end())
+					throw std::invalid_argument("schema " + sref.first.to_string() + " already present in validator.");
+			}
+			// no undefined references and no duplicated schema - store the schema
+			schema_store_.push_back(schema);
+
+			// and insert all references
+			schema_refs_.insert(r.schema_refs.begin(), r.schema_refs.end());
+
+			break;
 		}
 
-	// anything cannot be resolved, inform the user and make him/her load additional schemas
-	// before retrying
-	if (undefined.size() > 0)
-		return undefined;
+		if (schema_loader_ == nullptr)
+			throw std::invalid_argument("schema contains undefined references to other schemas, needed schema-loader.");
 
-	// check whether all schema-references are new
-	for (auto &sref : r.schema_refs) {
-		if (schema_refs_.find(sref.first) != schema_refs_.end())
-			throw std::invalid_argument("schema " + sref.first.to_string() + " already present in validator.");
-	}
+		for (auto undef : undefined) {
+			json ext;
 
-	// no undefined references and no duplicated schema - store the schema
-	schema_store_.push_back(schema);
-
-	// and insert all references
-	schema_refs_.insert(r.schema_refs.begin(), r.schema_refs.end());
+			schema_loader_(undef, ext);
+			insert_schema(ext, undef.url());
+		}
+	} while (1);
 
 	// store the document root-schema
 	if (id == json_uri("#"))
 		root_schema_ = schema;
-
-	return undefined;
 }
 
 void json_validator::validate(json &instance)
@@ -318,10 +326,17 @@ void json_validator::validate(json &instance)
 	validate(instance, *root_schema_, "root");
 }
 
+json_validator::json_validator(const json &schema, std::function<void(const json_uri &, json &)> loader)
+    : schema_loader_(loader)
+{
+	insert_schema(schema, json_uri("#"));
+}
+
 void json_validator::validate(json &instance, const json &schema_, const std::string &name)
 {
 	const json *schema = &schema_;
 
+	// $ref resolution
 	do {
 		const auto &ref = schema->find("$ref");
 		if (ref == schema->end())

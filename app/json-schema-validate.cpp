@@ -46,12 +46,24 @@ static void usage(const char *name)
 	assert(r.undefined_refs.size() == 0);
 #endif
 
+static void loader(const json_uri &uri, json &schema)
+{
+	std::fstream lf(uri.path());
+	if (!lf.good())
+		throw std::invalid_argument("could not open " + uri.url());
+
+	try {
+		lf >> schema;
+	} catch (std::exception &e) {
+		throw e;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
 		usage(argv[0]);
 
-	json_validator validator;
 
 	std::fstream f(argv[1]);
 	if (!f.good()) {
@@ -69,41 +81,10 @@ int main(int argc, char *argv[])
 	}
 
 	// 2) insert this schema to the validator
-	//    this resolves remote-schemas, sub-schemas and references
-	bool error = false;
-	do {
-		// inserting with json_uri("#") means this is the document's root-schema
-		auto missing_schemas = validator.insert_schema(schema, json_uri("#"));
+	//    this resolves remote-schemas, sub-schemas and references via the given loader-function
+	json_validator validator(schema, loader);
 
-		// schema was inserted and all references have been fulfilled
-		if (missing_schemas.size() == 0)
-			break;
-
-		// schema was not inserted because it references unknown schemas
-		// 3) load missing schemas and insert them
-		for (auto ref : missing_schemas) {
-			std::cerr << "missing schema URL " << ref << " - trying to load it\n";
-
-			std::fstream lf(ref.path());
-			if (!lf.good()) {
-				std::cerr << "could not open " << ref.url() << "\n";
-				error = true;
-				break;
-			}
-			json extra;
-			try {
-				lf >> extra;
-			} catch (std::exception &e) {
-				std::cerr << e.what() << " at " << lf.tellp() << "\n";
-				return EXIT_FAILURE;
-			}
-
-			validator.insert_schema(extra, json_uri(ref.url()));
-			std::cerr << "OK";
-		}
-	} while (!error);
-
-	// 4) do the actual validation of the document
+	// 3) do the actual validation of the document
 	json document;
 
 	try {
