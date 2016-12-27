@@ -173,9 +173,8 @@ void validate_enum(json &instance, const json &schema, const std::string &name)
 
 void validate_string(json &instance, const json &schema, const std::string &name)
 {
-	// possibile but unhanled keywords
+	// possible but unhandled keywords
 	not_yet_implemented(schema, "format", "string");
-	not_yet_implemented(schema, "pattern", "string");
 
 	validate_type(schema, "string", name);
 
@@ -198,6 +197,13 @@ void validate_string(json &instance, const json &schema, const std::string &name
 			  << attr.value() << ")";
 			throw std::out_of_range(s.str());
 		}
+
+	attr = schema.find("pattern");
+	if (attr != schema.end()) {
+		std::regex re(attr.value().get<std::string>(), std::regex::ECMAScript);
+		if (!std::regex_search(instance.get<std::string>(), re))
+			throw std::invalid_argument(instance.get<std::string>() + " does not match regex pattern: " + attr.value().get<std::string>());
+	}
 }
 
 void validate_boolean(json & /*instance*/, const json &schema, const std::string &name)

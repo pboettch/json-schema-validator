@@ -113,7 +113,7 @@ int main(void)
 }
 ```
 
-# Conformity
+# Compliance
 
 There is an application which can be used for testing the validator with the
 [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
@@ -121,10 +121,9 @@ There is an application which can be used for testing the validator with the
 If you have cloned this repository providing a path the repository-root via the
 cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
 
-Currently **31** of **304** tests are failing:
+Currently **28** of **304** tests are failing:
 
 - 22 of them are `format`-strings which are not supported.
-- 3 of them are because `pattern` is not implemented for strings
 - and 6 bugs
   - unicode string length (2x)
   - multipleOf with fractional numbers (how the heck does fmod work?) (1)
