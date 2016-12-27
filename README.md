@@ -126,6 +126,10 @@ Currently **31** of **304** tests are failing:
 - 22 of them are `format`-strings which are not supported.
 - 3 of them are because `pattern` is not implemented for strings
 - and 6 bugs
+  - unicode string length (2x)
+  - multipleOf with fractional numbers (how the heck does fmod work?) (1)
+  - number vs integer confusion (2)
+  - big numbers are not working (1)
 
 # Additional features
 
