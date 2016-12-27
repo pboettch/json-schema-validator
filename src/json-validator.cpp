@@ -31,7 +31,8 @@
 using nlohmann::json;
 using nlohmann::json_uri;
 
-namespace {
+namespace
+{
 
 class resolver
 {
@@ -57,7 +58,7 @@ class resolver
 			switch (i.value().type()) {
 
 			case json::value_t::object: // child is object, it is a schema
-				resolve(i.value(), id.append( json_uri::escape(i.key())) );
+				resolve(i.value(), id.append(json_uri::escape(i.key())));
 				break;
 
 			case json::value_t::array: {
@@ -65,7 +66,7 @@ class resolver
 				auto child_id = id.append(json_uri::escape(i.key()));
 				for (auto &v : i.value()) {
 					if (v.type() == json::value_t::object) // array element is object
-						resolve(v, child_id.append(std::to_string(index)) );
+						resolve(v, child_id.append(std::to_string(index)));
 					index++;
 				}
 			} break;
@@ -119,7 +120,8 @@ public:
 
 } // anonymous namespace
 
-namespace nlohmann {
+namespace nlohmann
+{
 namespace json_schema_draft4
 {
 
@@ -542,22 +544,82 @@ void json_validator::validate(json &instance, const json &schema_, const std::st
 
 	do {
 		const auto &ref = schema->find("$ref");
-		if (ref != schema->end()) {
-			auto it = schema_refs_.find(ref.value());
-
-			if (it == schema_refs_.end())
-				throw std::invalid_argument("schema reference " + ref.value().get<std::string>() + " not found. Make sure all schemas have been inserted before validation.");
-
-			schema = it->second;
-		} else
+		if (ref == schema->end())
 			break;
+
+		auto it = schema_refs_.find(ref.value());
+
+		if (it == schema_refs_.end())
+			throw std::invalid_argument("schema reference " + ref.value().get<std::string>() + " not found. Make sure all schemas have been inserted before validation.");
+
+		schema = it->second;
 	} while (1); // loop in case of nested refs
 
-	not_yet_implemented(*schema, "allOf", "all");
-	not_yet_implemented(*schema, "anyOf", "all");
-	not_yet_implemented(*schema, "oneOf", "all");
-	not_yet_implemented(*schema, "not", "all");
+	// not
+	const auto attr = schema->find("not");
+	if (attr != schema->end()) {
+		bool ok;
 
+		try {
+			validate(instance, attr.value(), name);
+			ok = false;
+		} catch (std::exception &e) {
+			ok = true;
+		}
+		if (!ok)
+			throw std::invalid_argument("schema match for " + name + " but a not-match is defined by schema.");
+		return; // return here - not cannot be mixed with based-schemas?
+	}
+
+	// allOf, anyOf, oneOf
+	const json *combined_schemas = nullptr;
+	enum {
+		none,
+		allOf,
+		anyOf,
+		oneOf
+	} combine_logic = none;
+
+	{
+		const auto &attr = schema->find("allOf");
+		if (attr != schema->end()) {
+			combine_logic = allOf;
+			combined_schemas = &attr.value();
+		}
+	}
+	{
+		const auto &attr = schema->find("anyOf");
+		if (attr != schema->end()) {
+			combine_logic = anyOf;
+			combined_schemas = &attr.value();
+		}
+	}
+	{
+		const auto &attr = schema->find("oneOf");
+		if (attr != schema->end()) {
+			combine_logic = oneOf;
+			combined_schemas = &attr.value();
+		}
+	}
+
+	if (combine_logic != none) {
+		std::size_t count = 0;
+		for (const auto &s : *combined_schemas) {
+			try {
+				validate(instance, s, name);
+				count++;
+			} catch (std::exception &e) {
+				if (combine_logic == allOf)
+					throw std::out_of_range("At least one schema has failed for " + name + " where allOf them were requested.");
+			}
+			if (combine_logic == oneOf && count > 1)
+				throw std::out_of_range("More than one schema has succeeded for " + name + " where only oneOf them was requested.");
+		}
+		if ((combine_logic == anyOf || combine_logic == oneOf) && count == 0)
+			throw std::out_of_range("No schema has succeeded for " + name + " but anyOf/oneOf them should have worked.");
+	}
+
+	// check (base) schema
 	validate_enum(instance, *schema, name);
 
 	switch (instance.type()) {
