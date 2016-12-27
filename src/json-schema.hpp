@@ -164,21 +164,9 @@ class json_validator
 
 	std::map<json_uri, const json *> schema_refs_;
 
-	void not_yet_implemented(const json &schema, const std::string &field, const std::string &type);
-
-	void validate_type(const json &schema, const std::string &expected_type, const std::string &name);
-	void validate_enum(json &instance, const json &schema, const std::string &name);
-	void validate_numeric(json &instance, const json &schema, const std::string &name);
-	void validate(json &instance, const json &schema, const std::string &name);
-
-	void validate_string(json &instance, const json &schema, const std::string &name);
-	void validate_boolean(json &instance, const json &schema, const std::string &name);
-	void validate_integer(json &instance, const json &schema, const std::string &name);
-	void validate_unsigned(json &instance, const json &schema, const std::string &name);
-	void validate_float(json &instance, const json &schema, const std::string &name);
-	void validate_null(json &instance, const json &schema, const std::string &name);
-	void validate_array(json &instance, const json &schema, const std::string &name);
-	void validate_object(json &instance, const json &schema, const std::string &name);
+	void validate(json &instance, const json &schema_, const std::string &name);
+	void validate_array(json &instance, const json &schema_, const std::string &name);
+	void validate_object(json &instance, const json &schema_, const std::string &name);
 
 public:
 	std::set<json_uri> insert_schema(const json &input, json_uri id);
