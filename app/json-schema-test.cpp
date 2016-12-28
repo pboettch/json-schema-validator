@@ -26,10 +26,31 @@
 #include "json-schema.hpp"
 
 #include <fstream>
+#include <regex>
 
 using nlohmann::json;
 using nlohmann::json_uri;
 using nlohmann::json_schema_draft4::json_validator;
+
+static void format_check(const std::string &format, const std::string &value)
+{
+	if (format == "hostname") {
+		// from http://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
+		std::regex re(R"(^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$)");
+		if (!std::regex_match(value, re))
+			throw std::invalid_argument(value + " is not a valid hostname.");
+	} else if (format == "ipv4") {
+		std::regex re(R"(^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$)");
+		if (!std::regex_match(value, re))
+			throw std::invalid_argument(value + " is not a IPv4-address.");
+
+	} else if (format == "ipv6") {
+		std::regex re(R"((([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])))");
+		if (!std::regex_match(value, re))
+			throw std::invalid_argument(value + " is not a IPv6-address.");
+	} else
+		throw std::logic_error("don't know how to validate " + format);
+}
 
 static void loader(const json_uri &uri, json &schema)
 {
@@ -80,9 +101,9 @@ int main(void)
 
 		const auto &schema = test_group["schema"];
 
-		json_validator validator(loader);
+		json_validator validator(loader, format_check);
 
-        validator.set_root_schema(schema);
+		validator.set_root_schema(schema);
 
 		for (auto &test_case : test_group["tests"]) {
 			std::cout << "  Testing Case " << test_case["description"] << "\n";

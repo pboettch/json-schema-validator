@@ -160,18 +160,21 @@ class json_validator
 	std::vector<std::shared_ptr<json>> schema_store_;
 	std::shared_ptr<json> root_schema_;
 	std::function<void(const json_uri &, json &)> schema_loader_ = nullptr;
+	std::function<void(const std::string &, const std::string &)> format_check_ = nullptr;
 
 	std::map<json_uri, const json *> schema_refs_;
 
 	void validate(json &instance, const json &schema_, const std::string &name);
 	void validate_array(json &instance, const json &schema_, const std::string &name);
 	void validate_object(json &instance, const json &schema_, const std::string &name);
+    void validate_string(json &instance, const json &schema, const std::string &name);
 
 	void insert_schema(const json &input, const json_uri &id);
 
 public:
-	json_validator(std::function<void(const json_uri &, json &)> loader = nullptr)
-	    : schema_loader_(loader)
+	json_validator(std::function<void(const json_uri &, json &)> loader = nullptr,
+	               std::function<void(const std::string &, const std::string &)> format = nullptr)
+	    : schema_loader_(loader), format_check_(format)
 	{
 	}
 

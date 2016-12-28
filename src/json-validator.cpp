@@ -118,12 +118,6 @@ public:
 	}
 };
 
-void not_yet_implemented(const json &schema, const std::string &field, const std::string &type)
-{
-	if (schema.find(field) != schema.end())
-		throw std::logic_error(field + " for " + type + " is not yet implemented");
-}
-
 void validate_type(const json &schema, const std::string &expected_type, const std::string &name)
 {
 	const auto &type_it = schema.find("type");
@@ -169,41 +163,6 @@ void validate_enum(json &instance, const json &schema, const std::string &name)
 	  << "for instance '" << name << "'. Candidates are " << enum_value.value() << ".";
 
 	throw std::invalid_argument(s.str());
-}
-
-void validate_string(json &instance, const json &schema, const std::string &name)
-{
-	// possible but unhandled keywords
-	not_yet_implemented(schema, "format", "string");
-
-	validate_type(schema, "string", name);
-
-	// minLength
-	auto attr = schema.find("minLength");
-	if (attr != schema.end())
-		if (instance.get<std::string>().size() < attr.value()) {
-			std::ostringstream s;
-			s << "'" << name << "' of value '" << instance << "' is too short as per minLength ("
-			  << attr.value() << ")";
-			throw std::out_of_range(s.str());
-		}
-
-	// maxLength
-	attr = schema.find("maxLength");
-	if (attr != schema.end())
-		if (instance.get<std::string>().size() > attr.value()) {
-			std::ostringstream s;
-			s << "'" << name << "' of value '" << instance << "' is too long as per maxLength ("
-			  << attr.value() << ")";
-			throw std::out_of_range(s.str());
-		}
-
-	attr = schema.find("pattern");
-	if (attr != schema.end()) {
-		std::regex re(attr.value().get<std::string>(), std::regex::ECMAScript);
-		if (!std::regex_search(instance.get<std::string>(), re))
-			throw std::invalid_argument(instance.get<std::string>() + " does not match regex pattern: " + attr.value().get<std::string>());
-	}
 }
 
 void validate_boolean(json & /*instance*/, const json &schema, const std::string &name)
@@ -685,6 +644,48 @@ void json_validator::validate_object(json &instance, const json &schema, const s
 		default:
 			break;
 		}
+	}
+}
+
+void json_validator::validate_string(json &instance, const json &schema, const std::string &name)
+{
+	validate_type(schema, "string", name);
+
+	// minLength
+	auto attr = schema.find("minLength");
+	if (attr != schema.end())
+		if (instance.get<std::string>().size() < attr.value()) {
+			std::ostringstream s;
+			s << "'" << name << "' of value '" << instance << "' is too short as per minLength ("
+			  << attr.value() << ")";
+			throw std::out_of_range(s.str());
+		}
+
+	// maxLength
+	attr = schema.find("maxLength");
+	if (attr != schema.end())
+		if (instance.get<std::string>().size() > attr.value()) {
+			std::ostringstream s;
+			s << "'" << name << "' of value '" << instance << "' is too long as per maxLength ("
+			  << attr.value() << ")";
+			throw std::out_of_range(s.str());
+		}
+
+	// pattern
+	attr = schema.find("pattern");
+	if (attr != schema.end()) {
+		std::regex re(attr.value().get<std::string>(), std::regex::ECMAScript);
+		if (!std::regex_search(instance.get<std::string>(), re))
+			throw std::invalid_argument(instance.get<std::string>() + " does not match regex pattern: " + attr.value().get<std::string>() + " for " + name);
+	}
+
+    // format
+	attr = schema.find("format");
+	if (attr != schema.end()) {
+		if (format_check_ == nullptr)
+			throw std::logic_error("A format checker was not provided but a format-attribute for this string is present. " +
+			                            name + " cannot be validated for " + attr.value().get<std::string>());
+		format_check_(attr.value(), instance);
 	}
 }
 }
