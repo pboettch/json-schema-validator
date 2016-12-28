@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 	}
 
 	// 2) create the validator and
-	json_validator validator(loader);
+	json_validator validator(loader, [](const std::string&, const std::string&){});
 
 	try {
 		// insert this schema as the root to the validator
