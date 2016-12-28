@@ -172,11 +172,17 @@ void validate_boolean(json & /*instance*/, const json &schema, const std::string
 
 void validate_numeric(const json &schema, const std::string &name, double value)
 {
+    // multipleOf - if the rest of the division is 0 -> OK
 	const auto &multipleOf = schema.find("multipleOf");
 	if (multipleOf != schema.end()) {
-		double rem = fmod(value, multipleOf.value());
-		if (rem != 0.0)
-			throw std::out_of_range(name + " is not a multiple ...");
+		if (multipleOf.value().get<double>() != 0.0) {
+
+			double v = value;
+			v /= multipleOf.value().get<double>();
+
+			if (v != (double) (long) v)
+				throw std::out_of_range(name + " is not a multiple ...");
+		}
 	}
 
 	const auto &maximum = schema.find("maximum");
