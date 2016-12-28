@@ -121,12 +121,11 @@ There is an application which can be used for testing the validator with the
 If you have cloned this repository providing a path the repository-root via the
 cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
 
-Currently **28** of **304** tests are failing:
+Currently **15** of **305** tests are failing:
 
-- 22 of them are `format`-strings which are not supported.
-- and 6 bugs
+- 10 of them are `format`-strings which are not supported.
+- and 5 bugs
   - unicode string length (2x)
-  - multipleOf with fractional numbers (how the heck does fmod work?) (1)
   - number vs integer confusion (2)
   - big numbers are not working (1)
 
