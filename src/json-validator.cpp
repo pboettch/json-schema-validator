@@ -189,7 +189,7 @@ void validate_numeric(const json &schema, const std::string &name, double value)
 	const auto &maximum = schema.find("maximum");
 	if (maximum != schema.end()) {
 		double maxi = maximum.value();
-		auto ex = std::out_of_range(name + " exceeds maximum of ...");
+		auto ex = std::out_of_range(name + " exceeds maximum of " + std::to_string(maxi));
 		if (schema.find("exclusiveMaximum") != schema.end()) {
 			if (value >= maxi)
 				throw ex;
@@ -202,7 +202,7 @@ void validate_numeric(const json &schema, const std::string &name, double value)
 	const auto &minimum = schema.find("minimum");
 	if (minimum != schema.end()) {
 		double mini = minimum.value();
-		auto ex = std::out_of_range(name + " exceeds minimum of ...");
+		auto ex = std::out_of_range(name + " exceeds minimum of " + std::to_string(mini));
 		if (schema.find("exclusiveMinimum") != schema.end()) {
 			if (value <= mini)
 				throw ex;
