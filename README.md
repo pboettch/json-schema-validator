@@ -121,13 +121,14 @@ There is an application which can be used for testing the validator with the
 If you have cloned this repository providing a path the repository-root via the
 cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
 
-Currently **15** of **305** tests are failing:
+Currently **14** of **305** tests are failing:
 
-- 10 of them are `format`-strings which are not supported.
-- and 5 bugs
+- 10 of them are `format`-strings which are not supported. *(optional)*
+- and 4 bugs
   - unicode string length (2x)
-  - number vs integer confusion (2)
-  - big numbers are not working (1)
+  - big numbers are not working (2) *(optional)*
+
+In other word **2** tests required tests are failing
 
 # Additional features
 
