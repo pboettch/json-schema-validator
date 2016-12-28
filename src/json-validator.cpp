@@ -370,19 +370,23 @@ void json_validator::validate(json &instance, const json &schema_, const std::st
 
 	if (combine_logic != none) {
 		std::size_t count = 0;
+		std::ostringstream sub_schema_err;
+
 		for (const auto &s : *combined_schemas) {
 			try {
 				validate(instance, s, name);
 				count++;
 			} catch (std::exception &e) {
+				sub_schema_err << "  one schema for failed because: " << e.what() << "\n";
+
 				if (combine_logic == allOf)
-					throw std::out_of_range("At least one schema has failed for " + name + " where allOf them were requested.");
+					throw std::out_of_range("At least one schema has failed for " + name + " where allOf them were requested.\n" + sub_schema_err.str());
 			}
 			if (combine_logic == oneOf && count > 1)
-				throw std::out_of_range("More than one schema has succeeded for " + name + " where only oneOf them was requested.");
+				throw std::out_of_range("More than one schema has succeeded for " + name + " where only oneOf them was requested.\n" + sub_schema_err.str());
 		}
 		if ((combine_logic == anyOf || combine_logic == oneOf) && count == 0)
-			throw std::out_of_range("No schema has succeeded for " + name + " but anyOf/oneOf them should have worked.");
+			throw std::out_of_range("No schema has succeeded for " + name + " but anyOf/oneOf them should have worked.\n" + sub_schema_err.str());
 	}
 
 	// check (base) schema
