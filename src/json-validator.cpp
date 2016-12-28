@@ -142,7 +142,8 @@ void validate_type(const json &schema, const std::string &expected_type, const s
 		throw std::invalid_argument(s.str());
 
 	} else { // type_instance is a string
-		if (type_instance == expected_type)
+		if (type_instance == expected_type ||
+		    (type_instance == "number" && expected_type == "integer"))
 			return;
 
 		throw std::invalid_argument(type_instance.get<std::string>() + " is not a " + expected_type + " for " + name);
