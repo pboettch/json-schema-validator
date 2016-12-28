@@ -173,7 +173,7 @@ void validate_boolean(json & /*instance*/, const json &schema, const std::string
 
 void validate_numeric(const json &schema, const std::string &name, double value)
 {
-    // multipleOf - if the rest of the division is 0 -> OK
+	// multipleOf - if the rest of the division is 0 -> OK
 	const auto &multipleOf = schema.find("multipleOf");
 	if (multipleOf != schema.end()) {
 		if (multipleOf.value().get<double>() != 0.0) {
@@ -686,12 +686,12 @@ void json_validator::validate_string(json &instance, const json &schema, const s
 			throw std::invalid_argument(instance.get<std::string>() + " does not match regex pattern: " + attr.value().get<std::string>() + " for " + name);
 	}
 
-    // format
+	// format
 	attr = schema.find("format");
 	if (attr != schema.end()) {
 		if (format_check_ == nullptr)
 			throw std::logic_error("A format checker was not provided but a format-attribute for this string is present. " +
-			                            name + " cannot be validated for " + attr.value().get<std::string>());
+			                       name + " cannot be validated for " + attr.value().get<std::string>());
 		format_check_(attr.value(), instance);
 	}
 }
