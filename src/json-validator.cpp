@@ -658,6 +658,15 @@ void json_validator::validate_object(json &instance, const json &schema, const s
 	}
 }
 
+static std::size_t utf8_length(const std::string &s)
+{
+	size_t len = 0;
+	for (const unsigned char &c: s)
+		if ((c & 0xc0) != 0x80)
+			len++;
+	return len;
+}
+
 void json_validator::validate_string(json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "string", name);
@@ -665,7 +674,7 @@ void json_validator::validate_string(json &instance, const json &schema, const s
 	// minLength
 	auto attr = schema.find("minLength");
 	if (attr != schema.end())
-		if (instance.get<std::string>().size() < attr.value()) {
+		if (utf8_length( instance ) < attr.value()) {
 			std::ostringstream s;
 			s << "'" << name << "' of value '" << instance << "' is too short as per minLength ("
 			  << attr.value() << ")";
@@ -675,7 +684,7 @@ void json_validator::validate_string(json &instance, const json &schema, const s
 	// maxLength
 	attr = schema.find("maxLength");
 	if (attr != schema.end())
-		if (instance.get<std::string>().size() > attr.value()) {
+		if (utf8_length(instance) > attr.value()) {
 			std::ostringstream s;
 			s << "'" << name << "' of value '" << instance << "' is too long as per maxLength ("
 			  << attr.value() << ")";
