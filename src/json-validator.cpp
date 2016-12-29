@@ -377,7 +377,7 @@ void json_validator::validate(json &instance, const json &schema_, const std::st
 				validate(instance, s, name);
 				count++;
 			} catch (std::exception &e) {
-				sub_schema_err << "  one schema for failed because: " << e.what() << "\n";
+				sub_schema_err << "  one schema failed because: " << e.what() << "\n";
 
 				if (combine_logic == allOf)
 					throw std::out_of_range("At least one schema has failed for " + name + " where allOf them were requested.\n" + sub_schema_err.str());
