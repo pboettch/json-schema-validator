@@ -454,7 +454,7 @@ void json_validator::validate_array(json &instance, const json &schema, const st
 			std::set<json> array_to_set;
 			for (auto v : instance) {
 				auto ret = array_to_set.insert(v);
-				if (ret.second == false)
+				if (ret.second == json(false))
 					throw std::out_of_range(name + " should have only unique items.");
 			}
 		}
@@ -491,7 +491,7 @@ void json_validator::validate_array(json &instance, const json &schema, const st
 					break;
 
 				case json::value_t::boolean:
-					if (additionalItems == false)
+					if (additionalItems == json(false))
 						throw std::out_of_range("additional values in array are not allowed for " + sub_name);
 					else
 						validation_done = true;
