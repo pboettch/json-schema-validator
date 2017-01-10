@@ -1,6 +1,8 @@
 #include <json-schema.hpp>
 
-namespace nlohmann::json_schema_draft4
+namespace nlohmann
+{
+namespace json_schema_draft4
 {
 
 json draft4_schema_builtin = R"( {
@@ -154,4 +156,5 @@ json draft4_schema_builtin = R"( {
     "default": {}
 } )"_json;
 
+}
 }
