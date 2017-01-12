@@ -52,6 +52,7 @@ class resolver
 		schema_refs[id] = &schema;
 
 		for (auto i = schema.begin(), end = schema.end(); i != end; ++i) {
+			// FIXME: this inhibits the user adding elements with the key "default"
 			if (i.key() == "default") /* default value can be objects, but are not schemas */
 				continue;
 

@@ -37,7 +37,6 @@ static void usage(const char *name)
 	exit(EXIT_FAILURE);
 }
 
-
 #if 0
 	resolver r(nlohmann::json_schema_draft4::root_schema,
 			   nlohmann::json_schema_draft4::root_schema["id"]);
@@ -63,7 +62,6 @@ int main(int argc, char *argv[])
 	if (argc != 2)
 		usage(argv[0]);
 
-
 	std::fstream f(argv[1]);
 	if (!f.good()) {
 		std::cerr << "could not open " << argv[1] << " for reading\n";
@@ -80,7 +78,7 @@ int main(int argc, char *argv[])
 	}
 
 	// 2) create the validator and
-	json_validator validator(loader, [](const std::string&, const std::string&){});
+	json_validator validator(loader, [](const std::string &, const std::string &) {});
 
 	try {
 		// insert this schema as the root to the validator
