@@ -38,12 +38,15 @@ class resolver
 {
 	void resolve(json &schema, json_uri id)
 	{
+		// look for the id-field in this schema
 		auto fid = schema.find("id");
 
+		// found?
 		if (fid != schema.end() &&
 		    fid.value().type() == json::value_t::string)
-			id = id.derive(fid.value());
+			id = id.derive(fid.value()); // resolve to a full id with URL + path based on the parent
 
+		// already existing - error
 		if (schema_refs.find(id) != schema_refs.end())
 			throw std::invalid_argument("schema " + id.to_string() + " already present in local resolver");
 
@@ -52,7 +55,7 @@ class resolver
 		schema_refs[id] = &schema;
 
 		for (auto i = schema.begin(), end = schema.end(); i != end; ++i) {
-			// FIXME: this inhibits the user adding elements with the key "default"
+			// FIXME: this inhibits the user adding properties with the key "default"
 			if (i.key() == "default") /* default value can be objects, but are not schemas */
 				continue;
 
