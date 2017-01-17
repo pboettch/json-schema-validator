@@ -72,7 +72,7 @@ add_subdirectory(path-to-this-project json-schema-validator)
 See also `app/json-schema-validate.cpp`.
 
 ```C++
-#include "json-schema-validator.hpp"
+#include "json-schema.hpp"
 
 using nlohmann::json;
 using nlohmann::json_uri;
