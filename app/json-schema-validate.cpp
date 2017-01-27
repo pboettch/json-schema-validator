@@ -46,9 +46,9 @@ static void usage(const char *name)
 
 static void loader(const json_uri &uri, json &schema)
 {
-	std::fstream lf(uri.path());
+	std::fstream lf("." + uri.path());
 	if (!lf.good())
-		throw std::invalid_argument("could not open " + uri.url());
+		throw std::invalid_argument("could not open " + uri.url() + " tried with " + uri.path());
 
 	try {
 		lf >> schema;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	try {
 		f >> schema;
 	} catch (std::exception &e) {
-		std::cerr << e.what() << " at " << f.tellp() << "\n";
+		std::cerr << e.what() << " at " << f.tellp() << " - while parsing the schema\n";
 		return EXIT_FAILURE;
 	}
 
