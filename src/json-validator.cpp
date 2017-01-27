@@ -50,8 +50,8 @@ class resolver
 		if (schema_refs.find(id) != schema_refs.end())
 			throw std::invalid_argument("schema " + id.to_string() + " already present in local resolver");
 
-		// store a raw pointer to this (sub-)schema references by its absolute json_uri
-		// this (sub-)schema is part of a schema stored inside schema_store_
+		// store a raw pointer to this (sub-)schema referenced by its absolute json_uri
+		// this (sub-)schema is part of a schema stored inside schema_store_ so we can the a raw-pointer-ref
 		schema_refs[id] = &schema;
 
 		for (auto i = schema.begin(), end = schema.end(); i != end; ++i) {
@@ -126,10 +126,7 @@ void validate_type(const json &schema, const std::string &expected_type, const s
 {
 	const auto &type_it = schema.find("type");
 	if (type_it == schema.end())
-		/* TODO guess type for more safety,
-             * TODO use definitions
-			 * TODO valid by not being defined? FIXME not clear - there are
-             * schema-test case which are not specifying a type */
+		/* TODO something needs to be done here, I think */
 		return;
 
 	const auto &type_instance = type_it.value();
@@ -151,7 +148,7 @@ void validate_type(const json &schema, const std::string &expected_type, const s
 			return;
 
 		throw std::invalid_argument(name + " should be a " + expected_type +
-									", but is a " + type_instance.get<std::string>());
+		                            ", but is a " + type_instance.get<std::string>());
 	}
 }
 
@@ -666,7 +663,7 @@ void json_validator::validate_object(json &instance, const json &schema, const s
 static std::size_t utf8_length(const std::string &s)
 {
 	size_t len = 0;
-	for (const unsigned char &c: s)
+	for (const unsigned char &c : s)
 		if ((c & 0xc0) != 0x80)
 			len++;
 	return len;
@@ -679,7 +676,7 @@ void json_validator::validate_string(json &instance, const json &schema, const s
 	// minLength
 	auto attr = schema.find("minLength");
 	if (attr != schema.end())
-		if (utf8_length( instance ) < attr.value()) {
+		if (utf8_length(instance) < attr.value()) {
 			std::ostringstream s;
 			s << "'" << name << "' of value '" << instance << "' is too short as per minLength ("
 			  << attr.value() << ")";
