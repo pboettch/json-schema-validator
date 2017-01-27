@@ -116,7 +116,7 @@ public:
 					                       // of the same document, which has not been found
 					throw std::invalid_argument("sub-schema " + r.pointer().to_string() +
 					                            " in schema " + id.to_string() + " not found");
-				undefined_refs.insert(r);
+				undefined_refs.insert(r.url());
 			}
 		}
 	}
