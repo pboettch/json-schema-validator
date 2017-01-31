@@ -456,7 +456,7 @@ void json_validator::validate_array(json &instance, const json &schema, const st
 			std::set<json> array_to_set;
 			for (auto v : instance) {
 				auto ret = array_to_set.insert(v);
-				if (ret.second == json(false))
+				if (ret.second == false)
 					throw std::out_of_range(name + " should have only unique items.");
 			}
 		}
