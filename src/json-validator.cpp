@@ -152,7 +152,7 @@ void validate_type(const json &schema, const std::string &expected_type, const s
 	}
 }
 
-void validate_enum(json &instance, const json &schema, const std::string &name)
+void validate_enum(const json &instance, const json &schema, const std::string &name)
 {
 	const auto &enum_value = schema.find("enum");
 	if (enum_value == schema.end())
@@ -168,7 +168,7 @@ void validate_enum(json &instance, const json &schema, const std::string &name)
 	throw std::invalid_argument(s.str());
 }
 
-void validate_boolean(json & /*instance*/, const json &schema, const std::string &name)
+void validate_boolean(const json & /*instance*/, const json &schema, const std::string &name)
 {
 	validate_type(schema, "boolean", name);
 }
@@ -215,25 +215,25 @@ void validate_numeric(const json &schema, const std::string &name, double value)
 	}
 }
 
-void validate_integer(json &instance, const json &schema, const std::string &name)
+void validate_integer(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "integer", name);
 	validate_numeric(schema, name, instance.get<int>());
 }
 
-void validate_unsigned(json &instance, const json &schema, const std::string &name)
+void validate_unsigned(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "integer", name);
 	validate_numeric(schema, name, instance.get<unsigned>());
 }
 
-void validate_float(json &instance, const json &schema, const std::string &name)
+void validate_float(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "number", name);
 	validate_numeric(schema, name, instance.get<double>());
 }
 
-void validate_null(json & /*instance*/, const json &schema, const std::string &name)
+void validate_null(const json & /*instance*/, const json &schema, const std::string &name)
 {
 	validate_type(schema, "null", name);
 }
@@ -292,7 +292,7 @@ void json_validator::insert_schema(const json &input, const json_uri &id)
 		root_schema_ = schema;
 }
 
-void json_validator::validate(json &instance)
+void json_validator::validate(const json &instance)
 {
 	if (root_schema_ == nullptr)
 		throw std::invalid_argument("no root-schema has been inserted. Cannot validate an instance without it.");
@@ -305,7 +305,7 @@ void json_validator::set_root_schema(const json &schema)
 	insert_schema(schema, json_uri("#"));
 }
 
-void json_validator::validate(json &instance, const json &schema_, const std::string &name)
+void json_validator::validate(const json &instance, const json &schema_, const std::string &name)
 {
 	const json *schema = &schema_;
 
@@ -433,7 +433,7 @@ void json_validator::validate(json &instance, const json &schema_, const std::st
 	}
 }
 
-void json_validator::validate_array(json &instance, const json &schema, const std::string &name)
+void json_validator::validate_array(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "array", name);
 
@@ -520,7 +520,7 @@ void json_validator::validate_array(json &instance, const json &schema, const st
 	}
 }
 
-void json_validator::validate_object(json &instance, const json &schema, const std::string &name)
+void json_validator::validate_object(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "object", name);
 
@@ -669,7 +669,7 @@ static std::size_t utf8_length(const std::string &s)
 	return len;
 }
 
-void json_validator::validate_string(json &instance, const json &schema, const std::string &name)
+void json_validator::validate_string(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "string", name);
 

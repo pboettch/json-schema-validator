@@ -164,10 +164,10 @@ class json_validator
 
 	std::map<json_uri, const json *> schema_refs_;
 
-	void validate(json &instance, const json &schema_, const std::string &name);
-	void validate_array(json &instance, const json &schema_, const std::string &name);
-	void validate_object(json &instance, const json &schema_, const std::string &name);
-    void validate_string(json &instance, const json &schema, const std::string &name);
+	void validate(const json &instance, const json &schema_, const std::string &name);
+	void validate_array(const json &instance, const json &schema_, const std::string &name);
+	void validate_object(const json &instance, const json &schema_, const std::string &name);
+    void validate_string(const json &instance, const json &schema, const std::string &name);
 
 	void insert_schema(const json &input, const json_uri &id);
 
@@ -182,7 +182,7 @@ public:
 	void set_root_schema(const json &);
 
 	// validate a json-document based on the root-schema
-	void validate(json &instance);
+	void validate(const json &instance);
 };
 
 } // json_schema_draft4
