@@ -133,9 +133,14 @@ void validate_type(const json &schema, const std::string &expected_type, const s
 
 	// any of the types in this array
 	if (type_instance.type() == json::value_t::array) {
-		if (std::find(type_instance.begin(),
+		if ((std::find(type_instance.begin(),
 		              type_instance.end(),
 		              expected_type) != type_instance.end())
+			||
+			(expected_type == "integer" &&
+			 std::find(type_instance.begin(),
+				   type_instance.end(),
+				   "number") != type_instance.end()))
 			return;
 
 		std::ostringstream s;
