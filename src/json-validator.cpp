@@ -315,7 +315,7 @@ void json_validator::validate(json &instance, const json &schema_, const std::st
 		if (ref == schema->end())
 			break;
 
-		auto it = schema_refs_.find(ref.value());
+		auto it = schema_refs_.find(ref.value().get<std::string>());
 
 		if (it == schema_refs_.end())
 			throw std::invalid_argument("schema reference " + ref.value().get<std::string>() + " not found. Make sure all schemas have been inserted before validation.");
@@ -440,19 +440,19 @@ void json_validator::validate_array(json &instance, const json &schema, const st
 	// maxItems
 	const auto &maxItems = schema.find("maxItems");
 	if (maxItems != schema.end())
-		if (instance.size() > maxItems.value())
+		if (instance.size() > maxItems.value().get<int>())
 			throw std::out_of_range(name + " has too many items.");
 
 	// minItems
 	const auto &minItems = schema.find("minItems");
 	if (minItems != schema.end())
-		if (instance.size() < minItems.value())
+		if (instance.size() < minItems.value().get<int>())
 			throw std::out_of_range(name + " has too many items.");
 
 	// uniqueItems
 	const auto &uniqueItems = schema.find("uniqueItems");
 	if (uniqueItems != schema.end())
-		if (uniqueItems.value() == true) {
+		if (uniqueItems.value().get<bool>() == true) {
 			std::set<json> array_to_set;
 			for (auto v : instance) {
 				auto ret = array_to_set.insert(v);
@@ -493,7 +493,7 @@ void json_validator::validate_array(json &instance, const json &schema, const st
 					break;
 
 				case json::value_t::boolean:
-					if (additionalItems == json(false))
+					if (additionalItems.get<bool>() == false)
 						throw std::out_of_range("additional values in array are not allowed for " + sub_name);
 					else
 						validation_done = true;
@@ -549,13 +549,13 @@ void json_validator::validate_object(json &instance, const json &schema, const s
 	// maxProperties
 	const auto &maxProperties = schema.find("maxProperties");
 	if (maxProperties != schema.end())
-		if (instance.size() > maxProperties.value())
+		if (instance.size() > maxProperties.value().get<int>())
 			throw std::out_of_range(name + " has too many properties.");
 
 	// minProperties
 	const auto &minProperties = schema.find("minProperties");
 	if (minProperties != schema.end())
-		if (instance.size() < minProperties.value())
+		if (instance.size() < minProperties.value().get<int>())
 			throw std::out_of_range(name + " has too few properties.");
 
 	// additionalProperties
@@ -568,7 +568,7 @@ void json_validator::validate_object(json &instance, const json &schema, const s
 	const auto &additionalPropertiesVal = schema.find("additionalProperties");
 	if (additionalPropertiesVal != schema.end()) {
 		if (additionalPropertiesVal.value().type() == json::value_t::boolean)
-			additionalProperties = additionalPropertiesVal.value() == true ? True : False;
+			additionalProperties = additionalPropertiesVal.value().get<bool>() == true ? True : False;
 		else
 			additionalProperties = Object;
 	}
@@ -676,7 +676,7 @@ void json_validator::validate_string(json &instance, const json &schema, const s
 	// minLength
 	auto attr = schema.find("minLength");
 	if (attr != schema.end())
-		if (utf8_length(instance) < attr.value()) {
+		if (utf8_length( instance ) < attr.value().get<int>()) {
 			std::ostringstream s;
 			s << "'" << name << "' of value '" << instance << "' is too short as per minLength ("
 			  << attr.value() << ")";
@@ -686,7 +686,7 @@ void json_validator::validate_string(json &instance, const json &schema, const s
 	// maxLength
 	attr = schema.find("maxLength");
 	if (attr != schema.end())
-		if (utf8_length(instance) > attr.value()) {
+		if (utf8_length(instance) > attr.value().get<int>()) {
 			std::ostringstream s;
 			s << "'" << name << "' of value '" << instance << "' is too long as per maxLength ("
 			  << attr.value() << ")";
