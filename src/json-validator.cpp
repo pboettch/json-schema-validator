@@ -134,13 +134,12 @@ void validate_type(const json &schema, const std::string &expected_type, const s
 	// any of the types in this array
 	if (type_instance.type() == json::value_t::array) {
 		if ((std::find(type_instance.begin(),
-		              type_instance.end(),
-		              expected_type) != type_instance.end())
-			||
-			(expected_type == "integer" &&
-			 std::find(type_instance.begin(),
-				   type_instance.end(),
-				   "number") != type_instance.end()))
+		               type_instance.end(),
+		               expected_type) != type_instance.end()) ||
+		    (expected_type == "integer" &&
+		     std::find(type_instance.begin(),
+		               type_instance.end(),
+		               "number") != type_instance.end()))
 			return;
 
 		std::ostringstream s;
@@ -445,13 +444,13 @@ void json_validator::validate_array(const json &instance, const json &schema, co
 	// maxItems
 	const auto &maxItems = schema.find("maxItems");
 	if (maxItems != schema.end())
-		if (instance.size() > maxItems.value().get<int>())
+		if (instance.size() > maxItems.value().get<size_t>())
 			throw std::out_of_range(name + " has too many items.");
 
 	// minItems
 	const auto &minItems = schema.find("minItems");
 	if (minItems != schema.end())
-		if (instance.size() < minItems.value().get<int>())
+		if (instance.size() < minItems.value().get<size_t>())
 			throw std::out_of_range(name + " has too many items.");
 
 	// uniqueItems
@@ -554,13 +553,13 @@ void json_validator::validate_object(const json &instance, const json &schema, c
 	// maxProperties
 	const auto &maxProperties = schema.find("maxProperties");
 	if (maxProperties != schema.end())
-		if (instance.size() > maxProperties.value().get<int>())
+		if (instance.size() > maxProperties.value().get<size_t>())
 			throw std::out_of_range(name + " has too many properties.");
 
 	// minProperties
 	const auto &minProperties = schema.find("minProperties");
 	if (minProperties != schema.end())
-		if (instance.size() < minProperties.value().get<int>())
+		if (instance.size() < minProperties.value().get<size_t>())
 			throw std::out_of_range(name + " has too few properties.");
 
 	// additionalProperties
@@ -681,7 +680,7 @@ void json_validator::validate_string(const json &instance, const json &schema, c
 	// minLength
 	auto attr = schema.find("minLength");
 	if (attr != schema.end())
-		if (utf8_length( instance ) < attr.value().get<int>()) {
+		if (utf8_length(instance) < attr.value().get<size_t>()) {
 			std::ostringstream s;
 			s << "'" << name << "' of value '" << instance << "' is too short as per minLength ("
 			  << attr.value() << ")";
@@ -691,7 +690,7 @@ void json_validator::validate_string(const json &instance, const json &schema, c
 	// maxLength
 	attr = schema.find("maxLength");
 	if (attr != schema.end())
-		if (utf8_length(instance) > attr.value().get<int>()) {
+		if (utf8_length(instance) > attr.value().get<size_t>()) {
 			std::ostringstream s;
 			s << "'" << name << "' of value '" << instance << "' is too long as per maxLength ("
 			  << attr.value() << ")";
