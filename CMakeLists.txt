@@ -35,12 +35,14 @@ target_link_libraries(json-schema-validator
     PUBLIC
         json-hpp)
 
-install(
-    FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema-validator.hpp
-    DESTINATION
+if(NOT TARGET json-hpp) # if used as a subdirectory do not install json-schema.hpp
+    install(
+        FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema.hpp
+        DESTINATION
         ${CMAKE_INSTALL_PREFIX}/include
-)
+    )
+endif()
 
 # simple json-schema-validator-executable
 add_executable(json-schema-validate app/json-schema-validate.cpp)
