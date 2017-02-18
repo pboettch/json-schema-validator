@@ -25,11 +25,22 @@
  */
 #include <json-schema.hpp>
 
-#include <regex>
 #include <set>
 
 using nlohmann::json;
 using nlohmann::json_uri;
+
+#if defined(__GNUC__)
+ #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+ #if GCC_VERSION < 40900
+  #define NO_STD_REGEX
+ #endif
+ #undef GCC_VERSION
+#endif
+
+#ifndef NO_STD_REGEX
+ #include <regex>
+#endif
 
 namespace
 {
@@ -597,13 +608,20 @@ void json_validator::validate_object(const json &instance, const json &schema, c
 
 		for (auto pp = patternProperties.begin();
 		     pp != patternProperties.end(); ++pp) {
+#ifndef NO_STD_REGEX
 			std::regex re(pp.key(), std::regex::ECMAScript);
 
 			if (std::regex_search(child.key(), re)) {
 				validate(child.value(), pp.value(), child_name);
 				property_or_patternProperties_has_validated = true;
 			}
+#else
+			// accept everything in case of a patternProperty
+			property_or_patternProperties_has_validated = true;
+			break;
+#endif
 		}
+
 		if (property_or_patternProperties_has_validated)
 			continue;
 
@@ -697,6 +715,7 @@ void json_validator::validate_string(const json &instance, const json &schema, c
 			throw std::out_of_range(s.str());
 		}
 
+#ifndef NO_STD_REGEX
 	// pattern
 	attr = schema.find("pattern");
 	if (attr != schema.end()) {
@@ -704,6 +723,7 @@ void json_validator::validate_string(const json &instance, const json &schema, c
 		if (!std::regex_search(instance.get<std::string>(), re))
 			throw std::invalid_argument(instance.get<std::string>() + " does not match regex pattern: " + attr.value().get<std::string>() + " for " + name);
 	}
+#endif
 
 	// format
 	attr = schema.find("format");
