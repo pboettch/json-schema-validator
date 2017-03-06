@@ -35,6 +35,22 @@ target_link_libraries(json-schema-validator
     PUBLIC
         json-hpp)
 
+# regex with boost if gcc < 4.8 - default is std::regex
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
+        find_package(Boost COMPONENTS regex)
+        if(NOT Boost_FOUND)
+            message(WARNING "GCC less then 4.9 and boost-regex NOT found - no regex used")
+            target_compile_definitions(json-schema-validator PRIVATE -DJSON_SCHEMA_NO_REGEX)
+        else()
+            message(WARNING "GCC less then 4.9 and boost-regex FOUND - using boost::regex")
+            target_compile_definitions(json-schema-validator PRIVATE -DJSON_SCHEMA_BOOST_REGEX)
+            target_include_directories(json-schema-validator PRIVATE ${Boost_INCLUDE_DIRS})
+            target_link_libraries(json-schema-validator PRIVATE ${Boost_LIBRARIES})
+        endif()
+    endif()
+endif()
+
 if(NOT TARGET json-hpp) # if used as a subdirectory do not install json-schema.hpp
     install(
         FILES
