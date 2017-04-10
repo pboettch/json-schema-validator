@@ -28,6 +28,9 @@ add_library(json-schema-validator SHARED
 target_include_directories(json-schema-validator
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_compile_features(json-schema-validator
+    PUBLIC
+        cxx_range_for) # for C++11 - flags
 target_compile_options(json-schema-validator
     PUBLIC
         -Wall -Wextra) # bad, better use something else based on compiler type
