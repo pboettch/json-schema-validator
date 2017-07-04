@@ -60,19 +60,15 @@ static void format_check(const std::string &format, const std::string &value)
 
 static void loader(const json_uri &uri, json &schema)
 {
-	std::map<std::string, std::string> external_schemas =
-	    {
-	        {"http://localhost:1234/integer.json", JSON_SCHEMA_TEST_SUITE_PATH "/remotes/integer.json"},
-	        {"http://localhost:1234/subSchemas.json", JSON_SCHEMA_TEST_SUITE_PATH "/remotes/subSchemas.json"},
-	        {"http://localhost:1234/folder/folderInteger.json", JSON_SCHEMA_TEST_SUITE_PATH "/remotes/folder/folderInteger.json"},
-	    };
-
 	if (uri.to_string() == "http://json-schema.org/draft-04/schema#") {
 		schema = nlohmann::json_schema_draft4::draft4_schema_builtin;
 		return;
 	}
 
-	std::string fn = external_schemas[uri.url()];
+	std::string fn = JSON_SCHEMA_TEST_SUITE_PATH;
+	fn += "/remotes";
+	fn += uri.path();
+	std::cerr << fn << "\n";
 
 	std::fstream s(fn.c_str());
 	if (!s.good())
