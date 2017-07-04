@@ -2,22 +2,27 @@ project(json-schema-validator CXX)
 
 cmake_minimum_required(VERSION 3.2)
 
-# if used as a subdirectory just define a json-hpp-target (INTERFACE)
+# if used as a subdirectory just define a json-hpp-target as add_library(json-hpp INTERFACE)
+# and associate the path to json.hpp via target_include_directories()
 if(NOT TARGET json-hpp)
 # find nlohmann's json.hpp
-    find_path(NLOHMANN_JSON_DIR
-        NAMES
-            json.hpp)
+    find_path(JSON_HPP json.hpp
+        PATHS
+            ${CMAKE_BINARY_DIR}/${NLOHMANN_JSON_DIR} # in case it is a relative path
+            ${NLOHMANN_JSON_DIR})
 
-    if(NOT NLOHMANN_JSON_DIR)
+    if(NOT JSON_HPP)
         message(FATAL_ERROR "please set NLOHMANN_JSON_DIR to a path in which NLohmann's json.hpp can be found.")
     endif()
 
-# create an interface-library for simple cmake-linking
+    # get the full, real path
+    get_filename_component(NLOHMANN_JSON_REALPATH ${JSON_HPP} REALPATH)
+
+    # create an interface-library for simple cmake-linking
     add_library(json-hpp INTERFACE)
     target_include_directories(json-hpp
         INTERFACE
-            ${NLOHMANN_JSON_DIR})
+            ${NLOHMANN_JSON_REALPATH})
 endif()
 
 # and one for the validator
@@ -25,17 +30,19 @@ add_library(json-schema-validator SHARED
     src/json-schema-draft4.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp)
+
 target_include_directories(json-schema-validator
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 target_compile_features(json-schema-validator
     PUBLIC
         cxx_range_for) # for C++11 - flags
 # Enable more compiler warnings, except when using Visual Studio compiler
 if(NOT MSVC)
     target_compile_options(json-schema-validator
-    PUBLIC
-        -Wall -Wextra)
+        PUBLIC
+            -Wall -Wextra)
 endif()
 target_link_libraries(json-schema-validator
     PUBLIC
@@ -63,9 +70,9 @@ endif()
 if(NOT TARGET json-hpp) # if used as a subdirectory do not install json-schema.hpp
     install(
         FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema.hpp
+           ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema.hpp
         DESTINATION
-        ${CMAKE_INSTALL_PREFIX}/include
+            ${CMAKE_INSTALL_PREFIX}/include
     )
 endif()
 
