@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 		validator.validate(document);
 	} catch (std::exception &e) {
 		std::cerr << "schema validation failed\n";
-		std::cerr << e.what() << "\n";
+		std::cerr << e.what() << " at offset: " << std::cin.tellg() << "\n";
 		return EXIT_FAILURE;
 	}
 
