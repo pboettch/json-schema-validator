@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
 	json document;
 
 	try {
-		document << std::cin;
+		std::cin >> document;
 		validator.validate(document);
 	} catch (std::exception &e) {
 		std::cerr << "schema validation failed\n";

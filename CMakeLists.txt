@@ -31,12 +31,18 @@ target_include_directories(json-schema-validator
 target_compile_features(json-schema-validator
     PUBLIC
         cxx_range_for) # for C++11 - flags
-target_compile_options(json-schema-validator
+# Enable more compiler warnings, except when using Visual Studio compiler
+if(NOT MSVC)
+    target_compile_options(json-schema-validator
     PUBLIC
-        -Wall -Wextra) # bad, better use something else based on compiler type
+        -Wall -Wextra)
+endif()
 target_link_libraries(json-schema-validator
     PUBLIC
         json-hpp)
+target_compile_definitions(json-schema-validator
+    PRIVATE
+        -DJSON_SCHEMA_VALIDATOR_EXPORTS)
 
 # regex with boost if gcc < 4.8 - default is std::regex
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -112,6 +118,4 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
 else()
     message(STATUS "Consider setting JSON_SCHEMA_TEST_SUITE_PATH to a path in which JSON-Schema-Test-Suite is located (github.com/json-schema-org/JSON-Schema-Test-Suite).")
 endif()
-
-
 

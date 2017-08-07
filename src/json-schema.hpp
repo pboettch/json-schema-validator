@@ -26,6 +26,16 @@
 #ifndef NLOHMANN_JSON_SCHEMA_HPP__
 #define NLOHMANN_JSON_SCHEMA_HPP__
 
+#ifdef _WIN32
+#    ifdef JSON_SCHEMA_VALIDATOR_EXPORTS
+#        define JSON_SCHEMA_VALIDATOR_API __declspec(dllexport)
+#    else
+#        define JSON_SCHEMA_VALIDATOR_API __declspec(dllimport)
+#    endif
+#else
+#    define JSON_SCHEMA_VALIDATOR_API
+#endif
+
 #include <json.hpp>
 
 // make yourself a home - welcome to nlohmann's namespace
@@ -83,7 +93,7 @@ public:
 //
 // This is done implement the requirements described in section 8.2.
 //
-class json_uri
+class JSON_SCHEMA_VALIDATOR_API json_uri
 {
 	std::string urn_;
 
@@ -155,7 +165,7 @@ namespace json_schema_draft4
 
 extern json draft4_schema_builtin;
 
-class json_validator
+class JSON_SCHEMA_VALIDATOR_API json_validator
 {
 	std::vector<std::shared_ptr<json>> schema_store_;
 	std::shared_ptr<json> root_schema_;
