@@ -344,7 +344,7 @@ void json_validator::validate(const json &instance, const json &schema_, const s
 		try {
 			validate(instance, attr.value(), name);
 			ok = false;
-		} catch (std::exception &e) {
+        } catch (std::exception &) {
 			ok = true;
 		}
 		if (!ok)
