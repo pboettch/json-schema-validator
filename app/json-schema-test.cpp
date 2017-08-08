@@ -27,6 +27,7 @@
 
 #include <fstream>
 #include <regex>
+#include <iostream>
 
 using nlohmann::json;
 using nlohmann::json_uri;
