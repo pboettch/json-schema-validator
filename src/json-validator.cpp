@@ -460,7 +460,7 @@ void json_validator::validate_array(const json &instance, const json &schema, co
 	const auto &minItems = schema.find("minItems");
 	if (minItems != schema.end())
 		if (instance.size() < minItems.value().get<size_t>())
-			throw std::out_of_range(name + " has too many items.");
+			throw std::out_of_range(name + " has too few items.");
 
 	// uniqueItems
 	const auto &uniqueItems = schema.find("uniqueItems");
