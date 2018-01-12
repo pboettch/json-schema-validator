@@ -36,6 +36,9 @@ else()
             src/json-schema-draft4.json.cpp
             src/json-uri.cpp
             src/json-validator.cpp)
+    target_compile_definitions(json-schema-validator
+            PRIVATE
+            -DJSON_SCHEMA_VALIDATOR_SHARED_LIB)
 endif()
 
 target_include_directories(json-schema-validator
