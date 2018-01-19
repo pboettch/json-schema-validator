@@ -51,7 +51,7 @@ target_compile_definitions(json-schema-validator
     PRIVATE
         -DJSON_SCHEMA_VALIDATOR_EXPORTS)
 
-# regex with boost if gcc < 4.8 - default is std::regex
+# regex with boost if gcc < 4.9 - default is std::regex
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.9.0")
         find_package(Boost COMPONENTS regex)
