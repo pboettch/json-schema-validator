@@ -61,14 +61,14 @@ namespace nlohmann
 //   ~ and %  - codec
 //   needs testing and clarification regarding the '#' at the beginning
 
-class json_pointer
+class local_json_pointer
 {
 	std::string str_;
 
 	void from_string(const std::string &r);
 
 public:
-	json_pointer(const std::string &s = "")
+	local_json_pointer(const std::string &s = "")
 	{
 		from_string(s);
 	}
@@ -100,7 +100,7 @@ class JSON_SCHEMA_VALIDATOR_API json_uri
 	std::string proto_;
 	std::string hostname_;
 	std::string path_;
-	json_pointer pointer_;
+	local_json_pointer pointer_;
 
 protected:
 	// decodes a JSON uri and replaces all or part of the currently stored values
@@ -120,7 +120,7 @@ public:
 	const std::string protocol() const { return proto_; }
 	const std::string hostname() const { return hostname_; }
 	const std::string path() const { return path_; }
-	const json_pointer pointer() const { return pointer_; }
+	const local_json_pointer pointer() const { return pointer_; }
 
 	const std::string url() const;
 

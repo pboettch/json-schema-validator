@@ -28,7 +28,7 @@
 namespace nlohmann
 {
 
-void json_pointer::from_string(const std::string &r)
+void local_json_pointer::from_string(const std::string &r)
 {
 	str_ = "#";
 
@@ -89,7 +89,7 @@ void json_uri::from_string(const std::string &uri)
 		else // otherwise it is a subfolder
 			path_.append(path);
 
-		pointer_ = json_pointer("");
+		pointer_ = local_json_pointer("");
 	}
 
 	if (pointer.size() > 0)
