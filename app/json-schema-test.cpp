@@ -76,7 +76,7 @@ static void loader(const json_uri &uri, json &schema)
 		throw std::invalid_argument("could not open " + uri.url() + " for schema loading\n");
 
 	try {
-		schema << s;
+		s >> schema;
 	} catch (std::exception &e) {
 		throw e;
 	}
