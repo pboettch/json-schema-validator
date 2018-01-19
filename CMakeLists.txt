@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 3.2)
 # if used as a subdirectory just define a json-hpp-target as add_library(json-hpp INTERFACE)
 # and associate the path to json.hpp via target_include_directories()
 if(NOT TARGET json-hpp)
+    set(NLOHMANN_JSON_DIR "" CACHE STRING "path to json.hpp")
+
 # find nlohmann's json.hpp
     find_path(JSON_HPP json.hpp
         PATHS
