@@ -217,7 +217,7 @@ void validate_numeric(const json &schema, const std::string &name, double value)
 	const auto &minimum = schema.find("minimum");
 	if (minimum != schema.end()) {
 		double mini = minimum.value();
-		auto ex = std::out_of_range(name + " exceeds minimum of " + std::to_string(mini));
+		auto ex = std::out_of_range(name + " is below the minimum of " + std::to_string(mini));
 		if (schema.find("exclusiveMinimum") != schema.end()) {
 			if (value <= mini)
 				throw ex;
