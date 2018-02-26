@@ -26,7 +26,7 @@
 #ifndef NLOHMANN_JSON_SCHEMA_HPP__
 #define NLOHMANN_JSON_SCHEMA_HPP__
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(JSON_SCHEMA_VALIDATOR_SHARED_LIB)
 #    ifdef JSON_SCHEMA_VALIDATOR_EXPORTS
 #        define JSON_SCHEMA_VALIDATOR_API __declspec(dllexport)
 #    else

@@ -28,10 +28,20 @@ if(NOT TARGET json-hpp)
 endif()
 
 # and one for the validator
-add_library(json-schema-validator SHARED
-    src/json-schema-draft4.json.cpp
-    src/json-uri.cpp
-    src/json-validator.cpp)
+if (JSON_SCHEMA_VALIDATOR_DISABLE_SHARED)
+    add_library(json-schema-validator STATIC
+        src/json-schema-draft4.json.cpp
+        src/json-uri.cpp
+        src/json-validator.cpp)
+else()
+    add_library(json-schema-validator SHARED
+            src/json-schema-draft4.json.cpp
+            src/json-uri.cpp
+            src/json-validator.cpp)
+    target_compile_definitions(json-schema-validator
+            PRIVATE
+            -DJSON_SCHEMA_VALIDATOR_SHARED_LIB)
+endif()
 
 target_include_directories(json-schema-validator
     PUBLIC
