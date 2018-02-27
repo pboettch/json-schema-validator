@@ -28,7 +28,7 @@ if(NOT TARGET json-hpp)
 endif()
 
 # and one for the validator
-add_library(json-schema-validator SHARED
+add_library(json-schema-validator
     src/json-schema-draft4.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp)
@@ -49,9 +49,11 @@ endif()
 target_link_libraries(json-schema-validator
     PUBLIC
         json-hpp)
-target_compile_definitions(json-schema-validator
-    PRIVATE
-        -DJSON_SCHEMA_VALIDATOR_EXPORTS)
+if(BUILD_SHARED_LIBS)
+    target_compile_definitions(json-schema-validator
+        PRIVATE
+            -DJSON_SCHEMA_VALIDATOR_EXPORTS)
+endif()
 
 # regex with boost if gcc < 4.9 - default is std::regex
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
