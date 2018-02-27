@@ -7,18 +7,18 @@ cmake_minimum_required(VERSION 3.2)
 if(NOT TARGET json-hpp)
     set(NLOHMANN_JSON_DIR "" CACHE STRING "path to json.hpp")
 
-# find nlohmann's json.hpp
-    find_path(JSON_HPP json.hpp
+    # find nlohmann's json.hpp
+    find_path(JSON_HPP nlohmann/json.hpp
         PATHS
-            ${CMAKE_BINARY_DIR}/${NLOHMANN_JSON_DIR} # in case it is a relative path
-            ${NLOHMANN_JSON_DIR})
-
-    if(NOT JSON_HPP)
-        message(FATAL_ERROR "please set NLOHMANN_JSON_DIR to a path in which NLohmann's json.hpp can be found.")
-    endif()
+            ${NLOHMANN_JSON_DIR}
+            ${CMAKE_BINARY_DIR}/${NLOHMANN_JSON_DIR}) # in case it is a relative path
 
     # get the full, real path
     get_filename_component(NLOHMANN_JSON_REALPATH ${JSON_HPP} REALPATH)
+
+    if(NOT EXISTS ${NLOHMANN_JSON_REALPATH}/nlohmann/json.hpp)
+        message(FATAL_ERROR "please set NLOHMANN_JSON_DIR to a path in which NLohmann's json.hpp can be found. Looking for nlohmann/json.hpp in '${NLOHMANN_JSON_REALPATH}")
+    endif()
 
     # create an interface-library for simple cmake-linking
     add_library(json-hpp INTERFACE)

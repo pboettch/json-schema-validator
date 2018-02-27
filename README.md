@@ -36,9 +36,15 @@ cross-schema reference, it will not stop.  (Though I haven't tested it)
 
 # How to use
 
+The current state of the build-system needs at least version **3.1.1** of NLohmann's
+JSON library. It is looking for the `json.hpp` within a `nlohmann/`-path.
+
+When build the library you need to provide the path to the directory where the include-file
+is located as `nlohmann/json.hpp`.
+
 ## Build
 
-Directly
+### Within a build-dir
 
 ```Bash
 git clone https://github.com/pboettch/json-schema-validator.git
@@ -46,19 +52,19 @@ cd json-schema-validator
 mkdir build
 cd build
 cmake .. \
-    -DNLOHMANN_JSON_DIR=<path/to/json.hpp> \
+    -DNLOHMANN_JSON_DIR=<path/to/>nlohmann/json.hpp \
     -DJSON_SCHEMA_TEST_SUITE_PATH=<path/to/JSON-Schema-test-suite> # optional
 make # install
 ctest # if test-suite has been given
 ```
-or from another CMakeLists.txt as a subdirectory:
+### As a subdirectory from within
 
 ```CMake
 # create an interface-target called json-hpp
 add_library(json-hpp INTERFACE)
 target_include_directories(json-hpp
     INTERFACE
-        path/to/json.hpp)
+        path/to/nlohmann/json.hpp)
 
 # set this path to schema-test-suite to get tests compiled - optional
 set(JSON_SCHEMA_TEST_SUITE_PATH "path/to/json-schema-test-suite")
@@ -111,20 +117,20 @@ static json bad_person = {{"age", 42}};
 static json good_person = {{"name", "Albert"}, {"age", 42}};
 
 int main(){
-    
+
     /* json-parse the schema */
-    
+
     json_validator validator; // create validator
-    
+
     try {
         validator.set_root_schema(person_schema); // insert root-schema
     } catch (const std::exception &e) {
         std::cerr << "Validation of schema failed, here is why: " << e.what() << "\n";
         return EXIT_FAILURE;
     }
-    
+
     /* json-parse the people */
-    
+
     for (auto &person : {bad_person, good_person})
     {
         std::cout << "About to validate this person:\n" << std::setw(2) << person << std::endl;
