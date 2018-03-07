@@ -60,7 +60,7 @@ class resolver
 			throw std::invalid_argument("schema " + id.to_string() + " already present in local resolver");
 
 		// store a raw pointer to this (sub-)schema referenced by its absolute json_uri
-		// this (sub-)schema is part of a schema stored inside schema_store_ so we can the a raw-pointer-ref
+		// this (sub-)schema is part of a schema stored inside schema_store_ so we can use the a raw-pointer-ref
 		schema_refs[id] = &schema;
 
 		for (auto i = schema.begin(), end = schema.end(); i != end; ++i) {
@@ -295,8 +295,12 @@ void json_validator::insert_schema(const json &input, const json_uri &id)
 		for (auto undef : undefined) {
 			json ext;
 
+			// check whether a recursive-call has already insert this schema in the meantime
+			if (schema_refs_.find(undef) != schema_refs_.end())
+				continue;
+
 			schema_loader_(undef, ext);
-			insert_schema(ext, undef.url());
+			insert_schema(ext, undef.url()); // recursively call insert_schema to fill in new external references
 		}
 	} while (1);
 
