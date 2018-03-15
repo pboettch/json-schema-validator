@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.2)
 # and associate the path to json.hpp via target_include_directories()
 if(NOT TARGET json-hpp)
     set(NLOHMANN_JSON_DIR "" CACHE STRING "path to json.hpp")
+    set(ADD_INSTALL_TARGET TRUE)
 
     # find nlohmann's json.hpp
     find_path(JSON_HPP nlohmann/json.hpp
@@ -71,7 +72,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 endif()
 
-if(NOT TARGET json-hpp) # if used as a subdirectory do not install json-schema.hpp
+if(ADD_INSTALL_TARGET) # if used as a subdirectory do not install json-schema.hpp
     install(
         FILES
            ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema.hpp
