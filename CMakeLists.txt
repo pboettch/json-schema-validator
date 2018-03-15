@@ -2,6 +2,8 @@ project(json-schema-validator CXX)
 
 cmake_minimum_required(VERSION 3.2)
 
+set(PROJECT_VERSION 1.0.0)
+
 # if used as a subdirectory just define a json-hpp-target as add_library(json-hpp INTERFACE)
 # and associate the path to json.hpp via target_include_directories()
 if(NOT TARGET json-hpp)
@@ -22,21 +24,16 @@ if(NOT TARGET json-hpp)
     endif()
 
     # create an interface-library for simple cmake-linking
+    include_directories(${NLOHMANN_JSON_REALPATH})
     add_library(json-hpp INTERFACE)
-    target_include_directories(json-hpp
-        INTERFACE
-            ${NLOHMANN_JSON_REALPATH})
 endif()
 
 # and one for the validator
-add_library(json-schema-validator
+include_directories(src)
+add_library(${PROJECT_NAME}
     src/json-schema-draft4.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp)
-
-target_include_directories(json-schema-validator
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_compile_features(json-schema-validator
     PUBLIC
@@ -47,9 +44,6 @@ if(NOT MSVC)
         PUBLIC
             -Wall -Wextra)
 endif()
-target_link_libraries(json-schema-validator
-    PUBLIC
-        json-hpp)
 if(BUILD_SHARED_LIBS)
     target_compile_definitions(json-schema-validator
         PRIVATE
@@ -73,12 +67,46 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 endif()
 
 if(ADD_INSTALL_TARGET) # if used as a subdirectory do not install json-schema.hpp
+    include(GenerateExportHeader)
+    generate_export_header(${PROJECT_NAME})
+    set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${PROJECT_VERSION})
+    set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION 1)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY
+      INTERFACE_${PROJECT_NAME}_MAJOR_VERSION 1)
+    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY
+      COMPATIBLE_INTERFACE_STRING ${PROJECT_NAME}_MAJOR_VERSION)
+    
+    install(TARGETS ${PROJECT_NAME} EXPORT ${PROJECT_NAME}Targets
+      LIBRARY DESTINATION lib
+      ARCHIVE DESTINATION lib
+      RUNTIME DESTINATION bin
+      INCLUDES DESTINATION include)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema.hpp
+        DESTINATION include
+        COMPONENT Devel)
+
+    include(CMakePackageConfigHelpers)
+    set(ConfigPackageLocation lib/cmake/${PROJECT_NAME})
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake-config/${PROJECT_NAME}ConfigVersion.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY AnyNewerVersion)
+    export(EXPORT "${PROJECT_NAME}Targets"
+        FILE "${CMAKE_CURRENT_BINARY_DIR}/cmake-config/${PROJECT_NAME}Targets.cmake"
+        NAMESPACE ${PROJECT_NAME}::)
+    configure_package_config_file(cmake/config.cmake.in
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake-config/${PROJECT_NAME}Config.cmake"
+        INSTALL_DESTINATION ${ConfigPackageLocation})
+    install(EXPORT "${PROJECT_NAME}Targets"
+        FILE ${PROJECT_NAME}Targets.cmake
+        NAMESPACE ${PROJECT_NAME}::
+        DESTINATION ${ConfigPackageLocation})
     install(
         FILES
-           ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema.hpp
-        DESTINATION
-            ${CMAKE_INSTALL_PREFIX}/include
-    )
+            "${CMAKE_CURRENT_BINARY_DIR}/cmake-config/${PROJECT_NAME}Config.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/cmake-config/${PROJECT_NAME}ConfigVersion.cmake"
+        DESTINATION ${ConfigPackageLocation}
+        COMPONENT Devel)
 endif()
 
 # simple json-schema-validator-executable
