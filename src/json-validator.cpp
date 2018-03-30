@@ -231,13 +231,13 @@ void validate_numeric(const json &schema, const std::string &name, double value)
 void validate_integer(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "integer", name);
-	validate_numeric(schema, name, instance.get<int>());
+	validate_numeric(schema, name, instance.get<double>());
 }
 
 void validate_unsigned(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "integer", name);
-	validate_numeric(schema, name, instance.get<unsigned>());
+	validate_numeric(schema, name, instance.get<double>());
 }
 
 void validate_float(const json &instance, const json &schema, const std::string &name)
