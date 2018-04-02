@@ -122,7 +122,7 @@ public:
 		for (auto r : refs) {
 			if (schema_refs.find(r) == schema_refs.end()) {
 				if (r.url() == id.url()) // same url means referencing a sub-schema
-					                       // of the same document, which has not been found
+				                         // of the same document, which has not been found
 					throw std::invalid_argument("sub-schema " + r.pointer().to_string() +
 					                            " in schema " + id.to_string() + " not found");
 				undefined_refs.insert(r.url());
@@ -186,64 +186,106 @@ void validate_boolean(const json & /*instance*/, const json &schema, const std::
 	validate_type(schema, "boolean", name);
 }
 
-void validate_numeric(const json &schema, const std::string &name, double value)
+template <class T>
+bool violates_numeric_maximum(T max, T value, bool exclusive)
 {
-	// multipleOf - if the rest of the division is 0 -> OK
-	const auto &multipleOf = schema.find("multipleOf");
-	if (multipleOf != schema.end()) {
-		if (multipleOf.value().get<double>() != 0.0) {
+	if (exclusive)
+		return value >= max;
 
-			double v = value;
-			v /= multipleOf.value().get<double>();
+	return value > max;
+}
 
-			if (v != (double) (long) v)
-				throw std::out_of_range(name + " is not a multiple ...");
+template <class T>
+bool violates_numeric_minimum(T min, T value, bool exclusive)
+{
+	if (exclusive)
+		return value <= min;
+
+	return value < min;
+}
+
+// multipleOf - if the rest of the division is 0 -> OK
+bool violates_multiple_of(json::number_float_t x, json::number_float_t y)
+{
+	json::number_integer_t n = static_cast<json::number_integer_t>(x / y);
+	double res = (x - n * y);
+	return fabs(res) > std::numeric_limits<json::number_float_t>::epsilon();
+}
+
+template <class T>
+void validate_numeric(const json &instance, const json &schema, const std::string &name)
+{
+	T value = instance;
+
+	if (value != 0) { // zero is multiple of everything
+		const auto &multipleOf = schema.find("multipleOf");
+
+		if (multipleOf != schema.end()) {
+			double multiple = multipleOf.value();
+			double value_float = value;
+
+			if (violates_multiple_of(value_float, multiple))
+				throw std::out_of_range(name + " is not a multiple of " + std::to_string(multiple));
 		}
 	}
 
 	const auto &maximum = schema.find("maximum");
 	if (maximum != schema.end()) {
-		double maxi = maximum.value();
-		auto ex = std::out_of_range(name + " exceeds maximum of " + std::to_string(maxi));
-		if (schema.find("exclusiveMaximum") != schema.end()) {
-			if (value >= maxi)
-				throw ex;
-		} else {
-			if (value > maxi)
-				throw ex;
-		}
+		T maxi = maximum.value();
+
+		const auto &excl = schema.find("exclusiveMaximum");
+		bool exclusive = (excl != schema.end()) ? excl.value().get<bool>() : false;
+
+		if (violates_numeric_maximum<T>(maxi, value, exclusive))
+			throw std::out_of_range(name + " exceeds maximum of " + std::to_string(maxi));
 	}
 
 	const auto &minimum = schema.find("minimum");
 	if (minimum != schema.end()) {
-		double mini = minimum.value();
-		auto ex = std::out_of_range(name + " is below the minimum of " + std::to_string(mini));
-		if (schema.find("exclusiveMinimum") != schema.end()) {
-			if (value <= mini)
-				throw ex;
-		} else {
-			if (value < mini)
-				throw ex;
-		}
+		T mini = minimum.value();
+
+		const auto &excl = schema.find("exclusiveMinimum");
+		bool exclusive = (excl != schema.end()) ? excl.value().get<bool>() : false;
+
+		if (violates_numeric_minimum<T>(mini, value, exclusive))
+			throw std::out_of_range(name + " is below minimum of " + std::to_string(mini));
 	}
 }
 
 void validate_integer(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "integer", name);
-	validate_numeric(schema, name, instance.get<double>());
+	//TODO: Validate schema values are json::value_t::number_integer/unsigned?
+
+	validate_numeric<int64_t>(instance, schema, name);
+}
+
+bool is_unsigned(const json &schema)
+{
+	const auto &minimum = schema.find("minimum");
+
+	// Number is expected to be unsigned if a minimum >= 0 is set
+	return minimum != schema.end() && minimum.value() >= 0;
 }
 
 void validate_unsigned(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "integer", name);
-	validate_numeric(schema, name, instance.get<double>());
+	//TODO: Validate schema values are json::value_t::unsigned?
+
+	//Is there a better way to determine whether an unsigned comparison should take place?
+	if (is_unsigned(schema))
+		validate_numeric<uint64_t>(instance, schema, name);
+	else
+		validate_numeric<int64_t>(instance, schema, name);
 }
 
 void validate_float(const json &instance, const json &schema, const std::string &name)
 {
 	validate_type(schema, "number", name);
-	validate_numeric(schema, name, instance.get<double>());
+	//TODO: Validate schema values are json::value_t::number_float?
+
+	validate_numeric<double>(instance, schema, name);
 }
 
 void validate_null(const json & /*instance*/, const json &schema, const std::string &name)
@@ -504,7 +546,7 @@ void json_validator::validate_array(const json &instance, const json &schema, co
 				validate(value, items[i], sub_name);
 			else {
 				switch (additionalItems.type()) { // items is an array
-				                                  // we need to take into consideration additionalItems
+					                                // we need to take into consideration additionalItems
 				case json::value_t::object:
 					validate(value, additionalItems, sub_name);
 					break;
@@ -736,5 +778,5 @@ void json_validator::validate_string(const json &instance, const json &schema, c
 		format_check_(attr.value(), instance);
 	}
 }
-}
-}
+} // namespace json_schema_draft4
+} // namespace nlohmann
