@@ -27,7 +27,7 @@ set(JSON_SCHEMA_TEST_PREFIX "JSON-Suite" CACHE STRING "prefix for JSON-tests add
 
 if(JSON_SCHEMA_TEST_SUITE_PATH)
     # json-schema-validator-tester
-    add_executable(json-schema-test ${CMAKE_SOURCE_DIR}/app/json-schema-test.cpp)
+    add_executable(json-schema-test ../app/json-schema-test.cpp)
     target_link_libraries(json-schema-test json-schema-validator)
     target_compile_definitions(json-schema-test
         PRIVATE
