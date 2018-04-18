@@ -1,3 +1,6 @@
+
+[![Build Status](https://travis-ci.org/pboettch/json-schema-validator.svg?branch=master)](https://travis-ci.org/pboettch/json-schema-validator)
+
 # Modern C++ JSON schema validator
 
 # What is it?
