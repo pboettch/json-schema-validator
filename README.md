@@ -34,6 +34,12 @@ lives in his namespace.
 Schema-reference resolution is not recursivity-proven: If there is a nested
 cross-schema reference, it will not stop.  (Though I haven't tested it)
 
+Numerical validation uses `int64_t`, `uint64_t` or `double`, depending on if the schema type is "integer" or "number". Bignum (i.e. arbitrary precision and range) is not supported at this time.
+
+Unsigned integer validation will only take place if the following two conditions are true:
+- The nlohmann `type()` of the json object under validation is `nlohmann::json::value_t::number_unsigned`
+- The schema specifies a numerical minimum greater than or equal to 0
+
 # How to use
 
 The current state of the build-system needs at least version **3.1.1** of NLohmann's
