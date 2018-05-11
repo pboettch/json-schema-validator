@@ -2,6 +2,9 @@ project(json-schema-validator CXX)
 
 cmake_minimum_required(VERSION 3.2)
 
+option(BUILD_TESTS      "Build tests"    ON)
+option(BUILD_EXAMPLES   "Build examples" ON)
+
 # if used as a subdirectory just define a json-hpp-target as add_library(json-hpp INTERFACE)
 # and associate the path to json.hpp via target_include_directories()
 if(NOT TARGET json-hpp)
@@ -32,6 +35,14 @@ add_library(json-schema-validator
     src/json-schema-draft4.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp)
+
+install(TARGETS json-schema-validator
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
+
+install(DIRECTORY src/
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*")
 
 target_include_directories(json-schema-validator
     PUBLIC
@@ -80,10 +91,14 @@ if(NOT TARGET json-hpp) # if used as a subdirectory do not install json-schema.h
     )
 endif()
 
-# simple json-schema-validator-executable
-add_executable(json-schema-validate app/json-schema-validate.cpp)
-target_link_libraries(json-schema-validate json-schema-validator)
+if (BUILD_EXAMPLES)
+    # simple json-schema-validator-executable
+    add_executable(json-schema-validate app/json-schema-validate.cpp)
+    target_link_libraries(json-schema-validate json-schema-validator)
+endif()
 
-# test-zone
-enable_testing()
-add_subdirectory(test)
+if (BUILD_TESTS)
+    # test-zone
+    enable_testing()
+    add_subdirectory(test)
+endif()
