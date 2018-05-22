@@ -7,7 +7,8 @@ function(add_test_simple_schema name schema instance)
         COMMAND ${PIPE_IN_TEST_SCRIPT}
             $<TARGET_FILE:json-schema-validate>
             ${schema}
-            ${instance})
+            ${instance}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endfunction()
 
 file(GLOB TEST_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/*)
@@ -17,3 +18,8 @@ foreach(DIR ${TEST_DIRS})
         add_subdirectory(${DIR})
     endif()
 endforeach()
+
+add_executable(uri uri.cpp)
+target_link_libraries(uri json-schema-validator)
+
+add_test(NAME uri COMMAND uri)

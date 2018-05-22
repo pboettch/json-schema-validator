@@ -32,7 +32,7 @@ endif()
 
 # and one for the validator
 add_library(json-schema-validator
-    src/json-schema-draft4.json.cpp
+    src/json-schema-draft7.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp)
 
@@ -95,7 +95,12 @@ if (BUILD_EXAMPLES)
     # simple json-schema-validator-executable
     add_executable(json-schema-validate app/json-schema-validate.cpp)
     target_link_libraries(json-schema-validate json-schema-validator)
+
+    add_executable(readme app/readme.cpp)
+    target_link_libraries(readme json-schema-validator)
 endif()
+
+#add_subdirectory(ng)
 
 if (BUILD_TESTS)
     # test-zone

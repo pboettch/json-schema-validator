@@ -1,90 +1,39 @@
 /*
- * Modern C++ JSON schema validator
+ * JSON schema validator for JSON for modern C++
  *
- * Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+ * Copyright (c) 2016-2019 Patrick Boettcher <p@yai.se>.
  *
- * Copyright (c) 2016 Patrick Boettcher <patrick.boettcher@posteo.de>.
+ * SPDX-License-Identifier: MIT
  *
- * Permission is hereby  granted, free of charge, to any  person obtaining a
- * copy of this software and associated  documentation files (the "Software"),
- * to deal in the Software  without restriction, including without  limitation
- * the rights to  use, copy,  modify, merge,  publish, distribute,  sublicense,
- * and/or  sell copies  of  the Software,  and  to  permit persons  to  whom
- * the Software  is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE  IS PROVIDED "AS  IS", WITHOUT WARRANTY  OF ANY KIND,  EXPRESS
- * OR IMPLIED,  INCLUDING BUT  NOT  LIMITED TO  THE  WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR  A PARTICULAR PURPOSE AND  NONINFRINGEMENT. IN
- * NO EVENT  SHALL THE AUTHORS  OR COPYRIGHT  HOLDERS  BE  LIABLE FOR  ANY
- * CLAIM,  DAMAGES OR  OTHER LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT
- * OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR
- * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #ifndef NLOHMANN_JSON_SCHEMA_HPP__
 #define NLOHMANN_JSON_SCHEMA_HPP__
 
 #ifdef _WIN32
-#    if defined(JSON_SCHEMA_VALIDATOR_EXPORTS)
-#        define JSON_SCHEMA_VALIDATOR_API __declspec(dllexport)
-#    elif defined(JSON_SCHEMA_VALIDATOR_IMPORTS)
-#        define JSON_SCHEMA_VALIDATOR_API __declspec(dllimport)
-#    else
-#        define JSON_SCHEMA_VALIDATOR_API
-#    endif
+#	if defined(JSON_SCHEMA_VALIDATOR_EXPORTS)
+#		define JSON_SCHEMA_VALIDATOR_API __declspec(dllexport)
+#	elif defined(JSON_SCHEMA_VALIDATOR_IMPORTS)
+#		define JSON_SCHEMA_VALIDATOR_API __declspec(dllimport)
+#	else
+#		define JSON_SCHEMA_VALIDATOR_API
+#	endif
 #else
-#    define JSON_SCHEMA_VALIDATOR_API
+#	define JSON_SCHEMA_VALIDATOR_API
 #endif
 
 #include <nlohmann/json.hpp>
 
+#ifdef NLOHMANN_JSON_VERSION_MAJOR
+#	if NLOHMANN_JSON_VERSION_MAJOR < 3 || NLOHMANN_JSON_VERSION_MINOR < 5 || NLOHMANN_JSON_VERSION_PATCH < 0
+#		error "Please use this library with NLohmann's JSON version 3.5.0 or higher"
+#	endif
+#else
+#	error "expected existing NLOHMANN_JSON_VERSION_MAJOR preproc variable, please update to NLohmann's JSON 3.5.0"
+#endif
+
 // make yourself a home - welcome to nlohmann's namespace
 namespace nlohmann
 {
-
-// a class representing a JSON-pointer RFC6901
-//
-// examples of JSON pointers
-//
-//   #     - root of the current document
-//   #item - refers to the object which is identified ("id") by `item`
-//           in the current document
-//   #/path/to/element
-//         - refers to the element in /path/to from the root-document
-//
-//
-// The json_pointer-class stores everything in a string, which might seem bizarre
-// as parsing is done from a string to a string, but from_string() is also
-// doing some formatting.
-//
-// TODO
-//   ~ and %  - codec
-//   needs testing and clarification regarding the '#' at the beginning
-
-class local_json_pointer
-{
-	std::string str_;
-
-	void from_string(const std::string &r);
-
-public:
-	local_json_pointer(const std::string &s = "")
-	{
-		from_string(s);
-	}
-
-	void append(const std::string &elem)
-	{
-		str_.append(elem);
-	}
-
-	const std::string &to_string() const
-	{
-		return str_;
-	}
-};
 
 // A class representing a JSON-URI for schemas derived from
 // section 8 of JSON Schema: A Media Type for Describing JSON Documents
@@ -102,32 +51,32 @@ class JSON_SCHEMA_VALIDATOR_API json_uri
 	std::string proto_;
 	std::string hostname_;
 	std::string path_;
-	local_json_pointer pointer_;
+	nlohmann::json::json_pointer pointer_;
 
 protected:
 	// decodes a JSON uri and replaces all or part of the currently stored values
-	void from_string(const std::string &uri);
+	void update(const std::string &uri);
 
 	std::tuple<std::string, std::string, std::string, std::string, std::string> tie() const
 	{
-		return std::tie(urn_, proto_, hostname_, path_, pointer_.to_string());
+		return std::tie(urn_, proto_, hostname_, path_, pointer_);
 	}
 
 public:
 	json_uri(const std::string &uri)
 	{
-		from_string(uri);
+		update(uri);
 	}
 
 	const std::string protocol() const { return proto_; }
 	const std::string hostname() const { return hostname_; }
 	const std::string path() const { return path_; }
-	const local_json_pointer pointer() const { return pointer_; }
 
-	const std::string url() const;
+	const nlohmann::json::json_pointer pointer() const { return pointer_; }
 
-	// decode and encode strings for ~ and % escape sequences
-	static std::string unescape(const std::string &);
+	const std::string url() const { return location(); }
+	const std::string location() const;
+
 	static std::string escape(const std::string &);
 
 	// create a new json_uri based in this one and the given uri
@@ -135,7 +84,7 @@ public:
 	json_uri derive(const std::string &uri) const
 	{
 		json_uri u = *this;
-		u.from_string(uri);
+		u.update(uri);
 		return u;
 	}
 
@@ -143,7 +92,7 @@ public:
 	json_uri append(const std::string &field) const
 	{
 		json_uri u = *this;
-		u.pointer_.append("/" + field);
+		u.pointer_ = nlohmann::json::json_pointer(u.pointer_.to_string() + '/' + escape(field));
 		return u;
 	}
 
@@ -162,42 +111,47 @@ public:
 	friend std::ostream &operator<<(std::ostream &os, const json_uri &u);
 };
 
-namespace json_schema_draft4
+namespace json_schema
 {
 
-extern json draft4_schema_builtin;
+extern json draft7_schema_builtin;
+
+class basic_error_handler
+{
+	bool error_{false};
+
+public:
+	virtual void error(const std::string & /*path*/, const json & /* instance */, const std::string & /*message*/)
+	{
+		error_ = true;
+	}
+
+	void reset() { error_ = false; }
+	operator bool() const { return error_; }
+};
+
+class root_schema;
 
 class JSON_SCHEMA_VALIDATOR_API json_validator
 {
-	std::vector<std::shared_ptr<json>> schema_store_;
-	std::shared_ptr<json> root_schema_;
-	std::function<void(const json_uri &, json &)> schema_loader_ = nullptr;
-	std::function<void(const std::string &, const std::string &)> format_check_ = nullptr;
-
-	std::map<json_uri, const json *> schema_refs_;
-
-	void validate(const json &instance, const json &schema_, const std::string &name);
-	void validate_array(const json &instance, const json &schema_, const std::string &name);
-	void validate_object(const json &instance, const json &schema_, const std::string &name);
-    void validate_string(const json &instance, const json &schema, const std::string &name);
-
-	void insert_schema(const json &input, const json_uri &id);
+	std::unique_ptr<root_schema> root_;
 
 public:
 	json_validator(std::function<void(const json_uri &, json &)> loader = nullptr,
-	               std::function<void(const std::string &, const std::string &)> format = nullptr)
-	    : schema_loader_(loader), format_check_(format)
-	{
-	}
+	               std::function<void(const std::string &, const std::string &)> format = nullptr);
+	~json_validator();
 
-	// insert and set a root-schema
+	// insert and set thea root-schema
 	void set_root_schema(const json &);
 
 	// validate a json-document based on the root-schema
-	void validate(const json &instance);
+	void validate(const json &);
+
+	// validate a json-document based on the root-schema with a custom error-handler
+	void validate(const json &, basic_error_handler &);
 };
 
-} // json_schema_draft4
-} // nlohmann
+} // namespace json_schema
+} // namespace nlohmann
 
 #endif /* NLOHMANN_JSON_SCHEMA_HPP__ */
