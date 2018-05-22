@@ -106,7 +106,7 @@ class JSON_SCHEMA_VALIDATOR_API json_uri
 
 protected:
 	// decodes a JSON uri and replaces all or part of the currently stored values
-	void from_string(const std::string &uri);
+	void update(const std::string &uri);
 
 	std::tuple<std::string, std::string, std::string, std::string, std::string> tie() const
 	{
@@ -116,7 +116,7 @@ protected:
 public:
 	json_uri(const std::string &uri)
 	{
-		from_string(uri);
+		update(uri);
 	}
 
 	const std::string protocol() const { return proto_; }
@@ -124,7 +124,8 @@ public:
 	const std::string path() const { return path_; }
 	const local_json_pointer pointer() const { return pointer_; }
 
-	const std::string url() const;
+	const std::string url() const { return location(); }
+	const std::string location() const;
 
 	// decode and encode strings for ~ and % escape sequences
 	static std::string unescape(const std::string &);
@@ -135,7 +136,7 @@ public:
 	json_uri derive(const std::string &uri) const
 	{
 		json_uri u = *this;
-		u.from_string(uri);
+		u.update(uri);
 		return u;
 	}
 
@@ -179,7 +180,7 @@ class JSON_SCHEMA_VALIDATOR_API json_validator
 	void validate(const json &instance, const json &schema_, const std::string &name);
 	void validate_array(const json &instance, const json &schema_, const std::string &name);
 	void validate_object(const json &instance, const json &schema_, const std::string &name);
-    void validate_string(const json &instance, const json &schema, const std::string &name);
+	void validate_string(const json &instance, const json &schema, const std::string &name);
 
 	void insert_schema(const json &input, const json_uri &id);
 
@@ -197,7 +198,7 @@ public:
 	void validate(const json &instance);
 };
 
-} // json_schema_draft4
-} // nlohmann
+} // namespace json_schema_draft4
+} // namespace nlohmann
 
 #endif /* NLOHMANN_JSON_SCHEMA_HPP__ */

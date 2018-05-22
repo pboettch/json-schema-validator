@@ -50,54 +50,73 @@ void local_json_pointer::from_string(const std::string &r)
 	} while (pos != std::string::npos);
 }
 
-void json_uri::from_string(const std::string &uri)
+void json_uri::update(const std::string &uri)
 {
-	// if it is an urn take it as it is - maybe there is more to be done
-	if (uri.find("urn:") == 0) {
-		urn_ = uri;
-		return;
-	}
+	std::string pointer = "#"; // default pointer is document-root
 
-	std::string pointer = "#"; // default pointer is the root
-
-	// first split the URI into URL and JSON-pointer
+	// first split the URI into location and pointer
 	auto pointer_separator = uri.find('#');
-	if (pointer_separator != std::string::npos) // and extract the JSON-pointer-string if found
+	if (pointer_separator != std::string::npos) // and extract the pointer-string if found
 		pointer = uri.substr(pointer_separator);
 
-	// the rest is an URL
-	std::string url = uri.substr(0, pointer_separator);
-	if (url.size()) { // if an URL is part of the URI
+	auto location = uri.substr(0, pointer_separator);
 
-		std::size_t pos = 0;
-		auto proto = url.find("://", pos);
-		if (proto != std::string::npos) { // extract the protocol
-			proto_ = url.substr(pos, proto - pos);
-			pos = 3 + proto; // 3 == "://"
+	if (location.size()) {               // a location part has been found
+		pointer_ = local_json_pointer(""); // if a location is given, the pointer is emptied
 
-			auto hostname = url.find("/", pos);
-			if (hostname != std::string::npos) { // and the hostname (no proto without hostname)
-				hostname_ = url.substr(pos, hostname - pos);
-				pos = hostname;
+		// if it is an URN take it as it is
+		if (location.find("urn:") == 0) {
+			urn_ = location;
+
+			// and clear URL members
+			proto_ = "";
+			hostname_ = "";
+			path_ = "";
+
+		} else { // it is an URL
+
+			// split URL in protocol, hostname and path
+			std::size_t pos = 0;
+			auto proto = location.find("://", pos);
+			if (proto != std::string::npos) { // extract the protocol
+
+				urn_ = ""; // clear URN-member if URL is parsed
+
+				proto_ = location.substr(pos, proto - pos);
+				pos = 3 + proto; // 3 == "://"
+
+				auto hostname = location.find("/", pos);
+				if (hostname != std::string::npos) { // and the hostname (no proto without hostname)
+					hostname_ = location.substr(pos, hostname - pos);
+					pos = hostname;
+				}
 			}
+
+			auto path = location.substr(pos);
+
+			// URNs cannot of have paths
+			if (urn_.size() && path.size())
+				throw std::invalid_argument("Cannot add a path (" + path + ") to an URN URI (" + urn_ + ")");
+
+			if (path[0] == '/') // if it starts with a / it is root-path
+				path_ = path;
+			else if (pos == 0 && path_.back() != '/') // the URL contained only a path and the current path has no / at the end, it is an absolute path
+				path_ = '/' + path;
+			else // otherwise it is a subfolder
+				path_.append(path);
 		}
-
-		// the rest is the path
-		auto path = url.substr(pos);
-		if (path[0] == '/') // if it starts with a / it is root-path
-			path_ = path;
-		else // otherwise it is a subfolder
-			path_.append(path);
-
-		pointer_ = local_json_pointer("");
 	}
 
+	// if there was a pointer part store it internally
 	if (pointer.size() > 0)
 		pointer_ = pointer;
 }
 
-const std::string json_uri::url() const
+const std::string json_uri::location() const
 {
+	if (urn_.size())
+		return urn_;
+
 	std::stringstream s;
 
 	if (proto_.size() > 0)
@@ -113,8 +132,7 @@ std::string json_uri::to_string() const
 {
 	std::stringstream s;
 
-	s << urn_
-	  << url()
+	s << location()
 	  << pointer_.to_string();
 
 	return s.str();
@@ -184,4 +202,4 @@ std::string json_uri::escape(const std::string &src)
 	return l;
 }
 
-} // nlohmann
+} // namespace nlohmann

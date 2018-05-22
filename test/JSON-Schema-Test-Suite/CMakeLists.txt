@@ -38,12 +38,6 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
                      COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${TEST_FILE})
         endforeach()
 
-        # XXX Unfortunately URLs are not very well handled yet, accept those tests which fail
-        set_tests_properties(JSON-Suite::ref
-                             JSON-Suite::refRemote
-                             PROPERTIES
-                                WILL_FAIL ON)
-
         # some optional tests will fail as well.
         set_tests_properties(JSON-Suite::Optional::bignum
                              JSON-Suite::Optional::ecmascript-regex

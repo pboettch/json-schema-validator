@@ -45,23 +45,29 @@ namespace
 
 class resolver
 {
-	void resolve(json &schema, json_uri id)
+	void resolve(json &schema, std::vector<nlohmann::json_uri> base_uris)
 	{
 		// look for the id-field in this schema
 		auto fid = schema.find("id");
 
 		// found?
 		if (fid != schema.end() &&
-		    fid.value().type() == json::value_t::string)
-			id = id.derive(fid.value()); // resolve to a full id with URL + path based on the parent
+		    fid.value().type() == json::value_t::string) {
+			// resolve to a full id with URL + path based on last base_uri-added for this node
+			auto id = base_uris.back().derive(fid.value());
+			if (std::find(base_uris.begin(), base_uris.end(), id) == base_uris.end())
+				base_uris.push_back(id);
+		}
 
-		// already existing - error
-		if (schema_refs.find(id) != schema_refs.end())
-			throw std::invalid_argument("schema " + id.to_string() + " already present in local resolver");
-
-		// store a raw pointer to this (sub-)schema referenced by its absolute json_uri
+		// store a raw pointer to this (sub-)schema referenced by all of its absolute json_uris
 		// this (sub-)schema is part of a schema stored inside schema_store_ so we can use the a raw-pointer-ref
-		schema_refs[id] = &schema;
+		for (auto &u : base_uris) {
+			// already existing - error
+			if (schema_refs.find(u) != schema_refs.end())
+				throw std::invalid_argument("schema " + u.to_string() + " already present in local resolver");
+
+			schema_refs[u] = &schema;
+		}
 
 		for (auto i = schema.begin(), end = schema.end(); i != end; ++i) {
 			// FIXME: this inhibits the user adding properties with the key "default"
@@ -70,23 +76,38 @@ class resolver
 
 			switch (i.value().type()) {
 
-			case json::value_t::object: // child is object, it is a schema
-				resolve(i.value(), id.append(json_uri::escape(i.key())));
-				break;
+			case json::value_t::object: { // child is object, it is a schema
+				std::vector<nlohmann::json_uri> subschema_uris = base_uris;
+
+				// add key to all of the URIs
+				for (auto &s : subschema_uris)
+					s = s.append(nlohmann::json_uri::escape(i.key()));
+
+				resolve(i.value(), subschema_uris);
+			} break;
 
 			case json::value_t::array: {
+				std::vector<nlohmann::json_uri> subschema_uris = base_uris;
+				for (auto &s : subschema_uris)
+					s = s.append(nlohmann::json_uri::escape(i.key()));
+
 				std::size_t index = 0;
-				auto child_id = id.append(json_uri::escape(i.key()));
 				for (auto &v : i.value()) {
-					if (v.type() == json::value_t::object) // array element is object
-						resolve(v, child_id.append(std::to_string(index)));
+					if (v.type() == json::value_t::object) { // array element is object
+
+						std::vector<nlohmann::json_uri> subschema_item_uris = subschema_uris;
+						for (auto &s : subschema_item_uris)
+							s = s.append(std::to_string(index));
+						resolve(v, subschema_item_uris);
+					}
 					index++;
 				}
 			} break;
 
 			case json::value_t::string:
 				if (i.key() == "$ref") {
-					json_uri ref = id.derive(i.value());
+					// use last inserted URI to derive the $ref-element
+					auto ref = base_uris.back().derive(i.value());
 					i.value() = ref.to_string();
 					refs.insert(ref);
 				}
@@ -107,12 +128,8 @@ public:
 
 	resolver(json &schema, json_uri id)
 	{
-		// if schema has an id use it as name and to retrieve the namespace (URL)
-		auto fid = schema.find("id");
-		if (fid != schema.end())
-			id = id.derive(fid.value());
 
-		resolve(schema, id);
+		resolve(schema, {{id}});
 
 		// refs now contains all references
 		//

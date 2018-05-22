@@ -26,8 +26,8 @@
 #include "json-schema.hpp"
 
 #include <fstream>
-#include <regex>
 #include <iostream>
+#include <regex>
 
 using nlohmann::json;
 using nlohmann::json_uri;
