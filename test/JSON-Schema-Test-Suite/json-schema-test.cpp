@@ -1,37 +1,20 @@
 /*
- * Modern C++ JSON schema validator
+ * JSON schema validator for JSON for modern C++
  *
- * Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+ * Copyright (c) 2016-2019 Patrick Boettcher <p@yai.se>.
  *
- * Copyright (c) 2016 Patrick Boettcher <patrick.boettcher@posteo.de>.
+ * SPDX-License-Identifier: MIT
  *
- * Permission is hereby  granted, free of charge, to any  person obtaining a
- * copy of this software and associated  documentation files (the "Software"),
- * to deal in the Software  without restriction, including without  limitation
- * the rights to  use, copy,  modify, merge,  publish, distribute,  sublicense,
- * and/or  sell copies  of  the Software,  and  to  permit persons  to  whom
- * the Software  is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE  IS PROVIDED "AS  IS", WITHOUT WARRANTY  OF ANY KIND,  EXPRESS
- * OR IMPLIED,  INCLUDING BUT  NOT  LIMITED TO  THE  WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR  A PARTICULAR PURPOSE AND  NONINFRINGEMENT. IN
- * NO EVENT  SHALL THE AUTHORS  OR COPYRIGHT  HOLDERS  BE  LIABLE FOR  ANY
- * CLAIM,  DAMAGES OR  OTHER LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT
- * OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR
- * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "json-schema.hpp"
 
 #include <fstream>
-#include <regex>
 #include <iostream>
+#include <regex>
 
 using nlohmann::json;
 using nlohmann::json_uri;
-using nlohmann::json_schema_draft4::json_validator;
+using nlohmann::json_schema::json_validator;
 
 static void format_check(const std::string &format, const std::string &value)
 {
@@ -61,8 +44,8 @@ static void format_check(const std::string &format, const std::string &value)
 
 static void loader(const json_uri &uri, json &schema)
 {
-	if (uri.to_string() == "http://json-schema.org/draft-04/schema#") {
-		schema = nlohmann::json_schema_draft4::draft4_schema_builtin;
+	if (uri.location() == "http://json-schema.org/draft-07/schema") {
+		schema = nlohmann::json_schema::draft7_schema_builtin;
 		return;
 	}
 

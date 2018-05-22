@@ -7,9 +7,11 @@ AllowShortFunctionsOnASingleLine: Inline
 BreakBeforeBraces: Linux
 ColumnLimit:     0
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
-IndentWidth:     2
-ObjCBlockIndentWidth: 2
+IndentWidth:     4
+IndentPPDirectives: AfterHash
+ObjCBlockIndentWidth: 0
 SpaceAfterCStyleCast: true
-TabWidth:        2
+TabWidth:        4
+AccessModifierOffset: -4
 UseTab:          ForIndentation
 ...

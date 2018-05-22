@@ -1,27 +1,10 @@
 /*
- * Modern C++ JSON schema validator
+ * JSON schema validator for JSON for modern C++
  *
- * Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+ * Copyright (c) 2016-2019 Patrick Boettcher <p@yai.se>.
  *
- * Copyright (c) 2016 Patrick Boettcher <patrick.boettcher@posteo.de>.
+ * SPDX-License-Identifier: MIT
  *
- * Permission is hereby  granted, free of charge, to any  person obtaining a
- * copy of this software and associated  documentation files (the "Software"),
- * to deal in the Software  without restriction, including without  limitation
- * the rights to  use, copy,  modify, merge,  publish, distribute,  sublicense,
- * and/or  sell copies  of  the Software,  and  to  permit persons  to  whom
- * the Software  is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE  IS PROVIDED "AS  IS", WITHOUT WARRANTY  OF ANY KIND,  EXPRESS
- * OR IMPLIED,  INCLUDING BUT  NOT  LIMITED TO  THE  WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR  A PARTICULAR PURPOSE AND  NONINFRINGEMENT. IN
- * NO EVENT  SHALL THE AUTHORS  OR COPYRIGHT  HOLDERS  BE  LIABLE FOR  ANY
- * CLAIM,  DAMAGES OR  OTHER LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT
- * OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR
- * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include <json-schema.hpp>
 
@@ -30,7 +13,7 @@
 
 using nlohmann::json;
 using nlohmann::json_uri;
-using nlohmann::json_schema_draft4::json_validator;
+using nlohmann::json_schema::json_validator;
 
 static void usage(const char *name)
 {
@@ -47,9 +30,10 @@ static void usage(const char *name)
 
 static void loader(const json_uri &uri, json &schema)
 {
-	std::fstream lf("." + uri.path());
+	std::string filename = "./" + uri.path();
+	std::fstream lf(filename);
 	if (!lf.good())
-		throw std::invalid_argument("could not open " + uri.url() + " tried with " + uri.path());
+		throw std::invalid_argument("could not open " + uri.url() + " tried with " + filename);
 
 	try {
 		lf >> schema;
@@ -57,6 +41,15 @@ static void loader(const json_uri &uri, json &schema)
 		throw e;
 	}
 }
+
+class custom_error_handler : public nlohmann::json_schema::basic_error_handler
+{
+	void error(const std::string &path, const json &instance, const std::string &message) override
+	{
+		nlohmann::json_schema::basic_error_handler::error(path, instance, message);
+		std::cerr << "ERROR: '" << path << "' - '" << instance << "': " << message << "\n";
+	}
+};
 
 int main(int argc, char *argv[])
 {
@@ -95,10 +88,16 @@ int main(int argc, char *argv[])
 
 	try {
 		std::cin >> document;
-		validator.validate(document);
 	} catch (std::exception &e) {
+		std::cerr << "json parsing failed: " << e.what() << " at offset: " << std::cin.tellg() << "\n";
+		return EXIT_FAILURE;
+	}
+
+	custom_error_handler err;
+	validator.validate(document, err);
+
+	if (err) {
 		std::cerr << "schema validation failed\n";
-		std::cerr << e.what() << " at offset: " << std::cin.tellg() << "\n";
 		return EXIT_FAILURE;
 	}
 

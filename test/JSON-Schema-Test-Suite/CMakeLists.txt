@@ -1,9 +1,11 @@
 set(JSON_SCHEMA_TEST_PREFIX "JSON-Suite" CACHE STRING "prefix for JSON-tests added to ctest")
 
+set(DRAFT "draft7")
+
 # find schema-test-suite
 find_path(JSON_SCHEMA_TEST_SUITE_PATH
     NAMES
-        tests/draft4)
+        tests/${DRAFT})
 
 if (NOT JSON_SCHEMA_TEST_SUITE_PATH)
     message(STATUS "Set JSON_SCHEMA_TEST_SUITE_PATH to a path in which JSON-Schema-Test-Suite is located (github.com/json-schema-org/JSON-Schema-Test-Suite). Using internal test-suite which might be out of date.")
@@ -21,7 +23,7 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
     option(JSON_SCHEMA_ENABLE_OPTIONAL_TESTS "Enable optional tests of the JSONSchema Test Suite" ON)
 
     # create tests foreach test-file
-    file(GLOB TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/draft4/*.json)
+    file(GLOB TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/${DRAFT}/*.json)
 
     foreach(TEST_FILE ${TEST_FILES})
         get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
@@ -30,7 +32,7 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
     endforeach()
 
     if (JSON_SCHEMA_ENABLE_OPTIONAL_TESTS)
-        file(GLOB OPT_TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/draft4/optional/*.json)
+        file(GLOB OPT_TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/${DRAFT}/optional/*.json)
 
         foreach(TEST_FILE ${OPT_TEST_FILES})
             get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
@@ -38,18 +40,13 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
                      COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${TEST_FILE})
         endforeach()
 
-        # XXX Unfortunately URLs are not very well handled yet, accept those tests which fail
-        set_tests_properties(JSON-Suite::ref
-                             JSON-Suite::refRemote
-                             PROPERTIES
-                                WILL_FAIL ON)
-
         # some optional tests will fail as well.
-        set_tests_properties(JSON-Suite::Optional::bignum
-                             JSON-Suite::Optional::ecmascript-regex
-                             JSON-Suite::Optional::format
-                             PROPERTIES
-                                WILL_FAIL ON)
+        set_tests_properties(
+            JSON-Suite::Optional::bignum
+            JSON-Suite::Optional::content
+            JSON-Suite::Optional::zeroTerminatedFloats
+            PROPERTIES
+                WILL_FAIL ON)
     endif()
 else()
 endif()

@@ -1,53 +1,68 @@
 
 [![Build Status](https://travis-ci.org/pboettch/json-schema-validator.svg?branch=master)](https://travis-ci.org/pboettch/json-schema-validator)
 
-# Modern C++ JSON schema validator
+# JSON schema validator for JSON for Modern C++
 
 # What is it?
 
 This is a C++ library for validating JSON documents based on a
 [JSON Schema](http://json-schema.org/) which itself should validate with
-[draft-4 of JSON Schema Validation](http://json-schema.org/schema).
+[draft-7 of JSON Schema Validation](http://json-schema.org/schema).
 
 First a disclaimer: *It is work in progress and
-contributions or hints or discussions are welcome.*
+contributions or hints or discussions are welcome.* Even though a 2.0.0 release is immenent.
 
 Niels Lohmann et al develop a great JSON parser for C++ called [JSON for Modern
 C++](https://github.com/nlohmann/json). This validator is based on this
 library, hence the name.
 
-The name is for the moment purely marketing, because there is, IMHO, not so much
-modern C++ inside. There is plenty of space to make it more modern.
-
 External documentation is missing as well. However the API of the validator
-will be rather simple.
+is rather simple.
+
+# New in version 2
+
+Although significant changes have been coorporate to the 2 version
+(a complete rewrite) the API is compatible with the 1.0.0 release. Except for
+the namespace which is now `nlohmann::json_schema.
+
+Version **2** supports JSON schema draft 7, whereas 1 was supporting draft 4
+only. Please update your schemas.
+
+The primary change in 2 is the way a schema is used. While in version 1 the schema was
+kept as a JSON-document and used again and again during validation, in versin 2 the schema
+is parsed into compiled C++ objects which are then used during validation. There are surely
+still optimizations to be done, but validation speed has improved by factor 100
+or more.
+
+In JSON-schema one sub-schema can be
 
 # Design goals
 
 The main goal of this validator is to produce *human-comprehensible* error
-messages if a JSON-document/instance does not comply with its schema. This is
-done with exceptions thrown at the users with a helpful message telling what's
-wrong with the document while validating.
+messages if a JSON-document/instance does not comply to its schema.
+
+By default this is done with exceptions thrown at the users with a helpful
+message telling what's wrong with the document while validating.
+
+With **2.0.0** the user can passed a `json_scheam::basic_error_handler` derived object
+along with the instance to validate to receive a each time a validation error occurs
+and decice what to do (throwing, counting, collecting).
 
 Another goal was to use Niels Lohmann's JSON-library. This is why the validator
 lives in his namespace.
 
 # Weaknesses
 
-Schema-reference resolution is not recursivity-proven: If there is a nested
-cross-schema reference, it will not stop.  (Though I haven't tested it)
-
-Numerical validation uses `int64_t`, `uint64_t` or `double`, depending on if
+Numerical validation uses nlohmann integer, unsigned and floating point types, depending on if
 the schema type is "integer" or "number". Bignum (i.e. arbitrary precision and
 range) is not supported at this time.
 
-Unsigned integer validation will only take place if the following two conditions are true:
-- The nlohmann `type()` of the json object under validation is `nlohmann::json::value_t::number_unsigned`
-- The schema specifies a numerical minimum greater than or equal to 0
+Currently JSON-URI with "plain name fragments" are not supported. So referring to an URI
+with `$ref: "file.json#plain"` will not work.
 
 # How to use
 
-The current state of the build-system needs at least version **3.1.1** of NLohmann's
+The current state of the build-system needs at least version **3.5.0** of NLohmann's
 JSON library. It is looking for the `json.hpp` within a `nlohmann/`-path.
 
 When build the library you need to provide the path to the directory where the include-file
@@ -66,7 +81,7 @@ cmake .. \
     -DNLOHMANN_JSON_DIR=<path/to/>nlohmann/json.hpp \
     -DJSON_SCHEMA_TEST_SUITE_PATH=<path/to/JSON-Schema-test-suite> # optional
 make # install
-ctest # if test-suite has been given
+ctest # run unit, non-regression and test-suite tests
 ```
 ### As a subdirectory from within
 
@@ -93,7 +108,6 @@ In your initial call to cmake simply add:
 ```bash
 cmake -DBUILD_SHARED_LIBS=ON
 ```
-
 ## Code
 
 See also `app/json-schema-validate.cpp`.
@@ -104,13 +118,12 @@ See also `app/json-schema-validate.cpp`.
 #include "json-schema.hpp"
 
 using nlohmann::json;
-using nlohmann::json_uri;
-using nlohmann::json_schema_draft4::json_validator;
+using nlohmann::json_schema::json_validator;
 
 // The schema is defined based upon a string literal
 static json person_schema = R"(
 {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "A person",
     "properties": {
         "name": {
@@ -137,50 +150,70 @@ static json person_schema = R"(
 static json bad_person = {{"age", 42}};
 static json good_person = {{"name", "Albert"}, {"age", 42}};
 
-int main(){
+int main()
+{
+	/* json-parse the schema */
 
-    /* json-parse the schema */
+	json_validator validator; // create validator
 
-    json_validator validator; // create validator
+	try {
+		validator.set_root_schema(person_schema); // insert root-schema
+	} catch (const std::exception &e) {
+		std::cerr << "Validation of schema failed, here is why: " << e.what() << "\n";
+		return EXIT_FAILURE;
+	}
 
-    try {
-        validator.set_root_schema(person_schema); // insert root-schema
-    } catch (const std::exception &e) {
-        std::cerr << "Validation of schema failed, here is why: " << e.what() << "\n";
-        return EXIT_FAILURE;
-    }
+	/* json-parse the people - API of 1.0.0, default throwing error handler */
 
-    /* json-parse the people */
+	for (auto &person : {bad_person, good_person}) {
+		std::cout << "About to validate this person:\n"
+		          << std::setw(2) << person << std::endl;
+		try {
+			validator.validate(person); // validate the document
+			std::cout << "Validation succeeded\n";
+		} catch (const std::exception &e) {
+			std::cerr << "Validation failed, here is why: " << e.what() << "\n";
+		}
+	}
 
-    for (auto &person : {bad_person, good_person})
-    {
-        std::cout << "About to validate this person:\n" << std::setw(2) << person << std::endl;
-        try {
-            validator.validate(person); // validate the document
-            std::cout << "Validation succeeded\n";
-        } catch (const std::exception &e) {
-            std::cerr << "Validation failed, here is why: " << e.what() << "\n";
-        }
-    }
-    return EXIT_SUCCESS;
+	/* json-parse the people - with custom error handler */
+	class custom_error_handler : public nlohmann::json_schema::basic_error_handler
+	{
+		void error(const std::string &path, const json &instance, const std::string &message) override
+		{
+			nlohmann::json_schema::basic_error_handler::error(path, instance, message);
+			std::cerr << "ERROR: '" << path << "' - '" << instance << "': " << message << "\n";
+		}
+	};
+
+
+	for (auto &person : {bad_person, good_person}) {
+		std::cout << "About to validate this person:\n"
+		          << std::setw(2) << person << std::endl;
+
+		custom_error_handler err;
+		validator.validate(person, err); // validate the document - uses the default throwing error-handler
+
+		if (err)
+			std::cerr << "Validation failed\n";
+		else
+			std::cout << "Validation succeeded\n";
+	}
+
+	return EXIT_SUCCESS;
 }
-
 ```
 
 # Compliance
 
 There is an application which can be used for testing the validator with the
 [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite).
+In order to simplify the testing, the test-suite is included in the repository.
 
 If you have cloned this repository providing a path the repository-root via the
 cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
 
 All required tests are **OK**.
-
-**12** optional tests of **305** total (required + optional) tests are failing:
-
-- 10 of them are `format`-strings which are not supported.
-- big numbers are not working (2)
 
 # Additional features
 
@@ -188,4 +221,3 @@ All required tests are **OK**.
 
 The goal is to create an empty document, based on schema-defined
 default-values, recursively populated.
-

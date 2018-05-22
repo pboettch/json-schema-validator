@@ -1,782 +1,1100 @@
 /*
- * Modern C++ JSON schema validator
+ * JSON schema validator for JSON for modern C++
  *
- * Licensed under the MIT License <http://opensource.org/licenses/MIT>.
+ * Copyright (c) 2016-2019 Patrick Boettcher <p@yai.se>.
  *
- * Copyright (c) 2016 Patrick Boettcher <patrick.boettcher@posteo.de>.
+ * SPDX-License-Identifier: MIT
  *
- * Permission is hereby  granted, free of charge, to any  person obtaining a
- * copy of this software and associated  documentation files (the "Software"),
- * to deal in the Software  without restriction, including without  limitation
- * the rights to  use, copy,  modify, merge,  publish, distribute,  sublicense,
- * and/or  sell copies  of  the Software,  and  to  permit persons  to  whom
- * the Software  is furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE  IS PROVIDED "AS  IS", WITHOUT WARRANTY  OF ANY KIND,  EXPRESS
- * OR IMPLIED,  INCLUDING BUT  NOT  LIMITED TO  THE  WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR  A PARTICULAR PURPOSE AND  NONINFRINGEMENT. IN
- * NO EVENT  SHALL THE AUTHORS  OR COPYRIGHT  HOLDERS  BE  LIABLE FOR  ANY
- * CLAIM,  DAMAGES OR  OTHER LIABILITY, WHETHER IN AN ACTION OF  CONTRACT, TORT
- * OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE  OR
- * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include <json-schema.hpp>
 
+#include <memory>
 #include <set>
 
 using nlohmann::json;
 using nlohmann::json_uri;
+using nlohmann::json_schema::root_schema;
+using namespace nlohmann::json_schema;
 
 #ifdef JSON_SCHEMA_BOOST_REGEX
- #include <boost/regex.hpp>
- #define REGEX_NAMESPACE boost
+#	include <boost/regex.hpp>
+#	define REGEX_NAMESPACE boost
 #elif defined(JSON_SCHEMA_NO_REGEX)
- #define NO_STD_REGEX
+#	define NO_STD_REGEX
 #else
- #include <regex>
- #define REGEX_NAMESPACE std
+#	include <regex>
+#	define REGEX_NAMESPACE std
 #endif
 
 namespace
 {
 
-class resolver
+class schema
 {
-	void resolve(json &schema, json_uri id)
+protected:
+	root_schema *root_;
+
+public:
+	schema(root_schema *root)
+	    : root_(root) {}
+
+	virtual void validate(const json &instance, basic_error_handler &e) const = 0;
+
+	static std::shared_ptr<schema> make(json &schema,
+	                                    root_schema *root,
+	                                    const std::vector<std::string> &key,
+	                                    std::vector<nlohmann::json_uri> uris);
+};
+
+class logical_not : public schema
+{
+	std::shared_ptr<schema> subschema_;
+
+	void validate(const json &instance, basic_error_handler &e) const final
 	{
-		// look for the id-field in this schema
-		auto fid = schema.find("id");
+		basic_error_handler err;
+		subschema_->validate(instance, err);
 
-		// found?
-		if (fid != schema.end() &&
-		    fid.value().type() == json::value_t::string)
-			id = id.derive(fid.value()); // resolve to a full id with URL + path based on the parent
+		if (!err)
+			e.error("", instance, "instance is valid, whereas it should NOT be as required by schema");
+	}
 
-		// already existing - error
-		if (schema_refs.find(id) != schema_refs.end())
-			throw std::invalid_argument("schema " + id.to_string() + " already present in local resolver");
+public:
+	logical_not(json &sch,
+	            root_schema *root,
+	            const std::vector<nlohmann::json_uri> &uris)
+	    : schema(root)
+	{
+		subschema_ = schema::make(sch, root, {"not"}, uris);
+	}
+};
 
-		// store a raw pointer to this (sub-)schema referenced by its absolute json_uri
-		// this (sub-)schema is part of a schema stored inside schema_store_ so we can use the a raw-pointer-ref
-		schema_refs[id] = &schema;
+enum logical_combination_types {
+	allOf,
+	anyOf,
+	oneOf
+};
 
-		for (auto i = schema.begin(), end = schema.end(); i != end; ++i) {
-			// FIXME: this inhibits the user adding properties with the key "default"
-			if (i.key() == "default") /* default value can be objects, but are not schemas */
-				continue;
+template <enum logical_combination_types combine_logic>
+class logical_combination : public schema
+{
+	std::vector<std::shared_ptr<schema>> subschemata_;
 
-			switch (i.value().type()) {
+	void validate(const json &instance, basic_error_handler &e) const final
+	{
+		size_t count = 0;
 
-			case json::value_t::object: // child is object, it is a schema
-				resolve(i.value(), id.append(json_uri::escape(i.key())));
-				break;
+		for (auto &s : subschemata_) {
+			basic_error_handler err;
+			s->validate(instance, err);
 
-			case json::value_t::array: {
-				std::size_t index = 0;
-				auto child_id = id.append(json_uri::escape(i.key()));
-				for (auto &v : i.value()) {
-					if (v.type() == json::value_t::object) // array element is object
-						resolve(v, child_id.append(std::to_string(index)));
-					index++;
+			if (err) {
+				//sub_schema_err << "  one schema failed because: " << e.what() << "\n";
+				if (combine_logic == allOf) {
+					e.error("", instance, "at least one schema has failed, but ALLOF them are required to validate.");
+					return;
 				}
+			} else
+				count++;
+
+			if (combine_logic == oneOf && count > 1) {
+				e.error("", instance, "more than one schema has succeeded, but only ONEOF them is required to validate.");
+				return;
+			}
+			if (combine_logic == anyOf && count == 1)
+				return;
+		}
+
+		if ((combine_logic == anyOf || combine_logic == oneOf) && count == 0)
+			e.error("", instance, "no validation has succeeded but ANYOF/ONEOF them is required to validate.");
+	}
+
+public:
+	logical_combination(json &sch,
+	                    root_schema *root,
+	                    const std::vector<nlohmann::json_uri> &uris)
+	    : schema(root)
+	{
+		size_t c = 0;
+		std::string key;
+		switch (combine_logic) {
+		case allOf:
+			key = "allOf";
+			break;
+		case oneOf:
+			key = "oneOf";
+			break;
+		case anyOf:
+			key = "anyOf";
+			break;
+		}
+
+		for (auto &subschema : sch)
+			subschemata_.push_back(schema::make(subschema, root, {key, std::to_string(c++)}, uris));
+	}
+};
+
+class type_schema : public schema
+{
+	std::vector<std::shared_ptr<schema>> type_;
+	std::pair<bool, json> enum_, const_;
+	std::vector<std::shared_ptr<schema>> logic_;
+
+	static std::shared_ptr<schema> make(json &schema,
+	                                    json::value_t type,
+	                                    root_schema *,
+	                                    const std::vector<nlohmann::json_uri> &,
+	                                    std::set<std::string> &);
+
+	std::shared_ptr<schema> if_, then_, else_;
+
+	void validate(const json &instance, basic_error_handler &e) const override final
+	{
+		// depending on the type of instance run the type specific validator - if present
+		auto type = type_[(uint8_t) instance.type()];
+
+		if (type)
+			type->validate(instance, e);
+		else
+			e.error("", instance, "unexpected instance type");
+
+		if (enum_.first) {
+			bool seen_in_enum = false;
+			for (auto &e : enum_.second)
+				if (instance == e) {
+					seen_in_enum = true;
+					break;
+				}
+
+			if (!seen_in_enum)
+				e.error("", instance, "instance not found in required enum");
+		}
+
+		if (const_.first &&
+		    const_.second != instance)
+			e.error("", instance, "instance not const");
+
+		for (auto l : logic_)
+			l->validate(instance, e);
+
+		if (if_) {
+			basic_error_handler err;
+
+			if_->validate(instance, err);
+			if (!err) {
+				if (then_)
+					then_->validate(instance, e);
+			} else {
+				if (else_)
+					else_->validate(instance, e);
+			}
+		}
+	}
+
+public:
+	type_schema(json &sch,
+	            root_schema *root,
+	            const std::vector<nlohmann::json_uri> &uris)
+	    : schema(root), type_((uint8_t) json::value_t::discarded + 1)
+	{
+		// association between JSON-schema-type and NLohmann-types
+		static const std::vector<std::pair<std::string, json::value_t>> schema_types = {
+		    {"null", json::value_t::null},
+		    {"object", json::value_t::object},
+		    {"array", json::value_t::array},
+		    {"string", json::value_t::string},
+		    {"boolean", json::value_t::boolean},
+		    {"integer", json::value_t::number_integer},
+		    {"integer", json::value_t::number_unsigned},
+		    {"number", json::value_t::number_float},
+		};
+
+		std::set<std::string> known_keywords;
+
+		auto attr = sch.find("type");
+		if (attr == sch.end()) // no type field means all sub-types possible
+			for (auto &t : schema_types)
+				type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
+		else {
+			switch (attr.value().type()) { // "type": "type"
+
+			case json::value_t::string: {
+				auto schema_type = attr.value().get<std::string>();
+				for (auto &t : schema_types)
+					if (t.first == schema_type)
+						type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
 			} break;
 
-			case json::value_t::string:
-				if (i.key() == "$ref") {
-					json_uri ref = id.derive(i.value());
-					i.value() = ref.to_string();
-					refs.insert(ref);
-				}
+			case json::value_t::array: // "type": ["type1", "type2"]
+				for (auto &schema_type : attr.value())
+					for (auto &t : schema_types)
+						if (t.first == schema_type)
+							type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
 				break;
 
 			default:
 				break;
 			}
+
+			sch.erase(attr);
 		}
-	}
 
-	std::set<json_uri> refs;
+		for (auto &key : known_keywords)
+			sch.erase(key);
 
-public:
-	std::set<json_uri> undefined_refs;
+		// with nlohmann::json floats can be seen as unsigned or integer - reuse the number-validator for
+		// integer values as well, if they have not been specified
+		if (type_[(uint8_t) json::value_t::number_float] && !type_[(uint8_t) json::value_t::number_integer])
+			type_[(uint8_t) json::value_t::number_integer] =
+			    type_[(uint8_t) json::value_t::number_unsigned] =
+			        type_[(uint8_t) json::value_t::number_float];
 
-	std::map<json_uri, const json *> schema_refs;
+		attr = sch.find("enum");
+		if (attr != sch.end()) {
+			enum_ = {true, attr.value()};
+			sch.erase(attr);
+		}
 
-	resolver(json &schema, json_uri id)
-	{
-		// if schema has an id use it as name and to retrieve the namespace (URL)
-		auto fid = schema.find("id");
-		if (fid != schema.end())
-			id = id.derive(fid.value());
+		attr = sch.find("const");
+		if (attr != sch.end()) {
+			const_ = {true, attr.value()};
+			sch.erase(attr);
+		}
 
-		resolve(schema, id);
+		attr = sch.find("not");
+		if (attr != sch.end()) {
+			logic_.push_back(std::make_shared<logical_not>(attr.value(), root, uris));
+			sch.erase(attr);
+		}
 
-		// refs now contains all references
-		//
-		// local references should be resolvable inside the same URL
-		//
-		// undefined_refs will only contain external references
-		for (auto r : refs) {
-			if (schema_refs.find(r) == schema_refs.end()) {
-				if (r.url() == id.url()) // same url means referencing a sub-schema
-				                         // of the same document, which has not been found
-					throw std::invalid_argument("sub-schema " + r.pointer().to_string() +
-					                            " in schema " + id.to_string() + " not found");
-				undefined_refs.insert(r.url());
+		attr = sch.find("allOf");
+		if (attr != sch.end()) {
+			logic_.push_back(std::make_shared<logical_combination<allOf>>(attr.value(), root, uris));
+			sch.erase(attr);
+		}
+
+		attr = sch.find("anyOf");
+		if (attr != sch.end()) {
+			logic_.push_back(std::make_shared<logical_combination<anyOf>>(attr.value(), root, uris));
+			sch.erase(attr);
+		}
+
+		attr = sch.find("oneOf");
+		if (attr != sch.end()) {
+			logic_.push_back(std::make_shared<logical_combination<oneOf>>(attr.value(), root, uris));
+			sch.erase(attr);
+		}
+
+		attr = sch.find("if");
+		if (attr != sch.end()) {
+			auto attr_then = sch.find("then");
+			auto attr_else = sch.find("else");
+
+			if (attr_then != sch.end() || attr_else != sch.end()) {
+				if_ = schema::make(attr.value(), root, {"if"}, uris);
+
+				if (attr_then != sch.end()) {
+					then_ = schema::make(attr_then.value(), root, {"then"}, uris);
+					sch.erase(attr_then);
+				}
+
+				if (attr_else != sch.end()) {
+					else_ = schema::make(attr_else.value(), root, {"else"}, uris);
+					sch.erase(attr_else);
+				}
 			}
+			sch.erase(attr);
 		}
 	}
 };
 
-void validate_type(const json &schema, const std::string &expected_type, const std::string &name)
+class string : public schema
 {
-	const auto &type_it = schema.find("type");
-	if (type_it == schema.end())
-		/* TODO something needs to be done here, I think */
-		return;
+	std::pair<bool, size_t> maxLength_{false, 0};
+	std::pair<bool, size_t> minLength_{false, 0};
 
-	const auto &type_instance = type_it.value();
+#ifndef NO_STD_REGEX
+	std::pair<bool, REGEX_NAMESPACE::regex> pattern_{false, REGEX_NAMESPACE::regex()};
+	std::string patternString_;
+#endif
 
-	// any of the types in this array
-	if (type_instance.type() == json::value_t::array) {
-		if ((std::find(type_instance.begin(),
-		               type_instance.end(),
-		               expected_type) != type_instance.end()) ||
-		    (expected_type == "integer" &&
-		     std::find(type_instance.begin(),
-		               type_instance.end(),
-		               "number") != type_instance.end()))
-			return;
+	std::pair<bool, std::string> format_;
+	std::function<void(const std::string &, const std::string &)> format_check_ = nullptr;
 
-		std::ostringstream s;
-		s << expected_type << " is not any of " << type_instance << " for " << name;
-		throw std::invalid_argument(s.str());
-
-	} else { // type_instance is a string
-		if (type_instance == expected_type ||
-		    (type_instance == "number" && expected_type == "integer"))
-			return;
-
-		throw std::invalid_argument(name + " is " + expected_type +
-		                            ", but required type is " + type_instance.get<std::string>());
+	std::size_t utf8_length(const std::string &s) const
+	{
+		size_t len = 0;
+		for (const unsigned char &c : s)
+			if ((c & 0xc0) != 0x80)
+				len++;
+		return len;
 	}
-}
 
-void validate_enum(const json &instance, const json &schema, const std::string &name)
-{
-	const auto &enum_value = schema.find("enum");
-	if (enum_value == schema.end())
-		return;
+	void validate(const json &instance, basic_error_handler &e) const override
+	{
+		if (minLength_.first) {
+			if (utf8_length(instance) < minLength_.second) {
+				std::ostringstream s;
+				s << "'" << instance << "' is too short as per minLength (" << minLength_.second << ")";
+				e.error("", instance, s.str());
+			}
+		}
 
-	if (std::find(enum_value.value().begin(), enum_value.value().end(), instance) != enum_value.value().end())
-		return;
+		if (maxLength_.first) {
+			if (utf8_length(instance) > maxLength_.second) {
+				std::ostringstream s;
+				s << "'" << instance << "' is too long as per maxLength (" << maxLength_.second << ")";
+				e.error("", instance, s.str());
+			}
+		}
 
-	std::ostringstream s;
-	s << "invalid enum-value '" << instance << "' "
-	  << "for instance '" << name << "'. Candidates are " << enum_value.value() << ".";
+#ifndef NO_STD_REGEX
+		if (pattern_.first &&
+		    !REGEX_NAMESPACE::regex_search(instance.get<std::string>(), pattern_.second))
+			e.error("", instance, instance.get<std::string>() + " does not match regex pattern: " + patternString_);
+#endif
 
-	throw std::invalid_argument(s.str());
-}
-
-void validate_boolean(const json & /*instance*/, const json &schema, const std::string &name)
-{
-	validate_type(schema, "boolean", name);
-}
-
-template <class T>
-bool violates_numeric_maximum(T max, T value, bool exclusive)
-{
-	if (exclusive)
-		return value >= max;
-
-	return value > max;
-}
-
-template <class T>
-bool violates_numeric_minimum(T min, T value, bool exclusive)
-{
-	if (exclusive)
-		return value <= min;
-
-	return value < min;
-}
-
-// multipleOf - if the rest of the division is 0 -> OK
-bool violates_multiple_of(json::number_float_t x, json::number_float_t y)
-{
-	json::number_integer_t n = static_cast<json::number_integer_t>(x / y);
-	double res = (x - n * y);
-	return fabs(res) > std::numeric_limits<json::number_float_t>::epsilon();
-}
-
-template <class T>
-void validate_numeric(const json &instance, const json &schema, const std::string &name)
-{
-	T value = instance;
-
-	if (value != 0) { // zero is multiple of everything
-		const auto &multipleOf = schema.find("multipleOf");
-
-		if (multipleOf != schema.end()) {
-			double multiple = multipleOf.value();
-			double value_float = value;
-
-			if (violates_multiple_of(value_float, multiple))
-				throw std::out_of_range(name + " is not a multiple of " + std::to_string(multiple));
+		if (format_.first) {
+			if (format_check_ == nullptr)
+				e.error("", instance, std::string("A format checker was not provided but a format-attribute for this string is present. ") + " cannot be validated for " + format_.second);
+			else
+				format_check_(format_.second, instance);
 		}
 	}
 
-	const auto &maximum = schema.find("maximum");
-	if (maximum != schema.end()) {
-		T maxi = maximum.value();
+public:
+	string(json &sch, root_schema *root)
+	    : schema(root)
+	{
+		auto attr = sch.find("maxLength");
+		if (attr != sch.end()) {
+			maxLength_ = {true, attr.value()};
+			sch.erase(attr);
+		}
 
-		const auto &excl = schema.find("exclusiveMaximum");
-		bool exclusive = (excl != schema.end()) ? excl.value().get<bool>() : false;
+		attr = sch.find("minLength");
+		if (attr != sch.end()) {
+			minLength_ = {true, attr.value()};
+			sch.erase(attr);
+		}
 
-		if (violates_numeric_maximum<T>(maxi, value, exclusive))
-			throw std::out_of_range(name + " exceeds maximum of " + std::to_string(maxi));
+#ifndef NO_STD_REGEX
+		attr = sch.find("pattern");
+		if (attr != sch.end()) {
+			patternString_ = attr.value();
+			pattern_ = {true, REGEX_NAMESPACE::regex(attr.value().get<std::string>(),
+			                                         REGEX_NAMESPACE::regex::ECMAScript)};
+			sch.erase(attr);
+		}
+#endif
+
+		attr = sch.find("format");
+		if (attr != sch.end()) {
+			format_ = {true, attr.value()};
+			sch.erase(attr);
+		}
+	}
+};
+
+template <typename T>
+class numeric : public schema
+{
+	std::pair<bool, T> maximum_{false, 0};
+	std::pair<bool, T> minimum_{false, 0};
+
+	bool exclusiveMaximum_ = false;
+	bool exclusiveMinimum_ = false;
+
+	std::pair<bool, json::number_float_t> multipleOf_{false, 0};
+
+	// multipleOf - if the rest of the division is 0 -> OK
+	bool violates_multiple_of(json::number_float_t x) const
+	{
+		json::number_integer_t n = static_cast<json::number_integer_t>(x / multipleOf_.second);
+		double res = (x - n * multipleOf_.second);
+		return fabs(res) > std::numeric_limits<json::number_float_t>::epsilon();
 	}
 
-	const auto &minimum = schema.find("minimum");
-	if (minimum != schema.end()) {
-		T mini = minimum.value();
+	void validate(const json &instance, basic_error_handler &e) const override
+	{
+		T value = instance; // conversion of json to value_type
 
-		const auto &excl = schema.find("exclusiveMinimum");
-		bool exclusive = (excl != schema.end()) ? excl.value().get<bool>() : false;
+		if (multipleOf_.first && value != 0) // zero is multiple of everything
+			if (violates_multiple_of(value))
+				e.error("", instance, "is not a multiple of " + std::to_string(multipleOf_.second));
 
-		if (violates_numeric_minimum<T>(mini, value, exclusive))
-			throw std::out_of_range(name + " is below minimum of " + std::to_string(mini));
+		if (maximum_.first)
+			if ((exclusiveMaximum_ && value >= maximum_.second) ||
+			    value > maximum_.second)
+				e.error("", instance, "exceeds maximum of " + std::to_string(maximum_.second));
+
+		if (minimum_.first)
+			if ((exclusiveMinimum_ && value <= minimum_.second) ||
+			    value < minimum_.second)
+				e.error("", instance, "is below minimum of " + std::to_string(minimum_.second));
 	}
-}
 
-void validate_integer(const json &instance, const json &schema, const std::string &name)
+public:
+	numeric(const json &sch, root_schema *root, std::set<std::string> &kw)
+	    : schema(root)
+	{
+		auto attr = sch.find("maximum");
+		if (attr != sch.end()) {
+			maximum_ = {true, attr.value()};
+			kw.insert("maximum");
+		}
+
+		attr = sch.find("minimum");
+		if (attr != sch.end()) {
+			minimum_ = {true, attr.value()};
+			kw.insert("minimum");
+		}
+
+		attr = sch.find("exclusiveMaximum");
+		if (attr != sch.end()) {
+			exclusiveMaximum_ = true;
+			maximum_ = {true, attr.value()};
+			kw.insert("exclusiveMaximum");
+		}
+
+		attr = sch.find("exclusiveMinimum");
+		if (attr != sch.end()) {
+			minimum_ = {true, attr.value()};
+			exclusiveMinimum_ = true;
+			kw.insert("exclusiveMinimum");
+		}
+
+		attr = sch.find("multipleOf");
+		if (attr != sch.end()) {
+			multipleOf_ = {true, attr.value()};
+			kw.insert("multipleOf");
+		}
+	}
+};
+
+class null : public schema
 {
-	validate_type(schema, "integer", name);
-	//TODO: Validate schema values are json::value_t::number_integer/unsigned?
+	void validate(const json &instance, basic_error_handler &e) const override
+	{
+		if (!instance.is_null())
+			e.error("", instance, "expected to be null");
+	}
 
-	validate_numeric<int64_t>(instance, schema, name);
-}
+public:
+	null(json &, root_schema *root)
+	    : schema(root) {}
+};
 
-bool is_unsigned(const json &schema)
+class boolean_type : public schema
 {
-	const auto &minimum = schema.find("minimum");
+	void validate(const json &, basic_error_handler &) const override {}
 
-	// Number is expected to be unsigned if a minimum >= 0 is set
-	return minimum != schema.end() && minimum.value() >= 0;
-}
+public:
+	boolean_type(json &, root_schema *root)
+	    : schema(root) {}
+};
 
-void validate_unsigned(const json &instance, const json &schema, const std::string &name)
+class boolean : public schema
 {
-	validate_type(schema, "integer", name);
-	//TODO: Validate schema values are json::value_t::unsigned?
+	bool true_;
+	void validate(const json &instance, basic_error_handler &e) const override
+	{
+		if (!true_) { // false schema
+			// empty array
+			//switch (instance.type()) {
+			//case json::value_t::array:
+			//	if (instance.size() != 0) // valid false-schema
+			//		e.error("", instance, "false-schema required empty array");
+			//	return;
+			//}
 
-	//Is there a better way to determine whether an unsigned comparison should take place?
-	if (is_unsigned(schema))
-		validate_numeric<uint64_t>(instance, schema, name);
-	else
-		validate_numeric<int64_t>(instance, schema, name);
-}
+			e.error("", instance, "instance invalid as par false-schema");
+		}
+	}
 
-void validate_float(const json &instance, const json &schema, const std::string &name)
+public:
+	boolean(json &sch, root_schema *root)
+	    : schema(root), true_(sch) {}
+};
+
+class required : public schema
 {
-	validate_type(schema, "number", name);
-	//TODO: Validate schema values are json::value_t::number_float?
+	const std::vector<std::string> required_;
 
-	validate_numeric<double>(instance, schema, name);
-}
+	void validate(const json &instance, basic_error_handler &e) const override final
+	{
+		for (auto &r : required_)
+			if (instance.find(r) == instance.end())
+				e.error("", instance, "required property '" + r + "' not found in object as a dependency");
+	}
 
-void validate_null(const json & /*instance*/, const json &schema, const std::string &name)
+public:
+	required(const std::vector<std::string> &r, root_schema *root)
+	    : schema(root), required_(r) {}
+};
+
+class object : public schema
 {
-	validate_type(schema, "null", name);
-}
+	std::pair<bool, size_t> maxProperties_{false, 0};
+	std::pair<bool, size_t> minProperties_{false, 0};
+	std::vector<std::string> required_;
 
-} // anonymous namespace
+	std::map<std::string, std::shared_ptr<schema>> properties_;
+#ifndef NO_STD_REGEX
+	std::vector<std::pair<REGEX_NAMESPACE::regex, std::shared_ptr<schema>>> patternProperties_;
+#endif
+	std::shared_ptr<schema> additionalProperties_;
+
+	std::map<std::string, std::shared_ptr<schema>> dependencies_;
+
+	std::shared_ptr<schema> propertyNames_;
+
+	void validate(const json &instance, basic_error_handler &e) const override
+	{
+		if (maxProperties_.first && instance.size() > maxProperties_.second)
+			e.error("", instance, "too many properties.");
+
+		if (minProperties_.first && instance.size() < minProperties_.second)
+			e.error("", instance, "too few properties.");
+
+		for (auto &r : required_)
+			if (instance.find(r) == instance.end())
+				e.error("", instance, "required property '" + r + "' not found in object '");
+
+		// for each property in instance
+		for (auto &p : instance.items()) {
+			if (propertyNames_)
+				propertyNames_->validate(p.key(), e);
+
+			bool a_prop_or_pattern_matched = false;
+			auto schema_p = properties_.find(p.key());
+			// check if it is in "properties"
+			if (schema_p != properties_.end()) {
+				a_prop_or_pattern_matched = true;
+				schema_p->second->validate(p.value(), e);
+			}
+
+			// check all matching patternProperties
+			for (auto &schema_pp : patternProperties_)
+				if (REGEX_NAMESPACE::regex_search(p.key(), schema_pp.first)) {
+					a_prop_or_pattern_matched = true;
+					schema_pp.second->validate(p.value(), e);
+				}
+			// check additionalProperties as a last resort
+			if (!a_prop_or_pattern_matched && additionalProperties_)
+				additionalProperties_->validate(p.value(), e);
+		}
+
+		for (auto &dep : dependencies_) {
+			auto prop = instance.find(dep.first);
+			if (prop != instance.end())            // if dependency-property is present in instance
+				dep.second->validate(instance, e); // validate
+		}
+	}
+
+public:
+	object(json &sch,
+	       root_schema *root,
+	       const std::vector<nlohmann::json_uri> &uris)
+	    : schema(root)
+	{
+		auto attr = sch.find("maxProperties");
+		if (attr != sch.end()) {
+			maxProperties_ = {true, attr.value()};
+			sch.erase(attr);
+		}
+
+		attr = sch.find("minProperties");
+		if (attr != sch.end()) {
+			minProperties_ = {true, attr.value()};
+			sch.erase(attr);
+		}
+
+		attr = sch.find("required");
+		if (attr != sch.end()) {
+			required_ = attr.value().get<std::vector<std::string>>();
+			sch.erase(attr);
+		}
+
+		attr = sch.find("properties");
+		if (attr != sch.end()) {
+			for (auto prop : attr.value().items())
+				properties_.insert(
+				    std::make_pair(
+				        prop.key(),
+				        schema::make(prop.value(), root, {"properties", prop.key()}, uris)));
+			sch.erase(attr);
+		}
+
+#ifndef NO_STD_REGEX
+		attr = sch.find("patternProperties");
+		if (attr != sch.end()) {
+			for (auto prop : attr.value().items())
+				patternProperties_.push_back(
+				    std::make_pair(
+				        REGEX_NAMESPACE::regex(prop.key(), REGEX_NAMESPACE::regex::ECMAScript),
+				        schema::make(prop.value(), root, {prop.key()}, uris)));
+			sch.erase(attr);
+		}
+#endif
+
+		attr = sch.find("additionalProperties");
+		if (attr != sch.end()) {
+			additionalProperties_ = schema::make(attr.value(), root, {"additionalProperties"}, uris);
+			sch.erase(attr);
+		}
+
+		attr = sch.find("dependencies");
+		if (attr != sch.end()) {
+			for (auto &dep : attr.value().items())
+				switch (dep.value().type()) {
+				case json::value_t::array:
+					dependencies_.emplace(dep.key(),
+					                      std::make_shared<required>(
+					                          dep.value().get<std::vector<std::string>>(), root));
+					break;
+
+				default:
+					dependencies_.emplace(dep.key(),
+					                      schema::make(dep.value(), root, {"dependencies", dep.key()}, uris));
+					break;
+				}
+			sch.erase(attr);
+		}
+
+		attr = sch.find("propertyNames");
+		if (attr != sch.end()) {
+			propertyNames_ = schema::make(attr.value(), root, {"propertyNames"}, uris);
+			sch.erase(attr);
+		}
+	}
+};
+
+class array : public schema
+{
+	std::pair<bool, size_t> maxItems_{false, 0};
+	std::pair<bool, size_t> minItems_{false, 0};
+	bool uniqueItems_ = false;
+
+	std::shared_ptr<schema> items_schema_;
+
+	std::vector<std::shared_ptr<schema>> items_;
+	std::shared_ptr<schema> additionalItems_;
+
+	std::shared_ptr<schema> contains_;
+
+	void validate(const json &instance, basic_error_handler &e) const override
+	{
+		if (maxItems_.first && instance.size() > maxItems_.second)
+			e.error("", instance, "has too many items.");
+
+		if (minItems_.first && instance.size() < minItems_.second)
+			e.error("", instance, "has too few items.");
+
+		if (uniqueItems_) {
+			for (auto it = instance.cbegin(); it != instance.cend(); ++it) {
+				auto v = std::find(it + 1, instance.end(), *it);
+				if (v != instance.end())
+					e.error("", instance, "items have to be unique for this array.");
+			}
+		}
+
+		if (items_schema_)
+			for (auto &i : instance)
+				items_schema_->validate(i, e);
+		else {
+			auto item = items_.cbegin();
+			for (auto &i : instance) {
+				std::shared_ptr<schema> item_validator;
+				if (item == items_.cend())
+					item_validator = additionalItems_;
+				else {
+					item_validator = *item;
+					item++;
+				}
+
+				if (!item_validator)
+					break;
+
+				item_validator->validate(i, e);
+			}
+		}
+
+		if (contains_) {
+			bool contained = false;
+			for (auto &item : instance) {
+				basic_error_handler local_e;
+				contains_->validate(item, local_e);
+				if (!local_e) {
+					contained = true;
+					break;
+				}
+			}
+			if (!contained)
+				e.error("", instance, "array does not contain required element as per 'contains'");
+		}
+	}
+
+public:
+	array(json &sch, root_schema *root, const std::vector<nlohmann::json_uri> &uris)
+	    : schema(root)
+	{
+		auto attr = sch.find("maxItems");
+		if (attr != sch.end()) {
+			maxItems_ = {true, attr.value()};
+			sch.erase(attr);
+		}
+
+		attr = sch.find("minItems");
+		if (attr != sch.end()) {
+			minItems_ = {true, attr.value()};
+			sch.erase(attr);
+		}
+
+		attr = sch.find("uniqueItems");
+		if (attr != sch.end()) {
+			uniqueItems_ = attr.value();
+			sch.erase(attr);
+		}
+
+		attr = sch.find("items");
+		if (attr != sch.end()) {
+
+			if (attr.value().type() == json::value_t::array) {
+				size_t c = 0;
+				for (auto &subsch : attr.value())
+					items_.push_back(schema::make(subsch, root, {"items", std::to_string(c++)}, uris));
+
+				auto attr_add = sch.find("additionalItems");
+				if (attr_add != sch.end()) {
+					additionalItems_ = schema::make(attr_add.value(), root, {"additionalItems"}, uris);
+					sch.erase(attr_add);
+				}
+
+			} else if (attr.value().type() == json::value_t::object ||
+			           attr.value().type() == json::value_t::boolean)
+				items_schema_ = schema::make(attr.value(), root, {"items"}, uris);
+
+			sch.erase(attr);
+		}
+
+		attr = sch.find("contains");
+		if (attr != sch.end()) {
+			contains_ = schema::make(attr.value(), root, {"contains"}, uris);
+			sch.erase(attr);
+		}
+	}
+};
+
+class schema_ref : public schema
+{
+	const std::string id_;
+	std::shared_ptr<schema> target_;
+
+	void validate(const json &instance, basic_error_handler &e) const final
+	{
+		if (target_)
+			target_->validate(instance, e);
+		else
+			e.error("", instance, "unresolved schema-reference " + id_);
+	}
+
+public:
+	schema_ref(const std::string &id, root_schema *root)
+	    : schema(root), id_(id) {}
+
+	const std::string &id() const { return id_; }
+	void set_target(std::shared_ptr<schema> target) { target_ = target; }
+};
+
+std::shared_ptr<schema> type_schema::make(json &schema,
+                                          json::value_t type,
+                                          root_schema *root,
+                                          const std::vector<nlohmann::json_uri> &uris,
+                                          std::set<std::string> &kw)
+{
+	switch (type) {
+	case json::value_t::null:
+		return std::make_shared<null>(schema, root);
+	case json::value_t::number_unsigned:
+		return std::make_shared<numeric<json::number_unsigned_t>>(schema, root, kw);
+	case json::value_t::number_integer:
+		return std::make_shared<numeric<json::number_integer_t>>(schema, root, kw);
+	case json::value_t::number_float:
+		return std::make_shared<numeric<json::number_float_t>>(schema, root, kw);
+	case json::value_t::string:
+		return std::make_shared<string>(schema, root);
+	case json::value_t::boolean:
+		return std::make_shared<boolean_type>(schema, root);
+	case json::value_t::object:
+		return std::make_shared<object>(schema, root, uris);
+	case json::value_t::array:
+		return std::make_shared<array>(schema, root, uris);
+
+	case json::value_t::discarded: // not a real type - silence please
+		break;
+	}
+	return nullptr;
+}
+} // namespace
 
 namespace nlohmann
 {
-namespace json_schema_draft4
+namespace json_schema
 {
 
-void json_validator::insert_schema(const json &input, const json_uri &id)
+class root_schema : public schema
 {
-	// allocate create a copy for later storage - if resolving reference works
-	std::shared_ptr<json> schema = std::make_shared<json>(input);
+	std::function<void(const json_uri &, json &)> loader_;
+	std::function<void(const std::string &, const std::string &)> format_;
 
-	do {
-		// resolve all local schemas and references
-		resolver r(*schema, id);
+	std::shared_ptr<schema> root_;
 
-		// check whether all undefined schema references can be resolved with existing ones
-		std::set<json_uri> undefined;
-		for (auto &ref : r.undefined_refs)
-			if (schema_refs_.find(ref) == schema_refs_.end()) // exact schema reference not found
-				undefined.insert(ref);
+	struct schema_file {
+		std::map<nlohmann::json::json_pointer, std::shared_ptr<schema>> schemas;
+		std::map<nlohmann::json::json_pointer, std::shared_ptr<schema_ref>> unresolved; // contains all unresolved references from any other file seen during parsing
+		json unknown_keywords;
+	};
 
-		if (undefined.size() == 0) { // no undefined references
-			// now insert all schema-references
-			// check whether all schema-references are new
-			for (auto &sref : r.schema_refs) {
-				if (schema_refs_.find(sref.first) != schema_refs_.end())
-					throw std::invalid_argument("schema " + sref.first.to_string() + " already present in validator.");
+	// location as key
+	std::map<std::string, schema_file> files_;
+
+	schema_file &get_or_create_file(const std::string &loc)
+	{
+		auto file = files_.lower_bound(loc);
+		if (file != files_.end() && !(files_.key_comp()(loc, file->first)))
+			return file->second;
+		else
+			return files_.insert(file, {loc, {}})->second;
+	}
+
+public:
+	root_schema(std::function<void(const json_uri &, json &)> loader,
+	            std::function<void(const std::string &, const std::string &)> format)
+	    : schema(this), loader_(loader), format_(format) {}
+
+	void insert(const json_uri &uri, const std::shared_ptr<schema> &s)
+	{
+		// std::cout << "adding schema '" << uri << "' '" << uri.location() << "'\n";
+
+		auto &file = get_or_create_file(uri.location());
+		auto schema = file.schemas.lower_bound(uri.pointer());
+		if (schema != file.schemas.end() && !(file.schemas.key_comp()(uri.pointer(), schema->first))) {
+			throw std::invalid_argument("schema with " + uri.to_string() + " already inserted\n");
+			return;
+		}
+
+		file.schemas.insert({uri.pointer(), s});
+
+		// was someone referencing this newly inserted schema?
+		auto unresolved = file.unresolved.find(uri.pointer());
+		// std::cout << "resolving schemas looking for '" << uri.pointer() << "' in " << uri.location() << "\n";
+		if (unresolved != file.unresolved.end()) {
+			// std::cout << " --> resolved!!\n";
+			unresolved->second->set_target(s);
+			file.unresolved.erase(unresolved);
+		}
+	}
+
+	void insert_unknown_keyword(const json_uri &uri, const std::string &key, json &value)
+	{
+		auto &file = get_or_create_file(uri.location());
+		auto new_uri = uri.append(key);
+		auto pointer = new_uri.pointer();
+
+		// std::cout << "inserting unknown " << new_uri << " '" << pointer << "'\n";
+
+		// is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
+		auto unresolved = file.unresolved.find(pointer);
+		if (unresolved != file.unresolved.end())
+			schema::make(value, this, {}, {{new_uri}});
+		else // no, nothing ref'd it
+			file.unknown_keywords[pointer] = value;
+	}
+
+	std::shared_ptr<schema> get_or_create_ref(const json_uri &uri)
+	{
+		auto &file = get_or_create_file(uri.location());
+
+		// existing schema
+		auto schema = file.schemas.find(uri.pointer());
+		if (schema != file.schemas.end())
+			return schema->second;
+
+		// referencing an unknown keyword, turn it into schema
+		try {
+			auto &subschema = file.unknown_keywords.at(uri.pointer());
+			auto s = schema::make(subschema, this, {}, {{uri}});
+			file.unknown_keywords.erase(uri.pointer());
+			return s;
+		} catch (...) {
+		}
+
+		// get or create a schema_ref
+		// std::cout << "using or creating a reference to " << uri << "\n";
+		auto r = file.unresolved.lower_bound(uri.pointer());
+		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.pointer(), r->first))) {
+			// std::cout << " --> using existing ref\n";
+			return r->second;
+		} else {
+			// std::cout << " --> creating a new ref\n";
+			return file.unresolved.insert(r,
+			                              {uri.pointer(), std::make_shared<schema_ref>(uri.to_string(), this)})
+			    ->second;
+		}
+	}
+
+	void set_root_schema(json schema)
+	{
+		root_ = schema::make(schema, this, {}, {{"#"}});
+
+		// load all files which have not yet been loaded
+		do {
+			bool new_schema_loaded = false;
+
+			// files_ is modified during parsing, iterators are invalidated
+			std::vector<std::string> locations;
+			for (auto &file : files_)
+				locations.push_back(file.first);
+
+			for (auto &loc : locations) {
+				if (files_[loc].schemas.size() == 0) { // nothing has been loaded for this file
+					if (loader_) {
+						json sch;
+
+						loader_(loc, sch);
+
+						schema::make(sch, this, {}, {{loc}});
+						new_schema_loaded = true;
+					} else {
+						throw std::invalid_argument("external schema reference '" + loc + "' needs loading, but no loader callback given\n");
+					}
+				}
 			}
-			// no undefined references and no duplicated schema - store the schema
-			schema_store_.push_back(schema);
 
-			// and insert all references
-			schema_refs_.insert(r.schema_refs.begin(), r.schema_refs.end());
+			if (!new_schema_loaded) // if no new schema loaded, no need to try again
+				break;
+		} while (1);
+	}
 
-			break;
+	void validate(const json &instance, basic_error_handler &e) const final
+	{
+		if (root_)
+			root_->validate(instance, e);
+		else
+			e.error("", "", "no root schema has yet been set for validating an instance.");
+	}
+};
+
+} // namespace json_schema
+} // namespace nlohmann
+
+namespace
+{
+
+std::shared_ptr<schema> schema::make(json &schema,
+                                     root_schema *root,
+                                     const std::vector<std::string> &keys,
+                                     std::vector<nlohmann::json_uri> uris)
+{
+	// append to all URIs the keys for this sub-schema
+	for (auto &key : keys)
+		for (auto &uri : uris)
+			uri = uri.append(json_uri::escape(key));
+
+	std::shared_ptr<::schema> sch;
+
+	// boolean schema
+	if (schema.type() == json::value_t::boolean)
+		sch = std::make_shared<boolean>(schema, root);
+	else if (schema.type() == json::value_t::object) {
+
+		auto attr = schema.find("$id"); // if $id is present, this schema can be referenced by this ID
+		                                // as an additional URI
+		if (attr != schema.end()) {
+			if (std::find(uris.begin(),
+			              uris.end(),
+			              attr.value().get<std::string>()) == uris.end())
+				uris.push_back(uris.back().derive(attr.value())); // so add it to the list if it is not there already
+			schema.erase(attr);
 		}
 
-		if (schema_loader_ == nullptr)
-			throw std::invalid_argument("schema contains undefined references to other schemas, needed schema-loader.");
-
-		for (auto undef : undefined) {
-			json ext;
-
-			// check whether a recursive-call has already insert this schema in the meantime
-			if (schema_refs_.find(undef) != schema_refs_.end())
-				continue;
-
-			schema_loader_(undef, ext);
-			insert_schema(ext, undef.url()); // recursively call insert_schema to fill in new external references
+		attr = schema.find("definitions");
+		if (attr != schema.end()) {
+			for (auto &def : attr.value().items())
+				schema::make(def.value(), root, {"definitions", def.key()}, uris);
+			schema.erase(attr);
 		}
-	} while (1);
 
-	// store the document root-schema
-	if (id == json_uri("#"))
-		root_schema_ = schema;
+		attr = schema.find("$ref");
+		if (attr != schema.end()) { // this schema is a reference
+			// the last one on the uri-stack is the last id seen before coming here,
+			// so this is the origial URI for this reference, the $ref-value has thus be resolved from it
+			auto id = uris.back().derive(attr.value());
+			sch = root->get_or_create_ref(id);
+			schema.erase(attr);
+		} else {
+			sch = std::make_shared<type_schema>(schema, root, uris);
+		}
+
+		schema.erase("$schema");
+		schema.erase("default");
+		schema.erase("title");
+		schema.erase("description");
+	} else {
+		return nullptr; // TODO error/throw? when schema is invalid
+	}
+
+	for (auto &uri : uris) { // for all URI reference this schema
+		root->insert(uri, sch);
+
+		if (schema.type() == json::value_t::object)
+			for (auto &u : schema.items())
+				root->insert_unknown_keyword(uri, u.key(), u.value());
+	}
+	return sch;
 }
 
-void json_validator::validate(const json &instance)
+class throwing_error_handler : public basic_error_handler
 {
-	if (root_schema_ == nullptr)
-		throw std::invalid_argument("no root-schema has been inserted. Cannot validate an instance without it.");
+	void error(const std::string &path, const json &instance, const std::string &message)
+	{
+		throw std::invalid_argument(std::string("At ") + path + " of " + instance.dump() + " - " + message + "\n");
+	}
+};
 
-	validate(instance, *root_schema_, "root");
+} // namespace
+
+namespace nlohmann
+{
+namespace json_schema
+{
+
+json_validator::json_validator(std::function<void(const json_uri &, json &)> loader,
+                               std::function<void(const std::string &, const std::string &)> format)
+    : root_(std::unique_ptr<root_schema>(new root_schema(loader, format)))
+{
+}
+
+json_validator::~json_validator()
+{
 }
 
 void json_validator::set_root_schema(const json &schema)
 {
-	insert_schema(schema, json_uri("#"));
+	root_->set_root_schema(schema);
 }
 
-void json_validator::validate(const json &instance, const json &schema_, const std::string &name)
+void json_validator::validate(const json &instance)
 {
-	const json *schema = &schema_;
-
-	// $ref resolution
-	do {
-		const auto &ref = schema->find("$ref");
-		if (ref == schema->end())
-			break;
-
-		auto it = schema_refs_.find(ref.value().get<std::string>());
-
-		if (it == schema_refs_.end())
-			throw std::invalid_argument("schema reference " + ref.value().get<std::string>() + " not found. Make sure all schemas have been inserted before validation.");
-
-		schema = it->second;
-	} while (1); // loop in case of nested refs
-
-	// not
-	const auto attr = schema->find("not");
-	if (attr != schema->end()) {
-		bool ok;
-
-		try {
-			validate(instance, attr.value(), name);
-			ok = false;
-		} catch (std::exception &) {
-			ok = true;
-		}
-		if (!ok)
-			throw std::invalid_argument("schema match for " + name + " but a not-match is defined by schema.");
-		return; // return here - not cannot be mixed with based-schemas?
-	}
-
-	// allOf, anyOf, oneOf
-	const json *combined_schemas = nullptr;
-	enum {
-		none,
-		allOf,
-		anyOf,
-		oneOf
-	} combine_logic = none;
-
-	{
-		const auto &attr = schema->find("allOf");
-		if (attr != schema->end()) {
-			combine_logic = allOf;
-			combined_schemas = &attr.value();
-		}
-	}
-	{
-		const auto &attr = schema->find("anyOf");
-		if (attr != schema->end()) {
-			combine_logic = anyOf;
-			combined_schemas = &attr.value();
-		}
-	}
-	{
-		const auto &attr = schema->find("oneOf");
-		if (attr != schema->end()) {
-			combine_logic = oneOf;
-			combined_schemas = &attr.value();
-		}
-	}
-
-	if (combine_logic != none) {
-		std::size_t count = 0;
-		std::ostringstream sub_schema_err;
-
-		for (const auto &s : *combined_schemas) {
-			try {
-				validate(instance, s, name);
-				count++;
-			} catch (std::exception &e) {
-				sub_schema_err << "  one schema failed because: " << e.what() << "\n";
-
-				if (combine_logic == allOf)
-					throw std::out_of_range("At least one schema has failed for " + name + " where allOf them were requested.\n" + sub_schema_err.str());
-			}
-			if (combine_logic == oneOf && count > 1)
-				throw std::out_of_range("More than one schema has succeeded for " + name + " where only oneOf them was requested.\n" + sub_schema_err.str());
-		}
-		if ((combine_logic == anyOf || combine_logic == oneOf) && count == 0)
-			throw std::out_of_range("No schema has succeeded for " + name + " but anyOf/oneOf them should have worked.\n" + sub_schema_err.str());
-	}
-
-	// check (base) schema
-	validate_enum(instance, *schema, name);
-
-	switch (instance.type()) {
-	case json::value_t::object:
-		validate_object(instance, *schema, name);
-		break;
-
-	case json::value_t::array:
-		validate_array(instance, *schema, name);
-		break;
-
-	case json::value_t::string:
-		validate_string(instance, *schema, name);
-		break;
-
-	case json::value_t::number_unsigned:
-		validate_unsigned(instance, *schema, name);
-		break;
-
-	case json::value_t::number_integer:
-		validate_integer(instance, *schema, name);
-		break;
-
-	case json::value_t::number_float:
-		validate_float(instance, *schema, name);
-		break;
-
-	case json::value_t::boolean:
-		validate_boolean(instance, *schema, name);
-		break;
-
-	case json::value_t::null:
-		validate_null(instance, *schema, name);
-		break;
-
-	default:
-		assert(0 && "unexpected instance type for validation");
-		break;
-	}
+	throwing_error_handler err;
+	validate(instance, err);
 }
 
-void json_validator::validate_array(const json &instance, const json &schema, const std::string &name)
+void json_validator::validate(const json &instance, basic_error_handler &err)
 {
-	validate_type(schema, "array", name);
-
-	// maxItems
-	const auto &maxItems = schema.find("maxItems");
-	if (maxItems != schema.end())
-		if (instance.size() > maxItems.value().get<size_t>())
-			throw std::out_of_range(name + " has too many items.");
-
-	// minItems
-	const auto &minItems = schema.find("minItems");
-	if (minItems != schema.end())
-		if (instance.size() < minItems.value().get<size_t>())
-			throw std::out_of_range(name + " has too few items.");
-
-	// uniqueItems
-	const auto &uniqueItems = schema.find("uniqueItems");
-	if (uniqueItems != schema.end())
-		if (uniqueItems.value().get<bool>() == true) {
-			std::set<json> array_to_set;
-			for (auto v : instance) {
-				auto ret = array_to_set.insert(v);
-				if (ret.second == false)
-					throw std::out_of_range(name + " should have only unique items.");
-			}
-		}
-
-	// items and additionalItems
-	// default to empty schemas
-	auto items_iter = schema.find("items");
-	json items = {};
-	if (items_iter != schema.end())
-		items = items_iter.value();
-
-	auto additionalItems_iter = schema.find("additionalItems");
-	json additionalItems = {};
-	if (additionalItems_iter != schema.end())
-		additionalItems = additionalItems_iter.value();
-
-	size_t i = 0;
-	bool validation_done = false;
-
-	for (auto &value : instance) {
-		std::string sub_name = name + "[" + std::to_string(i) + "]";
-
-		switch (items.type()) {
-
-		case json::value_t::array:
-
-			if (i < items.size())
-				validate(value, items[i], sub_name);
-			else {
-				switch (additionalItems.type()) { // items is an array
-					                                // we need to take into consideration additionalItems
-				case json::value_t::object:
-					validate(value, additionalItems, sub_name);
-					break;
-
-				case json::value_t::boolean:
-					if (additionalItems.get<bool>() == false)
-						throw std::out_of_range("additional values in array are not allowed for " + sub_name);
-					else
-						validation_done = true;
-					break;
-
-				default:
-					break;
-				}
-			}
-
-			break;
-
-		case json::value_t::object: // items is a schema
-			validate(value, items, sub_name);
-			break;
-
-		default:
-			break;
-		}
-		if (validation_done)
-			break;
-
-		i++;
-	}
+	root_->validate(instance, err);
 }
 
-void json_validator::validate_object(const json &instance, const json &schema, const std::string &name)
-{
-	validate_type(schema, "object", name);
-
-	json properties = {};
-	if (schema.find("properties") != schema.end())
-		properties = schema["properties"];
-
-#if 0
-	// check for default values of properties
-	// and insert them into this object, if they don't exists
-	// works only for object properties for the moment
-	if (default_value_insertion)
-		for (auto it = properties.begin(); it != properties.end(); ++it) {
-
-			const auto &default_value = it.value().find("default");
-			if (default_value == it.value().end())
-				continue; /* no default value -> continue */
-
-			if (instance.find(it.key()) != instance.end())
-				continue; /* value is present */
-
-			/* create element from default value */
-			instance[it.key()] = default_value.value();
-		}
-#endif
-	// maxProperties
-	const auto &maxProperties = schema.find("maxProperties");
-	if (maxProperties != schema.end())
-		if (instance.size() > maxProperties.value().get<size_t>())
-			throw std::out_of_range(name + " has too many properties.");
-
-	// minProperties
-	const auto &minProperties = schema.find("minProperties");
-	if (minProperties != schema.end())
-		if (instance.size() < minProperties.value().get<size_t>())
-			throw std::out_of_range(name + " has too few properties.");
-
-	// additionalProperties
-	enum {
-		True,
-		False,
-		Object
-	} additionalProperties = True;
-
-	const auto &additionalPropertiesVal = schema.find("additionalProperties");
-	if (additionalPropertiesVal != schema.end()) {
-		if (additionalPropertiesVal.value().type() == json::value_t::boolean)
-			additionalProperties = additionalPropertiesVal.value().get<bool>() == true ? True : False;
-		else
-			additionalProperties = Object;
-	}
-
-	// patternProperties
-	json patternProperties = {};
-	if (schema.find("patternProperties") != schema.end())
-		patternProperties = schema["patternProperties"];
-
-	// check all elements in object
-	for (auto child = instance.begin(); child != instance.end(); ++child) {
-		std::string child_name = name + "." + child.key();
-
-		bool property_or_patternProperties_has_validated = false;
-		// is this a property which is described in the schema
-		const auto &object_prop = properties.find(child.key());
-		if (object_prop != properties.end()) {
-			// validate the element with its schema
-			validate(child.value(), object_prop.value(), child_name);
-			property_or_patternProperties_has_validated = true;
-		}
-
-		for (auto pp = patternProperties.begin();
-		     pp != patternProperties.end(); ++pp) {
-#ifndef NO_STD_REGEX
-			REGEX_NAMESPACE::regex re(pp.key(), REGEX_NAMESPACE::regex::ECMAScript);
-
-			if (REGEX_NAMESPACE::regex_search(child.key(), re)) {
-				validate(child.value(), pp.value(), child_name);
-				property_or_patternProperties_has_validated = true;
-			}
-#else
-			// accept everything in case of a patternProperty
-			property_or_patternProperties_has_validated = true;
-			break;
-#endif
-		}
-
-		if (property_or_patternProperties_has_validated)
-			continue;
-
-		switch (additionalProperties) {
-		case True:
-			break;
-
-		case Object:
-			validate(child.value(), additionalPropertiesVal.value(), child_name);
-			break;
-
-		case False:
-			throw std::invalid_argument("unknown property '" + child.key() + "' in object '" + name + "'");
-			break;
-		};
-	}
-
-	// required
-	const auto &required = schema.find("required");
-	if (required != schema.end())
-		for (const auto &element : required.value()) {
-			if (instance.find(element) == instance.end()) {
-				throw std::invalid_argument("required element '" + element.get<std::string>() +
-				                            "' not found in object '" + name + "'");
-			}
-		}
-
-	// dependencies
-	const auto &dependencies = schema.find("dependencies");
-	if (dependencies == schema.end())
-		return;
-
-	for (auto dep = dependencies.value().cbegin();
-	     dep != dependencies.value().cend();
-	     ++dep) {
-
-		// property not present in this instance - next
-		if (instance.find(dep.key()) == instance.end())
-			continue;
-
-		std::string sub_name = name + ".dependency-of-" + dep.key();
-
-		switch (dep.value().type()) {
-
-		case json::value_t::object:
-			validate(instance, dep.value(), sub_name);
-			break;
-
-		case json::value_t::array:
-			for (const auto &prop : dep.value())
-				if (instance.find(prop) == instance.end())
-					throw std::invalid_argument("failed dependency for " + sub_name + ". Need property " + prop.get<std::string>());
-			break;
-
-		default:
-			break;
-		}
-	}
-}
-
-static std::size_t utf8_length(const std::string &s)
-{
-	size_t len = 0;
-	for (const unsigned char &c : s)
-		if ((c & 0xc0) != 0x80)
-			len++;
-	return len;
-}
-
-void json_validator::validate_string(const json &instance, const json &schema, const std::string &name)
-{
-	validate_type(schema, "string", name);
-
-	// minLength
-	auto attr = schema.find("minLength");
-	if (attr != schema.end())
-		if (utf8_length(instance) < attr.value().get<size_t>()) {
-			std::ostringstream s;
-			s << "'" << name << "' of value '" << instance << "' is too short as per minLength ("
-			  << attr.value() << ")";
-			throw std::out_of_range(s.str());
-		}
-
-	// maxLength
-	attr = schema.find("maxLength");
-	if (attr != schema.end())
-		if (utf8_length(instance) > attr.value().get<size_t>()) {
-			std::ostringstream s;
-			s << "'" << name << "' of value '" << instance << "' is too long as per maxLength ("
-			  << attr.value() << ")";
-			throw std::out_of_range(s.str());
-		}
-
-#ifndef NO_STD_REGEX
-	// pattern
-	attr = schema.find("pattern");
-	if (attr != schema.end()) {
-		REGEX_NAMESPACE::regex re(attr.value().get<std::string>(), REGEX_NAMESPACE::regex::ECMAScript);
-		if (!REGEX_NAMESPACE::regex_search(instance.get<std::string>(), re))
-			throw std::invalid_argument(instance.get<std::string>() + " does not match regex pattern: " + attr.value().get<std::string>() + " for " + name);
-	}
-#endif
-
-	// format
-	attr = schema.find("format");
-	if (attr != schema.end()) {
-		if (format_check_ == nullptr)
-			throw std::logic_error("A format checker was not provided but a format-attribute for this string is present. " +
-			                       name + " cannot be validated for " + attr.value().get<std::string>());
-		format_check_(attr.value(), instance);
-	}
-}
-} // namespace json_schema_draft4
+} // namespace json_schema
 } // namespace nlohmann
