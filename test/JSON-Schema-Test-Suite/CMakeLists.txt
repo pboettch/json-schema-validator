@@ -39,8 +39,7 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
         endforeach()
 
         # XXX Unfortunately URLs are not very well handled yet, accept those tests which fail
-        set_tests_properties(JSON-Suite::ref
-                             JSON-Suite::refRemote
+        set_tests_properties(JSON-Suite::refRemote
                              PROPERTIES
                                 WILL_FAIL ON)
 
