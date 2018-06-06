@@ -305,10 +305,10 @@ void json_validator::insert_schema(const json &input, const json_uri &id)
 	// allocate create a copy for later storage - if resolving reference works
 	std::shared_ptr<json> schema = std::make_shared<json>(input);
 
-	do {
-		// resolve all local schemas and references
-		resolver r(*schema, id);
+	// resolve all local schemas and local and external references
+	resolver r(*schema, id);
 
+	do {
 		// check whether all undefined schema references can be resolved with existing ones
 		std::set<json_uri> undefined;
 		for (auto &ref : r.undefined_refs)

@@ -86,8 +86,10 @@ void json_uri::from_string(const std::string &uri)
 		auto path = url.substr(pos);
 		if (path[0] == '/') // if it starts with a / it is root-path
 			path_ = path;
-		else // otherwise it is a subfolder
+		else { // otherwise it is a relative-path
+			path_ = path_.substr(0, path_.find_last_of('/') + 1);
 			path_.append(path);
+		}
 
 		pointer_ = local_json_pointer("");
 	}
