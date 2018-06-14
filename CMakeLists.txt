@@ -54,7 +54,7 @@ target_compile_features(json-schema-validator
 # Enable more compiler warnings, except when using Visual Studio compiler
 if(NOT MSVC)
     target_compile_options(json-schema-validator
-        PUBLIC
+        PRIVATE
             -Wall -Wextra)
 endif()
 target_link_libraries(json-schema-validator
