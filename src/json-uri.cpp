@@ -25,6 +25,8 @@
  */
 #include "json-schema.hpp"
 
+#include <sstream>
+
 namespace nlohmann
 {
 
