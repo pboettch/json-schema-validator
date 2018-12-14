@@ -46,7 +46,8 @@ set_target_properties(json-schema-validator
 
 install(TARGETS json-schema-validator
         LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
 
 install(DIRECTORY src/
         DESTINATION include
