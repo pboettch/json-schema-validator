@@ -1,4 +1,7 @@
-project(json-schema-validator CXX)
+project(json-schema-validator
+    LANGUAGES CXX)
+
+set(PROJECT_VERSION 2.0.0)
 
 cmake_minimum_required(VERSION 3.2)
 
@@ -35,6 +38,11 @@ add_library(json-schema-validator
     src/json-schema-draft7.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp)
+
+set_target_properties(json-schema-validator
+                      PROPERTIES
+                          VERSION ${PROJECT_VERSION}
+                          SOVERSION 1)
 
 install(TARGETS json-schema-validator
         LIBRARY DESTINATION lib
