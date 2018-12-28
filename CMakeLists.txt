@@ -96,8 +96,8 @@ if (BUILD_EXAMPLES)
     add_executable(json-schema-validate app/json-schema-validate.cpp)
     target_link_libraries(json-schema-validate json-schema-validator)
 
-    add_executable(readme app/readme.cpp)
-    target_link_libraries(readme json-schema-validator)
+    add_executable(readme-json-schema app/readme.cpp)
+    target_link_libraries(readme-json-schema json-schema-validator)
 endif()
 
 #add_subdirectory(ng)
