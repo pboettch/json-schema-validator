@@ -33,6 +33,7 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
 
     if (JSON_SCHEMA_ENABLE_OPTIONAL_TESTS)
         file(GLOB OPT_TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/${DRAFT}/optional/*.json)
+        file(GLOB FORMAT_TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/${DRAFT}/optional/format/*.json)
 
         foreach(TEST_FILE ${OPT_TEST_FILES})
             get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
@@ -40,11 +41,33 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
                      COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${TEST_FILE})
         endforeach()
 
-        # some optional tests will fail as well.
+        foreach(TEST_FILE ${FORMAT_TEST_FILES})
+            get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
+            add_test(NAME "${JSON_SCHEMA_TEST_PREFIX}::Optional::Format::${TEST_NAME}"
+                     COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${TEST_FILE})
+        endforeach()
+
+        # some optional tests will fail
         set_tests_properties(
             JSON-Suite::Optional::bignum
             JSON-Suite::Optional::content
             JSON-Suite::Optional::zeroTerminatedFloats
+            JSON-Suite::Optional::ecmascript-regex
+
+            JSON-Suite::Optional::Format::date-time
+            JSON-Suite::Optional::Format::date
+            JSON-Suite::Optional::Format::email
+            JSON-Suite::Optional::Format::idn-email
+            JSON-Suite::Optional::Format::idn-hostname
+            JSON-Suite::Optional::Format::iri-reference
+            JSON-Suite::Optional::Format::iri
+            JSON-Suite::Optional::Format::json-pointer
+            JSON-Suite::Optional::Format::relative-json-pointer
+            JSON-Suite::Optional::Format::time
+            JSON-Suite::Optional::Format::uri-reference
+            JSON-Suite::Optional::Format::uri-template
+            JSON-Suite::Optional::Format::uri
+
             PROPERTIES
                 WILL_FAIL ON)
     endif()

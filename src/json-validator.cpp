@@ -46,6 +46,185 @@ public:
 	                                    std::vector<nlohmann::json_uri> uris);
 };
 
+class schema_ref : public schema
+{
+	const std::string id_;
+	std::shared_ptr<schema> target_;
+
+	void validate(const json &instance, basic_error_handler &e) const final
+	{
+		if (target_)
+			target_->validate(instance, e);
+		else
+			e.error("", instance, "unresolved schema-reference " + id_);
+	}
+
+public:
+	schema_ref(const std::string &id, root_schema *root)
+	    : schema(root), id_(id) {}
+
+	const std::string &id() const { return id_; }
+	void set_target(std::shared_ptr<schema> target) { target_ = target; }
+};
+
+} // namespace
+
+namespace nlohmann
+{
+namespace json_schema
+{
+
+class root_schema : public schema
+{
+	std::function<void(const json_uri &, json &)> loader_;
+	std::function<void(const std::string &, const std::string &)> format_check_;
+
+	std::shared_ptr<schema> root_;
+
+	struct schema_file {
+		std::map<nlohmann::json::json_pointer, std::shared_ptr<schema>> schemas;
+		std::map<nlohmann::json::json_pointer, std::shared_ptr<schema_ref>> unresolved; // contains all unresolved references from any other file seen during parsing
+		json unknown_keywords;
+	};
+
+	// location as key
+	std::map<std::string, schema_file> files_;
+
+	schema_file &get_or_create_file(const std::string &loc)
+	{
+		auto file = files_.lower_bound(loc);
+		if (file != files_.end() && !(files_.key_comp()(loc, file->first)))
+			return file->second;
+		else
+			return files_.insert(file, {loc, {}})->second;
+	}
+
+public:
+	root_schema(std::function<void(const json_uri &, json &)> loader,
+	            std::function<void(const std::string &, const std::string &)> format)
+	    : schema(this), loader_(loader), format_check_(format) {}
+
+	std::function<void(const std::string &, const std::string &)> &format_check() { return format_check_; }
+
+	void insert(const json_uri &uri, const std::shared_ptr<schema> &s)
+	{
+		// std::cout << "adding schema '" << uri << "' '" << uri.location() << "'\n";
+
+		auto &file = get_or_create_file(uri.location());
+		auto schema = file.schemas.lower_bound(uri.pointer());
+		if (schema != file.schemas.end() && !(file.schemas.key_comp()(uri.pointer(), schema->first))) {
+			throw std::invalid_argument("schema with " + uri.to_string() + " already inserted\n");
+			return;
+		}
+
+		file.schemas.insert({uri.pointer(), s});
+
+		// was someone referencing this newly inserted schema?
+		auto unresolved = file.unresolved.find(uri.pointer());
+		// std::cout << "resolving schemas looking for '" << uri.pointer() << "' in " << uri.location() << "\n";
+		if (unresolved != file.unresolved.end()) {
+			// std::cout << " --> resolved!!\n";
+			unresolved->second->set_target(s);
+			file.unresolved.erase(unresolved);
+		}
+	}
+
+	void insert_unknown_keyword(const json_uri &uri, const std::string &key, json &value)
+	{
+		auto &file = get_or_create_file(uri.location());
+		auto new_uri = uri.append(key);
+		auto pointer = new_uri.pointer();
+
+		// std::cout << "inserting unknown " << new_uri << " '" << pointer << "'\n";
+
+		// is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
+		auto unresolved = file.unresolved.find(pointer);
+		if (unresolved != file.unresolved.end())
+			schema::make(value, this, {}, {{new_uri}});
+		else // no, nothing ref'd it
+			file.unknown_keywords[pointer] = value;
+	}
+
+	std::shared_ptr<schema> get_or_create_ref(const json_uri &uri)
+	{
+		auto &file = get_or_create_file(uri.location());
+
+		// existing schema
+		auto schema = file.schemas.find(uri.pointer());
+		if (schema != file.schemas.end())
+			return schema->second;
+
+		// referencing an unknown keyword, turn it into schema
+		try {
+			auto &subschema = file.unknown_keywords.at(uri.pointer());
+			auto s = schema::make(subschema, this, {}, {{uri}});
+			file.unknown_keywords.erase(uri.pointer());
+			return s;
+		} catch (...) {
+		}
+
+		// get or create a schema_ref
+		// std::cout << "using or creating a reference to " << uri << "\n";
+		auto r = file.unresolved.lower_bound(uri.pointer());
+		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.pointer(), r->first))) {
+			// std::cout << " --> using existing ref\n";
+			return r->second;
+		} else {
+			// std::cout << " --> creating a new ref\n";
+			return file.unresolved.insert(r,
+			                              {uri.pointer(), std::make_shared<schema_ref>(uri.to_string(), this)})
+			    ->second;
+		}
+	}
+
+	void set_root_schema(json schema)
+	{
+		root_ = schema::make(schema, this, {}, {{"#"}});
+
+		// load all files which have not yet been loaded
+		do {
+			bool new_schema_loaded = false;
+
+			// files_ is modified during parsing, iterators are invalidated
+			std::vector<std::string> locations;
+			for (auto &file : files_)
+				locations.push_back(file.first);
+
+			for (auto &loc : locations) {
+				if (files_[loc].schemas.size() == 0) { // nothing has been loaded for this file
+					if (loader_) {
+						json sch;
+
+						loader_(loc, sch);
+
+						schema::make(sch, this, {}, {{loc}});
+						new_schema_loaded = true;
+					} else {
+						throw std::invalid_argument("external schema reference '" + loc + "' needs loading, but no loader callback given\n");
+					}
+				}
+			}
+
+			if (!new_schema_loaded) // if no new schema loaded, no need to try again
+				break;
+		} while (1);
+	}
+
+	void validate(const json &instance, basic_error_handler &e) const final
+	{
+		if (root_)
+			root_->validate(instance, e);
+		else
+			e.error("", "", "no root schema has yet been set for validating an instance.");
+	}
+};
+
+} // namespace json_schema
+} // namespace nlohmann
+
+namespace
+{
+
 class logical_not : public schema
 {
 	std::shared_ptr<schema> subschema_;
@@ -319,7 +498,6 @@ class string : public schema
 #endif
 
 	std::pair<bool, std::string> format_;
-	std::function<void(const std::string &, const std::string &)> format_check_ = nullptr;
 
 	std::size_t utf8_length(const std::string &s) const
 	{
@@ -355,10 +533,15 @@ class string : public schema
 #endif
 
 		if (format_.first) {
-			if (format_check_ == nullptr)
+			if (root_->format_check() == nullptr)
 				e.error("", instance, std::string("A format checker was not provided but a format-attribute for this string is present. ") + " cannot be validated for " + format_.second);
-			else
-				format_check_(format_.second, instance);
+			else {
+				try {
+					root_->format_check()(format_.second, instance);
+				} catch (const std::exception &ex) {
+					e.error("", instance, std::string("Format-checking failed: ") + ex.what());
+				}
+			}
 		}
 	}
 
@@ -786,27 +969,6 @@ public:
 	}
 };
 
-class schema_ref : public schema
-{
-	const std::string id_;
-	std::shared_ptr<schema> target_;
-
-	void validate(const json &instance, basic_error_handler &e) const final
-	{
-		if (target_)
-			target_->validate(instance, e);
-		else
-			e.error("", instance, "unresolved schema-reference " + id_);
-	}
-
-public:
-	schema_ref(const std::string &id, root_schema *root)
-	    : schema(root), id_(id) {}
-
-	const std::string &id() const { return id_; }
-	void set_target(std::shared_ptr<schema> target) { target_ = target; }
-};
-
 std::shared_ptr<schema> type_schema::make(json &schema,
                                           json::value_t type,
                                           root_schema *root,
@@ -837,158 +999,6 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 	return nullptr;
 }
 } // namespace
-
-namespace nlohmann
-{
-namespace json_schema
-{
-
-class root_schema : public schema
-{
-	std::function<void(const json_uri &, json &)> loader_;
-	std::function<void(const std::string &, const std::string &)> format_;
-
-	std::shared_ptr<schema> root_;
-
-	struct schema_file {
-		std::map<nlohmann::json::json_pointer, std::shared_ptr<schema>> schemas;
-		std::map<nlohmann::json::json_pointer, std::shared_ptr<schema_ref>> unresolved; // contains all unresolved references from any other file seen during parsing
-		json unknown_keywords;
-	};
-
-	// location as key
-	std::map<std::string, schema_file> files_;
-
-	schema_file &get_or_create_file(const std::string &loc)
-	{
-		auto file = files_.lower_bound(loc);
-		if (file != files_.end() && !(files_.key_comp()(loc, file->first)))
-			return file->second;
-		else
-			return files_.insert(file, {loc, {}})->second;
-	}
-
-public:
-	root_schema(std::function<void(const json_uri &, json &)> loader,
-	            std::function<void(const std::string &, const std::string &)> format)
-	    : schema(this), loader_(loader), format_(format) {}
-
-	void insert(const json_uri &uri, const std::shared_ptr<schema> &s)
-	{
-		// std::cout << "adding schema '" << uri << "' '" << uri.location() << "'\n";
-
-		auto &file = get_or_create_file(uri.location());
-		auto schema = file.schemas.lower_bound(uri.pointer());
-		if (schema != file.schemas.end() && !(file.schemas.key_comp()(uri.pointer(), schema->first))) {
-			throw std::invalid_argument("schema with " + uri.to_string() + " already inserted\n");
-			return;
-		}
-
-		file.schemas.insert({uri.pointer(), s});
-
-		// was someone referencing this newly inserted schema?
-		auto unresolved = file.unresolved.find(uri.pointer());
-		// std::cout << "resolving schemas looking for '" << uri.pointer() << "' in " << uri.location() << "\n";
-		if (unresolved != file.unresolved.end()) {
-			// std::cout << " --> resolved!!\n";
-			unresolved->second->set_target(s);
-			file.unresolved.erase(unresolved);
-		}
-	}
-
-	void insert_unknown_keyword(const json_uri &uri, const std::string &key, json &value)
-	{
-		auto &file = get_or_create_file(uri.location());
-		auto new_uri = uri.append(key);
-		auto pointer = new_uri.pointer();
-
-		// std::cout << "inserting unknown " << new_uri << " '" << pointer << "'\n";
-
-		// is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
-		auto unresolved = file.unresolved.find(pointer);
-		if (unresolved != file.unresolved.end())
-			schema::make(value, this, {}, {{new_uri}});
-		else // no, nothing ref'd it
-			file.unknown_keywords[pointer] = value;
-	}
-
-	std::shared_ptr<schema> get_or_create_ref(const json_uri &uri)
-	{
-		auto &file = get_or_create_file(uri.location());
-
-		// existing schema
-		auto schema = file.schemas.find(uri.pointer());
-		if (schema != file.schemas.end())
-			return schema->second;
-
-		// referencing an unknown keyword, turn it into schema
-		try {
-			auto &subschema = file.unknown_keywords.at(uri.pointer());
-			auto s = schema::make(subschema, this, {}, {{uri}});
-			file.unknown_keywords.erase(uri.pointer());
-			return s;
-		} catch (...) {
-		}
-
-		// get or create a schema_ref
-		// std::cout << "using or creating a reference to " << uri << "\n";
-		auto r = file.unresolved.lower_bound(uri.pointer());
-		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.pointer(), r->first))) {
-			// std::cout << " --> using existing ref\n";
-			return r->second;
-		} else {
-			// std::cout << " --> creating a new ref\n";
-			return file.unresolved.insert(r,
-			                              {uri.pointer(), std::make_shared<schema_ref>(uri.to_string(), this)})
-			    ->second;
-		}
-	}
-
-	void set_root_schema(json schema)
-	{
-		root_ = schema::make(schema, this, {}, {{"#"}});
-
-		// load all files which have not yet been loaded
-		do {
-			bool new_schema_loaded = false;
-
-			// files_ is modified during parsing, iterators are invalidated
-			std::vector<std::string> locations;
-			for (auto &file : files_)
-				locations.push_back(file.first);
-
-			for (auto &loc : locations) {
-				if (files_[loc].schemas.size() == 0) { // nothing has been loaded for this file
-					if (loader_) {
-						json sch;
-
-						loader_(loc, sch);
-
-						schema::make(sch, this, {}, {{loc}});
-						new_schema_loaded = true;
-					} else {
-						throw std::invalid_argument("external schema reference '" + loc + "' needs loading, but no loader callback given\n");
-					}
-				}
-			}
-
-			if (!new_schema_loaded) // if no new schema loaded, no need to try again
-				break;
-		} while (1);
-	}
-
-	void validate(const json &instance, basic_error_handler &e) const final
-	{
-		if (root_)
-			root_->validate(instance, e);
-		else
-			e.error("", "", "no root schema has yet been set for validating an instance.");
-	}
-};
-
-} // namespace json_schema
-} // namespace nlohmann
-
 namespace
 {
 
@@ -1045,7 +1055,7 @@ std::shared_ptr<schema> schema::make(json &schema,
 		return nullptr; // TODO error/throw? when schema is invalid
 	}
 
-	for (auto &uri : uris) { // for all URI reference this schema
+	for (auto &uri : uris) { // for all URI references this schema
 		root->insert(uri, sch);
 
 		if (schema.type() == json::value_t::object)
