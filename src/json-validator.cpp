@@ -340,8 +340,8 @@ class type_schema : public schema
 
 		if (enum_.first) {
 			bool seen_in_enum = false;
-			for (auto &e : enum_.second)
-				if (instance == e) {
+			for (auto &v : enum_.second)
+				if (instance == v) {
 					seen_in_enum = true;
 					break;
 				}
