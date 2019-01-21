@@ -139,7 +139,9 @@ class JSON_SCHEMA_VALIDATOR_API json_validator
 public:
 	json_validator(std::function<void(const json_uri &, json &)> loader = nullptr,
 	               std::function<void(const std::string &, const std::string &)> format = nullptr);
+	json_validator(json_validator&&);
 	~json_validator();
+	json_validator& operator=(json_validator&&);
 
 	// insert and set thea root-schema
 	void set_root_schema(const json &);

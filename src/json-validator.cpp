@@ -1087,9 +1087,11 @@ json_validator::json_validator(std::function<void(const json_uri &, json &)> loa
 {
 }
 
-json_validator::~json_validator()
-{
-}
+// move constructor, destructor and move assignment operator can be defaulted here
+// where root_schema is a complete type
+json_validator::json_validator(json_validator&&) = default;
+json_validator::~json_validator() = default;
+json_validator& json_validator::operator=(json_validator&&) = default;
 
 void json_validator::set_root_schema(const json &schema)
 {
