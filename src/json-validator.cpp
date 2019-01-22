@@ -594,9 +594,9 @@ class numeric : public schema
 	// multipleOf - if the remainder of the division is 0 -> OK
 	bool violates_multiple_of(T x) const
 	{
-		json::number_integer_t n = static_cast<json::number_integer_t>(x / multipleOf_.second);
-		double res = (x - n * multipleOf_.second);
-		return fabs(res) > std::numeric_limits<json::number_float_t>::epsilon();
+		double res = std::remainder(x, multipleOf_.second);
+		double eps = std::nextafter(x, 0) - x;
+		return std::fabs(res) > std::fabs(eps);
 	}
 
 	void validate(const json &instance, basic_error_handler &e) const override
