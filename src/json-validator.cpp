@@ -267,27 +267,20 @@ class logical_combination : public schema
 		for (auto &s : subschemata_) {
 			basic_error_handler err;
 			s->validate(instance, err);
-
-			if (err) {
-				//sub_schema_err << "  one schema failed because: " << e.what() << "\n";
-				if (combine_logic == allOf) {
-					e.error("", instance, "at least one schema has failed, but ALLOF them are required to validate.");
-					return;
-				}
-			} else
+			if (!err)
 				count++;
 
-			if (combine_logic == oneOf && count > 1) {
-				e.error("", instance, "more than one schema has succeeded, but only ONEOF them is required to validate.");
-				return;
-			}
-			if (combine_logic == anyOf && count == 1)
+			if (is_validate_complete(instance, e, err, count))
 				return;
 		}
 
-		if ((combine_logic == anyOf || combine_logic == oneOf) && count == 0)
+		if (count == 0)
 			e.error("", instance, "no validation has succeeded but ANYOF/ONEOF them is required to validate.");
 	}
+
+	// specialized for each of the logical_combination_types
+	static const std::string key;
+	static bool is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t count);
 
 public:
 	logical_combination(json &sch,
@@ -296,23 +289,42 @@ public:
 	    : schema(root)
 	{
 		size_t c = 0;
-		std::string key;
-		switch (combine_logic) {
-		case allOf:
-			key = "allOf";
-			break;
-		case oneOf:
-			key = "oneOf";
-			break;
-		case anyOf:
-			key = "anyOf";
-			break;
-		}
-
 		for (auto &subschema : sch)
 			subschemata_.push_back(schema::make(subschema, root, {key, std::to_string(c++)}, uris));
+
+		// value of allOf, anyOf, and oneOf "MUST be a non-empty array"
+		// TODO error/throw? when subschemata_.empty()
 	}
 };
+
+template <>
+const std::string logical_combination<allOf>::key = "allOf";
+template <>
+const std::string logical_combination<anyOf>::key = "anyOf";
+template <>
+const std::string logical_combination<oneOf>::key = "oneOf";
+
+template <>
+bool logical_combination<allOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t count)
+{
+	if (err)
+		e.error("", instance, "at least one schema has failed, but ALLOF them are required to validate.");
+	return err;
+}
+
+template <>
+bool logical_combination<anyOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t count)
+{
+	return count == 1;
+}
+
+template <>
+bool logical_combination<oneOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t count)
+{
+	if (count > 1)
+		e.error("", instance, "more than one schema has succeeded, but only ONEOF them is required to validate.");
+	return count > 1;
+}
 
 class type_schema : public schema
 {
