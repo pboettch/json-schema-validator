@@ -591,8 +591,8 @@ class numeric : public schema
 
 	std::pair<bool, json::number_float_t> multipleOf_{false, 0};
 
-	// multipleOf - if the rest of the division is 0 -> OK
-	bool violates_multiple_of(json::number_float_t x) const
+	// multipleOf - if the remainder of the division is 0 -> OK
+	bool violates_multiple_of(T x) const
 	{
 		json::number_integer_t n = static_cast<json::number_integer_t>(x / multipleOf_.second);
 		double res = (x - n * multipleOf_.second);
