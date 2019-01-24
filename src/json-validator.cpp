@@ -305,7 +305,7 @@ template <>
 const std::string logical_combination<oneOf>::key = "oneOf";
 
 template <>
-bool logical_combination<allOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t count)
+bool logical_combination<allOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t)
 {
 	if (err)
 		e.error("", instance, "at least one schema has failed, but ALLOF them are required to validate.");
@@ -313,13 +313,13 @@ bool logical_combination<allOf>::is_validate_complete(const json &instance, basi
 }
 
 template <>
-bool logical_combination<anyOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t count)
+bool logical_combination<anyOf>::is_validate_complete(const json &, basic_error_handler &, bool, size_t count)
 {
 	return count == 1;
 }
 
 template <>
-bool logical_combination<oneOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool err, size_t count)
+bool logical_combination<oneOf>::is_validate_complete(const json &instance, basic_error_handler &e, bool, size_t count)
 {
 	if (count > 1)
 		e.error("", instance, "more than one schema has succeeded, but only ONEOF them is required to validate.");
@@ -1101,9 +1101,9 @@ json_validator::json_validator(std::function<void(const json_uri &, json &)> loa
 
 // move constructor, destructor and move assignment operator can be defaulted here
 // where root_schema is a complete type
-json_validator::json_validator(json_validator&&) = default;
+json_validator::json_validator(json_validator &&) = default;
 json_validator::~json_validator() = default;
-json_validator& json_validator::operator=(json_validator&&) = default;
+json_validator &json_validator::operator=(json_validator &&) = default;
 
 void json_validator::set_root_schema(const json &schema)
 {
