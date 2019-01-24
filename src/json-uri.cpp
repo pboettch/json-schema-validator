@@ -91,7 +91,7 @@ void json_uri::update(const std::string &uri)
 		}
 	}
 
-	pointer_ = nlohmann::json::json_pointer(pointer);
+	pointer_ = json::json_pointer(pointer);
 }
 
 const std::string json_uri::location() const

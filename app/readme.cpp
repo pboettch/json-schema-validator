@@ -65,10 +65,10 @@ int main()
 	/* json-parse the people - with custom error handler */
 	class custom_error_handler : public nlohmann::json_schema::basic_error_handler
 	{
-		void error(const std::string &path, const json &instance, const std::string &message) override
+		void error(const nlohmann::json::json_pointer &ptr, const json &instance, const std::string &message) override
 		{
-			nlohmann::json_schema::basic_error_handler::error(path, instance, message);
-			std::cerr << "ERROR: '" << path << "' - '" << instance << "': " << message << "\n";
+			nlohmann::json_schema::basic_error_handler::error(ptr, instance, message);
+			std::cerr << "ERROR: '" << ptr << "' - '" << instance << "': " << message << "\n";
 		}
 	};
 

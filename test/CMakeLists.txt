@@ -22,4 +22,7 @@ endforeach()
 add_executable(uri uri.cpp)
 target_link_libraries(uri json-schema-validator)
 
+add_executable(errors errors.cpp)
+target_link_libraries(errors json-schema-validator)
+
 add_test(NAME uri COMMAND uri)
