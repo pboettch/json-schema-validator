@@ -92,7 +92,12 @@ public:
 	json_uri append(const std::string &field) const
 	{
 		json_uri u = *this;
+#if NLOHMANN_JSON_VERSION_MAJOR >= 3 && NLOHMANN_JSON_VERSION_MINOR >= 5 && NLOHMANN_JSON_VERSION_PATCH >= 1
+		u.pointer_.push_back(field);
+#else
 		u.pointer_ = nlohmann::json::json_pointer(u.pointer_.to_string() + '/' + escape(field));
+#endif
+
 		return u;
 	}
 

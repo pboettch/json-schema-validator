@@ -1023,7 +1023,7 @@ std::shared_ptr<schema> schema::make(json &schema,
 	// append to all URIs the keys for this sub-schema
 	for (auto &key : keys)
 		for (auto &uri : uris)
-			uri = uri.append(json_uri::escape(key));
+			uri = uri.append(key);
 
 	std::shared_ptr<::schema> sch;
 

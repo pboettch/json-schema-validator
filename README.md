@@ -34,8 +34,6 @@ is parsed into compiled C++ objects which are then used during validation. There
 still optimizations to be done, but validation speed has improved by factor 100
 or more.
 
-In JSON-schema one sub-schema can be
-
 # Design goals
 
 The main goal of this validator is to produce *human-comprehensible* error
@@ -44,7 +42,7 @@ messages if a JSON-document/instance does not comply to its schema.
 By default this is done with exceptions thrown at the users with a helpful
 message telling what's wrong with the document while validating.
 
-With **2.0.0** the user can passed a `json_scheam::basic_error_handler` derived object
+With **2.0.0** the user can pass a `json_scheam::basic_error_handler` derived object
 along with the instance to validate to receive a each time a validation error occurs
 and decice what to do (throwing, counting, collecting).
 
