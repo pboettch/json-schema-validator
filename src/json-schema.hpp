@@ -24,11 +24,11 @@
 #include <nlohmann/json.hpp>
 
 #ifdef NLOHMANN_JSON_VERSION_MAJOR
-#	if NLOHMANN_JSON_VERSION_MAJOR < 3 || NLOHMANN_JSON_VERSION_MINOR < 5 || NLOHMANN_JSON_VERSION_PATCH < 0
-#		error "Please use this library with NLohmann's JSON version 3.5.0 or higher"
+#	if NLOHMANN_JSON_VERSION_MAJOR < 3 || NLOHMANN_JSON_VERSION_MINOR < 5 || NLOHMANN_JSON_VERSION_PATCH < 1
+#		error "Please use this library with NLohmann's JSON version 3.5.1 or higher"
 #	endif
 #else
-#	error "expected existing NLOHMANN_JSON_VERSION_MAJOR preproc variable, please update to NLohmann's JSON 3.5.0"
+#	error "expected existing NLOHMANN_JSON_VERSION_MAJOR preproc variable, please update to NLohmann's JSON 3.5.1"
 #endif
 
 // make yourself a home - welcome to nlohmann's namespace
@@ -92,12 +92,7 @@ public:
 	json_uri append(const std::string &field) const
 	{
 		json_uri u = *this;
-#if NLOHMANN_JSON_VERSION_MAJOR >= 3 && NLOHMANN_JSON_VERSION_MINOR >= 5 && NLOHMANN_JSON_VERSION_PATCH >= 1
 		u.pointer_.push_back(field);
-#else
-		u.pointer_ = nlohmann::json::json_pointer(u.pointer_.to_string() + '/' + escape(field));
-#endif
-
 		return u;
 	}
 
@@ -126,12 +121,12 @@ class basic_error_handler
 	bool error_{false};
 
 public:
-	virtual void error(const std::string & /*path*/, const json & /* instance */, const std::string & /*message*/)
+	virtual void error(const nlohmann::json::json_pointer & /*path*/, const json & /* instance */, const std::string & /*message*/)
 	{
 		error_ = true;
 	}
 
-	void reset() { error_ = false; }
+	virtual void reset() { error_ = false; }
 	operator bool() const { return error_; }
 };
 
@@ -144,9 +139,9 @@ class JSON_SCHEMA_VALIDATOR_API json_validator
 public:
 	json_validator(std::function<void(const json_uri &, json &)> loader = nullptr,
 	               std::function<void(const std::string &, const std::string &)> format = nullptr);
-	json_validator(json_validator&&);
+	json_validator(json_validator &&);
 	~json_validator();
-	json_validator& operator=(json_validator&&);
+	json_validator &operator=(json_validator &&);
 
 	// insert and set thea root-schema
 	void set_root_schema(const json &);

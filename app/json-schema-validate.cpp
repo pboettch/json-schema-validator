@@ -21,13 +21,6 @@ static void usage(const char *name)
 	exit(EXIT_FAILURE);
 }
 
-#if 0
-	resolver r(nlohmann::json_schema_draft4::root_schema,
-			   nlohmann::json_schema_draft4::root_schema["id"]);
-	schema_refs_.insert(r.schema_refs.begin(), r.schema_refs.end());
-	assert(r.undefined_refs.size() == 0);
-#endif
-
 static void loader(const json_uri &uri, json &schema)
 {
 	std::string filename = "./" + uri.path();
@@ -44,10 +37,10 @@ static void loader(const json_uri &uri, json &schema)
 
 class custom_error_handler : public nlohmann::json_schema::basic_error_handler
 {
-	void error(const std::string &path, const json &instance, const std::string &message) override
+	void error(const nlohmann::json::json_pointer &ptr, const json &instance, const std::string &message) override
 	{
-		nlohmann::json_schema::basic_error_handler::error(path, instance, message);
-		std::cerr << "ERROR: '" << path << "' - '" << instance << "': " << message << "\n";
+		nlohmann::json_schema::basic_error_handler::error(ptr, instance, message);
+		std::cerr << "ERROR: '" << ptr << "' - '" << instance << "': " << message << "\n";
 	}
 };
 
