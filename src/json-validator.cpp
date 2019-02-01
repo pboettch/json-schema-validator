@@ -271,14 +271,14 @@ class logical_combination : public schema
 			if (err) {
 				//sub_schema_err << "  one schema failed because: " << e.what() << "\n";
 				if (combine_logic == allOf) {
-					e.error(ptr, instance, "at least one schema has failed, but ALLOF them are required to validate.");
+					e.error(ptr, instance, "at least one schema has failed, but all of them are required to validate.");
 					return;
 				}
 			} else
 				count++;
 
 			if (combine_logic == oneOf && count > 1) {
-				e.error(ptr, instance, "more than one schema has succeeded, but only ONEOF them is required to validate.");
+				e.error(ptr, instance, "more than one schema has succeeded, but exactly one of them is required to validate.");
 				return;
 			}
 			if (combine_logic == anyOf && count == 1)
@@ -286,7 +286,7 @@ class logical_combination : public schema
 		}
 
 		if ((combine_logic == anyOf || combine_logic == oneOf) && count == 0)
-			e.error(ptr, instance, "no validation has succeeded but ANYOF/ONEOF them is required to validate.");
+			e.error(ptr, instance, "no validation has succeeded but one of them is required to validate.");
 	}
 
 public:
@@ -692,7 +692,7 @@ class boolean : public schema
 			//	return;
 			//}
 
-			e.error(ptr, instance, "instance invalid as par false-schema");
+			e.error(ptr, instance, "instance invalid as per false-schema");
 		}
 	}
 
@@ -755,24 +755,24 @@ class object : public schema
 			// check if it is in "properties"
 			if (schema_p != properties_.end()) {
 				a_prop_or_pattern_matched = true;
-				schema_p->second->validate(ptr + p.key(), p.value(), e);
+				schema_p->second->validate(ptr / p.key(), p.value(), e);
 			}
 
 			// check all matching patternProperties
 			for (auto &schema_pp : patternProperties_)
 				if (REGEX_NAMESPACE::regex_search(p.key(), schema_pp.first)) {
 					a_prop_or_pattern_matched = true;
-					schema_pp.second->validate(ptr + p.key(), p.value(), e);
+					schema_pp.second->validate(ptr / p.key(), p.value(), e);
 				}
 			// check additionalProperties as a last resort
 			if (!a_prop_or_pattern_matched && additionalProperties_)
-				additionalProperties_->validate(ptr + p.key(), p.value(), e);
+				additionalProperties_->validate(ptr / p.key(), p.value(), e);
 		}
 
 		for (auto &dep : dependencies_) {
 			auto prop = instance.find(dep.first);
 			if (prop != instance.end())                 // if dependency-property is present in instance
-				dep.second->validate(ptr + dep.first, instance, e); // validate
+				dep.second->validate(ptr / dep.first, instance, e); // validate
 		}
 	}
 
@@ -886,7 +886,7 @@ class array : public schema
 		size_t index = 0;
 		if (items_schema_)
 			for (auto &i : instance) {
-				items_schema_->validate(ptr + index, i, e);
+				items_schema_->validate(ptr / index, i, e);
 				index++;
 			}
 		else {
@@ -903,7 +903,7 @@ class array : public schema
 				if (!item_validator)
 					break;
 
-				item_validator->validate(ptr + index, i, e);
+				item_validator->validate(ptr / index, i, e);
 			}
 		}
 
