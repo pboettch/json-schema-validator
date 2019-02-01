@@ -24,11 +24,11 @@
 #include <nlohmann/json.hpp>
 
 #ifdef NLOHMANN_JSON_VERSION_MAJOR
-#	if NLOHMANN_JSON_VERSION_MAJOR < 3 || NLOHMANN_JSON_VERSION_MINOR < 5 || NLOHMANN_JSON_VERSION_PATCH < 1
-#		error "Please use this library with NLohmann's JSON version 3.5.1 or higher"
+#	if (NLOHMANN_JSON_VERSION_MAJOR * 10000 + NLOHMANN_JSON_VERSION_MINOR * 100 + NLOHMANN_JSON_VERSION_PATCH) < 30600
+#		error "Please use this library with NLohmann's JSON version 3.6.0 or higher"
 #	endif
 #else
-#	error "expected existing NLOHMANN_JSON_VERSION_MAJOR preproc variable, please update to NLohmann's JSON 3.5.1"
+#	error "expected existing NLOHMANN_JSON_VERSION_MAJOR preproc variable, please update to NLohmann's JSON 3.6.0"
 #endif
 
 // make yourself a home - welcome to nlohmann's namespace
@@ -51,7 +51,7 @@ class JSON_SCHEMA_VALIDATOR_API json_uri
 	std::string proto_;
 	std::string hostname_;
 	std::string path_;
-	nlohmann::json::json_pointer pointer_;
+	json::json_pointer pointer_;
 
 protected:
 	// decodes a JSON uri and replaces all or part of the currently stored values
@@ -72,7 +72,7 @@ public:
 	const std::string hostname() const { return hostname_; }
 	const std::string path() const { return path_; }
 
-	const nlohmann::json::json_pointer pointer() const { return pointer_; }
+	const json::json_pointer pointer() const { return pointer_; }
 
 	const std::string url() const { return location(); }
 	const std::string location() const;
@@ -92,7 +92,7 @@ public:
 	json_uri append(const std::string &field) const
 	{
 		json_uri u = *this;
-		u.pointer_.push_back(field);
+		u.pointer_ /= field;
 		return u;
 	}
 
@@ -121,7 +121,7 @@ class basic_error_handler
 	bool error_{false};
 
 public:
-	virtual void error(const nlohmann::json::json_pointer & /*path*/, const json & /* instance */, const std::string & /*message*/)
+	virtual void error(const json::json_pointer & /*path*/, const json & /* instance */, const std::string & /*message*/)
 	{
 		error_ = true;
 	}

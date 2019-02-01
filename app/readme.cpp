@@ -55,7 +55,7 @@ int main()
 		std::cout << "About to validate this person:\n"
 		          << std::setw(2) << person << std::endl;
 		try {
-			validator.validate(person); // validate the document
+			validator.validate(person); // validate the document - uses the default throwing error-handler
 			std::cout << "Validation succeeded\n";
 		} catch (const std::exception &e) {
 			std::cerr << "Validation failed, here is why: " << e.what() << "\n";
@@ -78,7 +78,7 @@ int main()
 		          << std::setw(2) << person << std::endl;
 
 		custom_error_handler err;
-		validator.validate(person, err); // validate the document - uses the default throwing error-handler
+		validator.validate(person, err); // validate the document
 
 		if (err)
 			std::cerr << "Validation failed\n";

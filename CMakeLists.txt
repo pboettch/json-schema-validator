@@ -46,7 +46,8 @@ set_target_properties(json-schema-validator
 
 install(TARGETS json-schema-validator
         LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
 
 install(DIRECTORY src/
         DESTINATION include
@@ -59,12 +60,13 @@ target_include_directories(json-schema-validator
 target_compile_features(json-schema-validator
     PUBLIC
         cxx_range_for) # for C++11 - flags
-# Enable more compiler warnings, except when using Visual Studio compiler
-if(NOT MSVC)
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     target_compile_options(json-schema-validator
         PRIVATE
             -Wall -Wextra)
 endif()
+
 target_link_libraries(json-schema-validator
     PUBLIC
         json-hpp)
