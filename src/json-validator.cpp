@@ -267,27 +267,20 @@ class logical_combination : public schema
 		for (auto &s : subschemata_) {
 			basic_error_handler err;
 			s->validate(ptr, instance, err);
-
-			if (err) {
-				//sub_schema_err << "  one schema failed because: " << e.what() << "\n";
-				if (combine_logic == allOf) {
-					e.error(ptr, instance, "at least one schema has failed, but all of them are required to validate.");
-					return;
-				}
-			} else
+			if (!err)
 				count++;
 
-			if (combine_logic == oneOf && count > 1) {
-				e.error(ptr, instance, "more than one schema has succeeded, but exactly one of them is required to validate.");
-				return;
-			}
-			if (combine_logic == anyOf && count == 1)
+			if (is_validate_complete(ptr, instance, e, err, count))
 				return;
 		}
 
-		if ((combine_logic == anyOf || combine_logic == oneOf) && count == 0)
+		if (count == 0)
 			e.error(ptr, instance, "no validation has succeeded but one of them is required to validate.");
 	}
+
+	// specialized for each of the logical_combination_types
+	static const std::string key;
+	static bool is_validate_complete(const nlohmann::json::json_pointer &ptr, const json &instance, basic_error_handler &e, bool err, size_t count);
 
 public:
 	logical_combination(json &sch,
@@ -296,23 +289,42 @@ public:
 	    : schema(root)
 	{
 		size_t c = 0;
-		std::string key;
-		switch (combine_logic) {
-		case allOf:
-			key = "allOf";
-			break;
-		case oneOf:
-			key = "oneOf";
-			break;
-		case anyOf:
-			key = "anyOf";
-			break;
-		}
-
 		for (auto &subschema : sch)
 			subschemata_.push_back(schema::make(subschema, root, {key, std::to_string(c++)}, uris));
+
+		// value of allOf, anyOf, and oneOf "MUST be a non-empty array"
+		// TODO error/throw? when subschemata_.empty()
 	}
 };
+
+template <>
+const std::string logical_combination<allOf>::key = "allOf";
+template <>
+const std::string logical_combination<anyOf>::key = "anyOf";
+template <>
+const std::string logical_combination<oneOf>::key = "oneOf";
+
+template <>
+bool logical_combination<allOf>::is_validate_complete(const nlohmann::json::json_pointer &ptr, const json &instance, basic_error_handler &e, bool err, size_t)
+{
+	if (err)
+		e.error(ptr, instance, "at least one schema has failed, but all of them are required to validate.");
+	return err;
+}
+
+template <>
+bool logical_combination<anyOf>::is_validate_complete(const nlohmann::json::json_pointer &, const json &, basic_error_handler &, bool, size_t count)
+{
+	return count == 1;
+}
+
+template <>
+bool logical_combination<oneOf>::is_validate_complete(const nlohmann::json::json_pointer &ptr, const json &instance, basic_error_handler &e, bool, size_t count)
+{
+	if (count > 1)
+		e.error(ptr, instance, "more than one schema has succeeded, but exactly one of them is required to validate.");
+	return count > 1;
+}
 
 class type_schema : public schema
 {
@@ -340,8 +352,8 @@ class type_schema : public schema
 
 		if (enum_.first) {
 			bool seen_in_enum = false;
-			for (auto &e : enum_.second)
-				if (instance == e) {
+			for (auto &v : enum_.second)
+				if (instance == v) {
 					seen_in_enum = true;
 					break;
 				}
@@ -591,12 +603,12 @@ class numeric : public schema
 
 	std::pair<bool, json::number_float_t> multipleOf_{false, 0};
 
-	// multipleOf - if the rest of the division is 0 -> OK
-	bool violates_multiple_of(json::number_float_t x) const
+	// multipleOf - if the remainder of the division is 0 -> OK
+	bool violates_multiple_of(T x) const
 	{
-		json::number_integer_t n = static_cast<json::number_integer_t>(x / multipleOf_.second);
-		double res = (x - n * multipleOf_.second);
-		return fabs(res) > std::numeric_limits<json::number_float_t>::epsilon();
+		double res = std::remainder(x, multipleOf_.second);
+		double eps = std::nextafter(x, 0) - x;
+		return std::fabs(res) > std::fabs(eps);
 	}
 
 	void validate(const nlohmann::json::json_pointer &ptr, const json &instance, basic_error_handler &e) const override
@@ -771,7 +783,7 @@ class object : public schema
 
 		for (auto &dep : dependencies_) {
 			auto prop = instance.find(dep.first);
-			if (prop != instance.end())                 // if dependency-property is present in instance
+			if (prop != instance.end())            // if dependency-property is present in instance
 				dep.second->validate(ptr / dep.first, instance, e); // validate
 		}
 	}
