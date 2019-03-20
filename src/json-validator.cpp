@@ -276,7 +276,7 @@ class logical_combination : public schema
 		}
 
 		if (count == 0)
-			e.error(ptr, instance, "no validation has succeeded but ANYOF/ONEOF them is required to validate.");
+			e.error(ptr, instance, "no validation has succeeded but one of them is required to validate.");
 	}
 
 	// specialized for each of the logical_combination_types
@@ -309,7 +309,7 @@ template <>
 bool logical_combination<allOf>::is_validate_complete(const json &instance, const json::json_pointer &ptr, basic_error_handler &e, bool err, size_t)
 {
 	if (err)
-		e.error(ptr, instance, "at least one schema has failed, but ALLOF them are required to validate.");
+		e.error(ptr, instance, "at least one schema has failed, but all of them are required to validate.");
 	return err;
 }
 
@@ -323,7 +323,7 @@ template <>
 bool logical_combination<oneOf>::is_validate_complete(const json &instance, const json::json_pointer &ptr, basic_error_handler &e, bool, size_t count)
 {
 	if (count > 1)
-		e.error(ptr, instance, "more than one schema has succeeded, but only ONEOF them is required to validate.");
+		e.error(ptr, instance, "more than one schema has succeeded, but exactly one of them is required to validate.");
 	return count > 1;
 }
 
@@ -705,7 +705,7 @@ class boolean : public schema
 			//	return;
 			//}
 
-			e.error(ptr, instance, "instance invalid as par false-schema");
+			e.error(ptr, instance, "instance invalid as per false-schema");
 		}
 	}
 
