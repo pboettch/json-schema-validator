@@ -10,7 +10,7 @@ This is a C++ library for validating JSON documents based on a
 [draft-7 of JSON Schema Validation](http://json-schema.org/schema).
 
 First a disclaimer: *It is work in progress and
-contributions or hints or discussions are welcome.* Even though a 2.0.0 release is immenent.
+contributions or hints or discussions are welcome.* Even though a 2.0.0 release is imminent.
 
 Niels Lohmann et al develop a great JSON parser for C++ called [JSON for Modern
 C++](https://github.com/nlohmann/json). This validator is based on this
@@ -21,7 +21,7 @@ is rather simple.
 
 # New in version 2
 
-Although significant changes have been coorporate to the 2 version
+Although significant changes have been done for the 2nd version
 (a complete rewrite) the API is compatible with the 1.0.0 release. Except for
 the namespace which is now `nlohmann::json_schema.
 
@@ -29,7 +29,7 @@ Version **2** supports JSON schema draft 7, whereas 1 was supporting draft 4
 only. Please update your schemas.
 
 The primary change in 2 is the way a schema is used. While in version 1 the schema was
-kept as a JSON-document and used again and again during validation, in versin 2 the schema
+kept as a JSON-document and used again and again during validation, in version 2 the schema
 is parsed into compiled C++ objects which are then used during validation. There are surely
 still optimizations to be done, but validation speed has improved by factor 100
 or more.
@@ -42,9 +42,9 @@ messages if a JSON-document/instance does not comply to its schema.
 By default this is done with exceptions thrown at the users with a helpful
 message telling what's wrong with the document while validating.
 
-With **2.0.0** the user can pass a `json_scheam::basic_error_handler` derived object
-along with the instance to validate to receive a each time a validation error occurs
-and decice what to do (throwing, counting, collecting).
+With **2.0.0** the user can pass a `json_scheam::basic_error_handler`-derived
+object along with the instance to validate to receive a callback each time a
+validation error occurs and decide what to do (throwing, counting, collecting).
 
 Another goal was to use Niels Lohmann's JSON-library. This is why the validator
 lives in his namespace.
@@ -55,12 +55,12 @@ Numerical validation uses nlohmann integer, unsigned and floating point types, d
 the schema type is "integer" or "number". Bignum (i.e. arbitrary precision and
 range) is not supported at this time.
 
-Currently JSON-URI with "plain name fragments" are not supported. So referring to an URI
+Currently JSON-URI with "plain name fragments" are not supported: referring to an URI
 with `$ref: "file.json#plain"` will not work.
 
 # How to use
 
-The current state of the build-system needs at least version **3.5.0** of NLohmann's
+The current state of the build-system needs at least version **3.6.0** of NLohmann's
 JSON library. It is looking for the `json.hpp` within a `nlohmann/`-path.
 
 When build the library you need to provide the path to the directory where the include-file
@@ -167,7 +167,7 @@ int main()
 		std::cout << "About to validate this person:\n"
 		          << std::setw(2) << person << std::endl;
 		try {
-			validator.validate(person); // validate the document
+			validator.validate(person); // validate the document - uses the default throwing error-handler
 			std::cout << "Validation succeeded\n";
 		} catch (const std::exception &e) {
 			std::cerr << "Validation failed, here is why: " << e.what() << "\n";
@@ -190,7 +190,7 @@ int main()
 		          << std::setw(2) << person << std::endl;
 
 		custom_error_handler err;
-		validator.validate(person, err); // validate the document - uses the default throwing error-handler
+		validator.validate(person, err); // validate the document
 
 		if (err)
 			std::cerr << "Validation failed\n";
