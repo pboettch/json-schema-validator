@@ -60,7 +60,7 @@ script:
   - $CXX --version
 
   # put json.hpp to nlohmann
-  - mkdir -p nlohmann && wget https://github.com/nlohmann/json/releases/download/v3.5.0/json.hpp -O nlohmann/json.hpp
+  - mkdir -p nlohmann && wget https://github.com/nlohmann/json/releases/download/v3.6.0/json.hpp -O nlohmann/json.hpp
 
   # compile and execute unit tests
   - mkdir -p build && cd build
