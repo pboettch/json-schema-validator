@@ -398,7 +398,6 @@ public:
 		    {"string", json::value_t::string},
 		    {"boolean", json::value_t::boolean},
 		    {"integer", json::value_t::number_integer},
-		    {"integer", json::value_t::number_unsigned},
 		    {"number", json::value_t::number_float},
 		};
 
@@ -435,12 +434,14 @@ public:
 		for (auto &key : known_keywords)
 			sch.erase(key);
 
-		// with nlohmann::json floats can be seen as unsigned or integer - reuse the number-validator for
-		// integer values as well, if they have not been specified
+		// with nlohmann::json float instance (but number in schema-definition) can be seen as unsigned or integer -
+		// reuse the number-validator for integer values as well, if they have not been specified explicitly
 		if (type_[(uint8_t) json::value_t::number_float] && !type_[(uint8_t) json::value_t::number_integer])
-			type_[(uint8_t) json::value_t::number_integer] =
-			    type_[(uint8_t) json::value_t::number_unsigned] =
-			        type_[(uint8_t) json::value_t::number_float];
+			type_[(uint8_t) json::value_t::number_integer] = type_[(uint8_t) json::value_t::number_float];
+
+		// #54: JSON-schema does not differentiate between unsigned and signed integer - nlohmann::json does
+		// we stick with JSON-schema: use the integer-validator if instance-value is unsigned
+		type_[(uint8_t) json::value_t::number_unsigned] = type_[(uint8_t) json::value_t::number_integer];
 
 		attr = sch.find("enum");
 		if (attr != sch.end()) {
@@ -995,8 +996,8 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 	switch (type) {
 	case json::value_t::null:
 		return std::make_shared<null>(schema, root);
+
 	case json::value_t::number_unsigned:
-		return std::make_shared<numeric<json::number_unsigned_t>>(schema, root, kw);
 	case json::value_t::number_integer:
 		return std::make_shared<numeric<json::number_integer_t>>(schema, root, kw);
 	case json::value_t::number_float:
