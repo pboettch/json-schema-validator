@@ -116,12 +116,23 @@ namespace json_schema
 
 extern json draft7_schema_builtin;
 
-class basic_error_handler
+typedef std::function<void(const json_uri & /*id*/, json & /*value*/)> schema_loader;
+typedef std::function<void(const std::string & /*format*/, const std::string & /*value*/)> format_checker;
+
+// Interface for validation error handlers
+class JSON_SCHEMA_VALIDATOR_API error_handler
+{
+public:
+	virtual ~error_handler() {}
+	virtual void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) = 0;
+};
+
+class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
 {
 	bool error_{false};
 
 public:
-	virtual void error(const json::json_pointer & /*path*/, const json & /* instance */, const std::string & /*message*/)
+	void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) override
 	{
 		error_ = true;
 	}
@@ -137,8 +148,7 @@ class JSON_SCHEMA_VALIDATOR_API json_validator
 	std::unique_ptr<root_schema> root_;
 
 public:
-	json_validator(std::function<void(const json_uri &, json &)> loader = nullptr,
-	               std::function<void(const std::string &, const std::string &)> format = nullptr);
+	json_validator(schema_loader = nullptr, format_checker = nullptr);
 	json_validator(json_validator &&);
 	~json_validator();
 	json_validator &operator=(json_validator &&);
@@ -147,10 +157,10 @@ public:
 	void set_root_schema(const json &);
 
 	// validate a json-document based on the root-schema
-	void validate(const json &);
+	void validate(const json &) const;
 
 	// validate a json-document based on the root-schema with a custom error-handler
-	void validate(const json &, basic_error_handler &);
+	void validate(const json &, error_handler &) const;
 };
 
 } // namespace json_schema
