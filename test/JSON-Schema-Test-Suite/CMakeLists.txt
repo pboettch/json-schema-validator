@@ -54,16 +54,12 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
             JSON-Suite::Optional::zeroTerminatedFloats
             JSON-Suite::Optional::ecmascript-regex
 
-            JSON-Suite::Optional::Format::date-time
-            JSON-Suite::Optional::Format::date
-            JSON-Suite::Optional::Format::email
             JSON-Suite::Optional::Format::idn-email
             JSON-Suite::Optional::Format::idn-hostname
             JSON-Suite::Optional::Format::iri-reference
             JSON-Suite::Optional::Format::iri
             JSON-Suite::Optional::Format::json-pointer
             JSON-Suite::Optional::Format::relative-json-pointer
-            JSON-Suite::Optional::Format::time
             JSON-Suite::Optional::Format::uri-reference
             JSON-Suite::Optional::Format::uri-template
             JSON-Suite::Optional::Format::uri

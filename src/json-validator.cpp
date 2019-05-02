@@ -1043,6 +1043,7 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 	return nullptr;
 }
 } // namespace
+
 namespace
 {
 

@@ -212,9 +212,26 @@ cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
 
 All required tests are **OK**.
 
+# Format
+
+Optionally JSON-schema-validator can validation predefined or user-defined formats.
+Therefore a format-checker-function can be provided by the user which is called by
+the validator when a format-check is required.
+
+The library contains a default-checker, which does some checks. It needs to be
+provided manually to the constructor of the validator:
+
+```C++
+json_validator validator(loader,
+						 nlohmann::json_schema::default_string_format_check);
+```
+
 # Contributing
 
-Before opening a pull request, please apply the coding style given in the `.clang-format` by running clang-format from the git top-level for all touched files:
+Before opening a pull request, please apply the coding style given in the
+`.clang-format` by running clang-format from the git top-level for all touched
+files:
+
 ```shell
 git diff master --name-only | grep '\.[ch]pp$' | xargs -P 3 -I{} clang-format -i {}
 ```

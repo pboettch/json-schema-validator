@@ -37,7 +37,8 @@ endif()
 add_library(json-schema-validator
     src/json-schema-draft7.json.cpp
     src/json-uri.cpp
-    src/json-validator.cpp)
+    src/json-validator.cpp
+    src/string-format-check.cpp)
 
 set_target_properties(json-schema-validator
                       PROPERTIES

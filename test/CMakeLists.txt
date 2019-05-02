@@ -34,3 +34,10 @@ add_test(NAME issue-70 COMMAND issue-70)
 add_executable(issue-70-root-schema-constructor issue-70-root-schema-constructor.cpp)
 target_link_libraries(issue-70-root-schema-constructor json-schema-validator)
 add_test(NAME issue-70-root-schema-constructor COMMAND issue-70-root-schema-constructor)
+
+# Unit test for string format checks
+add_executable("string-format-check-test" "string-format-check-test.cpp")
+target_include_directories("string-format-check-test" PRIVATE "${PROJECT_SOURCE_DIR}/src/")
+target_link_libraries("string-format-check-test" json-schema-validator)
+
+add_test(NAME "string-format-check-test" COMMAND "string-format-check-test")
