@@ -26,3 +26,11 @@ add_executable(errors errors.cpp)
 target_link_libraries(errors json-schema-validator)
 
 add_test(NAME uri COMMAND uri)
+
+
+# Unit test for string format checks
+add_executable("string-format-check-test" "string-format-check-test.cpp")
+target_include_directories("string-format-check-test" PRIVATE "${PROJECT_SOURCE_DIR}/src/")
+target_link_libraries("string-format-check-test" json-schema-validator)
+
+add_test(NAME "string-format-check-test" COMMAND "string-format-check-test")

@@ -6,11 +6,13 @@
  * SPDX-License-Identifier: MIT
  *
  */
-#include <json-schema.hpp>
+#include "json-schema.hpp"
 
 #include <memory>
 #include <set>
 #include <sstream>
+
+#include "string-format-check.hpp"
 
 using nlohmann::json;
 using nlohmann::json_uri;
@@ -225,7 +227,7 @@ public:
 	json instance_;
 	std::string message_;
 
-	void error(const json::json_pointer & ptr, const json & instance, const std::string & message) override
+	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
 	{
 		if (*this)
 			return;
@@ -561,14 +563,13 @@ class string : public schema
 #endif
 
 		if (format_.first) {
-			if (root_->format_check() == nullptr)
-				e.error(ptr, instance, std::string("a format checker was not provided but a format keyword for this string is present: ") + format_.second);
-			else {
-				try {
+			try {
+				if (root_->format_check() == nullptr)
+					string_format_check(format_.second, instance);
+				else
 					root_->format_check()(format_.second, instance);
-				} catch (const std::exception &ex) {
-					e.error(ptr, instance, std::string("format-checking failed: ") + ex.what());
-				}
+			} catch (const std::exception &ex) {
+				e.error(ptr, instance, std::string("format-checking failed: ") + ex.what());
 			}
 		}
 	}
@@ -1030,6 +1031,7 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 	return nullptr;
 }
 } // namespace
+
 namespace
 {
 
