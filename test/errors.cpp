@@ -45,6 +45,7 @@ static json person_schema = R"(
                  "name",
                  "age"
                  ],
+    "additionalProperties": false,
     "type": "object"
 })"_json;
 
@@ -88,19 +89,20 @@ int main(void)
 
 	validator.validate({{"age", 42}}, err); // no name
 
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
 	EXPECT_EQ(err.failed_pointers.size(), 1);
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
 	err.reset();
 
 	validator.validate({{"street", "Boulevard"}}, err); // no name and no age
+	EXPECT_EQ(err.failed_pointers.size(), 3);
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
 	EXPECT_EQ(err.failed_pointers[1].to_string(), "");
-	EXPECT_EQ(err.failed_pointers.size(), 2);
+	EXPECT_EQ(err.failed_pointers[2].to_string(), "");
 	err.reset();
 
 	validator.validate({{"age", 42}, {"name", 12}}, err); // name must be a string
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "/name");
 	EXPECT_EQ(err.failed_pointers.size(), 1);
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "/name");
 	err.reset();
 
 	validator.validate({
@@ -109,8 +111,19 @@ int main(void)
 	                       {"phones", {1234, "223"}},
 	                   },
 	                   err); // name must be a string
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "/phones/1");
 	EXPECT_EQ(err.failed_pointers.size(), 1);
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "/phones/1");
+	err.reset();
+
+	validator.validate({
+	                       {"age", 42},
+	                       {"name", "John"},
+	                       {"phones", {0}},
+						   {"post-code", 12345},
+	                   },
+	                   err); // name must be a string
+	EXPECT_EQ(err.failed_pointers.size(), 1);
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
 	err.reset();
 
 	return error_count;

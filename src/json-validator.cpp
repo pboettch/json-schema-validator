@@ -791,9 +791,14 @@ class object : public schema
 					a_prop_or_pattern_matched = true;
 					schema_pp.second->validate(ptr / p.key(), p.value(), e);
 				}
+
 			// check additionalProperties as a last resort
-			if (!a_prop_or_pattern_matched && additionalProperties_)
-				additionalProperties_->validate(ptr / p.key(), p.value(), e);
+			if (!a_prop_or_pattern_matched && additionalProperties_) {
+				first_error_handler additional_prop_err;
+				additionalProperties_->validate(ptr / p.key(), p.value(), additional_prop_err);
+				if (additional_prop_err)
+					e.error(ptr, instance, "validation failed for additional property '" + p.key() + "': " + additional_prop_err.message_);
+			}
 		}
 
 		for (auto &dep : dependencies_) {
