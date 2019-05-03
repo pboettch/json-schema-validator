@@ -211,3 +211,10 @@ If you have cloned this repository providing a path the repository-root via the
 cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
 
 All required tests are **OK**.
+
+# Contributing
+
+Before opening a pull request, please apply the coding style given in the `.clang-format` by running clang-format from the git top-level for all touched files:
+```shell
+git diff master --name-only | grep '\.[ch]pp$' | xargs -P 3 -I{} clang-format -i {}
+```
