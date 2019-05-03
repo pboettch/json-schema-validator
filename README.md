@@ -219,3 +219,10 @@ All required tests are **OK**.
 
 The goal is to create an empty document, based on schema-defined
 default-values, recursively populated.
+
+# Contributing
+
+Before opening a pull request, please apply the coding style given in the `.clang-format` by running clang-format from the git top-level for all touched files:
+```shell
+'git' diff master --name-only | 'grep' '\.[ch]pp$' | xargs -P 3 -I{} clang-format -i {}
+```
