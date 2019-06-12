@@ -24,13 +24,12 @@ static void usage(const char *name)
 static void loader(const json_uri &uri, json &schema)
 {
 	std::string filename = "./" + uri.path();
-	std::fstream lf(filename);
+	std::ifstream lf(filename);
 	if (!lf.good())
 		throw std::invalid_argument("could not open " + uri.url() + " tried with " + filename);
-
 	try {
 		lf >> schema;
-	} catch (std::exception &e) {
+	} catch (const std::exception &e) {
 		throw e;
 	}
 }
@@ -49,7 +48,7 @@ int main(int argc, char *argv[])
 	if (argc != 2)
 		usage(argv[0]);
 
-	std::fstream f(argv[1]);
+	std::ifstream f(argv[1]);
 	if (!f.good()) {
 		std::cerr << "could not open " << argv[1] << " for reading\n";
 		usage(argv[0]);
@@ -59,8 +58,8 @@ int main(int argc, char *argv[])
 	json schema;
 	try {
 		f >> schema;
-	} catch (std::exception &e) {
-		std::cerr << e.what() << " at " << f.tellp() << " - while parsing the schema\n";
+	} catch (const std::exception &e) {
+		std::cerr << e.what() << " at " << f.tellg() << " - while parsing the schema\n";
 		return EXIT_FAILURE;
 	}
 
@@ -71,7 +70,7 @@ int main(int argc, char *argv[])
 		// insert this schema as the root to the validator
 		// this resolves remote-schemas, sub-schemas and references via the given loader-function
 		validator.set_root_schema(schema);
-	} catch (std::exception &e) {
+	} catch (const std::exception &e) {
 		std::cerr << "setting root schema failed\n";
 		std::cerr << e.what() << "\n";
 	}
@@ -81,7 +80,7 @@ int main(int argc, char *argv[])
 
 	try {
 		std::cin >> document;
-	} catch (std::exception &e) {
+	} catch (const std::exception &e) {
 		std::cerr << "json parsing failed: " << e.what() << " at offset: " << std::cin.tellg() << "\n";
 		return EXIT_FAILURE;
 	}
