@@ -42,7 +42,7 @@ messages if a JSON-document/instance does not comply to its schema.
 By default this is done with exceptions thrown at the users with a helpful
 message telling what's wrong with the document while validating.
 
-With **2.0.0** the user can pass a `json_scheam::basic_error_handler`-derived
+With **2.0.0** the user can pass a `json_schema::basic_error_handler`-derived
 object along with the instance to validate to receive a callback each time a
 validation error occurs and decide what to do (throwing, counting, collecting).
 
