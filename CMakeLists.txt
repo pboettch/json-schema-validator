@@ -120,6 +120,6 @@ if (BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-install ( EXPORT json-schema-validator
-          NAMESPACE json-schema-validator::
-          DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}" )
+install(EXPORT json-schema-validator
+        NAMESPACE json-schema-validator::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
