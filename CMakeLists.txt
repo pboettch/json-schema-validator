@@ -45,6 +45,7 @@ set_target_properties(json-schema-validator
                           SOVERSION 1)
 
 install(TARGETS json-schema-validator
+        EXPORT json-schema-validator
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         RUNTIME DESTINATION bin)
@@ -55,7 +56,8 @@ install(DIRECTORY src/
 
 target_include_directories(json-schema-validator
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<INSTALL_INTERFACE:include>)
 
 target_compile_features(json-schema-validator
     PUBLIC
@@ -117,3 +119,7 @@ if (BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
+
+install ( EXPORT json-schema-validator
+          NAMESPACE json-schema-validator::
+          DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}" )
