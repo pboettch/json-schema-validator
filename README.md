@@ -112,6 +112,7 @@ See also `app/json-schema-validate.cpp`.
 
 ```C++
 #include <iostream>
+#include <iomanip>
 
 #include "json-schema.hpp"
 
@@ -177,10 +178,11 @@ int main()
 	/* json-parse the people - with custom error handler */
 	class custom_error_handler : public nlohmann::json_schema::basic_error_handler
 	{
-		void error(const std::string &path, const json &instance, const std::string &message) override
+		void error(const nlohmann::json_pointer<nlohmann::basic_json<>> &pointer, const json &instance,
+			const std::string &message) override
 		{
-			nlohmann::json_schema::basic_error_handler::error(path, instance, message);
-			std::cerr << "ERROR: '" << path << "' - '" << instance << "': " << message << "\n";
+			nlohmann::json_schema::basic_error_handler::error(pointer, instance, message);
+			std::cerr << "ERROR: '" << pointer << "' - '" << instance << "': " << message << "\n";
 		}
 	};
 
