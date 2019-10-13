@@ -119,12 +119,22 @@ extern json draft7_schema_builtin;
 typedef std::function<void(const json_uri & /*id*/, json & /*value*/)> schema_loader;
 typedef std::function<void(const std::string & /*format*/, const std::string & /*value*/)> format_checker;
 
+// Validation error information
+struct JSON_SCHEMA_VALIDATOR_API error_info
+{
+	json::json_pointer ptr;
+	std::string message;
+	std::vector<error_info> subschema_errors;
+	// formatted error information including ptr, message and subschema errors
+	std::string formatted() const;
+};
+
 // Interface for validation error handlers
 class JSON_SCHEMA_VALIDATOR_API error_handler
 {
 public:
 	virtual ~error_handler() {}
-	virtual void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) = 0;
+	virtual void error(const error_info & /*err*/) = 0;
 };
 
 class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
@@ -132,7 +142,7 @@ class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
 	bool error_{false};
 
 public:
-	void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) override
+	void error(const error_info & /*err*/) override
 	{
 		error_ = true;
 	}
