@@ -171,6 +171,7 @@ public:
 
 	void set_root_schema(json schema)
 	{
+		files_.clear();
 		root_ = schema::make(schema, this, {}, {{"#"}});
 
 		// load all files which have not yet been loaded
@@ -225,7 +226,7 @@ public:
 	json instance_;
 	std::string message_;
 
-	void error(const json::json_pointer & ptr, const json & instance, const std::string & message) override
+	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
 	{
 		if (*this)
 			return;

@@ -153,7 +153,7 @@ public:
 	~json_validator();
 	json_validator &operator=(json_validator &&);
 
-	// insert and set thea root-schema
+	// insert and set the root-schema
 	void set_root_schema(const json &);
 
 	// validate a json-document based on the root-schema
