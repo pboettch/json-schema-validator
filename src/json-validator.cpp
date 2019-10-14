@@ -1123,6 +1123,12 @@ json_validator::json_validator(schema_loader loader,
 {
 }
 
+json_validator::json_validator(const json &schema, schema_loader loader, format_checker format)
+    : json_validator(loader, format)
+{
+	set_root_schema(schema);
+}
+
 // move constructor, destructor and move assignment operator can be defaulted here
 // where root_schema is a complete type
 json_validator::json_validator(json_validator &&) = default;

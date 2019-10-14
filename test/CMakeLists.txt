@@ -30,3 +30,7 @@ add_test(NAME errors COMMAND errors)
 add_executable(issue-70 issue-70.cpp)
 target_link_libraries(issue-70 json-schema-validator)
 add_test(NAME issue-70 COMMAND issue-70)
+
+add_executable(issue-70-root-schema-constructor issue-70-root-schema-constructor.cpp)
+target_link_libraries(issue-70-root-schema-constructor json-schema-validator)
+add_test(NAME issue-70-root-schema-constructor COMMAND issue-70-root-schema-constructor)
