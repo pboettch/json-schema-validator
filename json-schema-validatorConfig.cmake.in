@@ -1,0 +1,13 @@
+# Config file for the json-schema-validator
+# It defines the following variables
+#  JSON_SCHEMA_VALIDATOR_INCLUDE_DIRS - include directories for json-schema-validator
+#  json-schema-validator              - json-schema-validator library to link against
+
+# Compute paths
+get_filename_component(JSON_SCHEMA_VALIDATOR_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+set(JSON_SCHEMA_VALIDATOR_INCLUDE_DIRS @CONF_INCLUDE_DIRS@)
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+if(NOT TARGET json-schema-validator)
+  include("${JSON_SCHEMA_VALIDATOR_CMAKE_DIR}/json-schema-validatorTargets.cmake")
+endif()
