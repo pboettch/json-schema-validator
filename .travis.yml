@@ -64,6 +64,6 @@ script:
 
   # compile and execute unit tests
   - mkdir -p build && cd build
-  - cmake .. -DNLOHMANN_JSON_DIR=.. ${CMAKE_OPTIONS} -GNinja && cmake --build . --config Release
+  - cmake .. -Dnlohmann_json_DIR=.. ${CMAKE_OPTIONS} -GNinja && cmake --build . --config Release
   - ctest -C Release -V -j
   - cd ..

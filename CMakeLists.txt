@@ -1,78 +1,98 @@
-project(json-schema-validator
+project(nlohmann_json_schema_validator
     LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.0.0)
+set(PROJECT_VERSION 2.1.0)
 
 cmake_minimum_required(VERSION 3.2)
 
 option(BUILD_TESTS      "Build tests"    ON)
 option(BUILD_EXAMPLES   "Build examples" ON)
 
-# if used as a subdirectory just define a json-hpp-target as add_library(json-hpp INTERFACE)
-# and associate the path to json.hpp via target_include_directories()
-if(NOT TARGET json-hpp)
-    set(NLOHMANN_JSON_DIR "" CACHE STRING "path to json.hpp")
-
-    # find nlohmann's json.hpp
-    find_path(JSON_HPP nlohmann/json.hpp
-        PATHS
-            ${NLOHMANN_JSON_DIR}
-            ${CMAKE_BINARY_DIR}/${NLOHMANN_JSON_DIR}) # in case it is a relative path
-
-    # get the full, real path
-    get_filename_component(NLOHMANN_JSON_REALPATH ${JSON_HPP} REALPATH)
-
-    if(NOT EXISTS ${NLOHMANN_JSON_REALPATH}/nlohmann/json.hpp)
-        message(FATAL_ERROR "please set NLOHMANN_JSON_DIR to a path in which NLohmann's json.hpp can be found. Looking for nlohmann/json.hpp in '${NLOHMANN_JSON_REALPATH}")
-    endif()
-
-    # create an interface-library for simple cmake-linking
-    add_library(json-hpp INTERFACE)
-    target_include_directories(json-hpp
-        INTERFACE
-            ${NLOHMANN_JSON_REALPATH})
-endif()
-
-# and one for the validator
-add_library(json-schema-validator
+# the library
+add_library(nlohmann_json_schema_validator
     src/json-schema-draft7.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp
     src/string-format-check.cpp)
 
-set_target_properties(json-schema-validator
+target_include_directories(nlohmann_json_schema_validator
+    PUBLIC
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
+
+target_compile_features(nlohmann_json_schema_validator
+    PUBLIC
+        cxx_range_for) # for C++11 - flags
+
+set_target_properties(nlohmann_json_schema_validator
                       PROPERTIES
                           VERSION ${PROJECT_VERSION}
                           SOVERSION 1)
 
-install(TARGETS json-schema-validator
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin)
+# here we decice how nlohmann::json is found and used to build this project
 
-install(DIRECTORY src/
-        DESTINATION include
-        FILES_MATCHING PATTERN "*.h*")
+# first, check whether a nlohmann_json::nlohmann_json target exists already
+# -> we are used as a sub-directory from within another project
+if(TARGET nlohmann_json::nlohmann_json)
+    message(STATUS "Found nlohmann_json::nlohmann_json-target - linking with it")
+    target_link_libraries(
+        nlohmann_json_schema_validator
+        PUBLIC nlohmann_json::nlohmann_json)
 
-target_include_directories(json-schema-validator
-    PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/src)
+elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next to nlohmann-json's git repo
+    message(STATUS "Found nlohmann_json-target - linking with it")
+    target_link_libraries(
+        nlohmann_json_schema_validator
+        PUBLIC nlohmann_json)
+else()
+    if (NOT IS_ABSOLUTE ${nlohmann_json_DIR}) # make nlohmann_json_DIR absolute
+        get_filename_component(nlohmann_json_DIR
+                               "${CMAKE_CURRENT_BINARY_DIR}/${nlohmann_json_DIR}"
+                               REALPATH)
+    endif()
 
-target_compile_features(json-schema-validator
-    PUBLIC
-        cxx_range_for) # for C++11 - flags
+    set(nlohmann_json_orignal_DIR ${nlohmann_json_DIR}) # save path for later use
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    target_compile_options(json-schema-validator
+    # find nlohmann_json-cmake-package
+    find_package(nlohmann_json QUIET)
+
+    if(TARGET nlohmann_json::nlohmann_json)
+        message(STATUS "Found nlohmann_json-cmake-package - linking with it")
+        target_link_libraries(
+            nlohmann_json_schema_validator
+            PUBLIC nlohmann_json::nlohmann_json)
+    else()
+
+        # find nlohmann/json.hpp
+
+        message(STATUS ${nlohmann_json_orignal_DIR})
+
+        find_path(JSON_HPP nlohmann/json.hpp
+                  PATHS ${nlohmann_json_orignal_DIR})
+
+        if(EXISTS ${JSON_HPP}/nlohmann/json.hpp)
+            message(STATUS "Found nlohmann/json.hpp in given path: ${JSON_HPP}")
+            target_include_directories(
+                nlohmann_json_schema_validator
+                PUBLIC $<BUILD_INTERFACE:${JSON_HPP}>)
+        else()
+            message(FATAL_ERROR "could not find nlohmann/json.hpp or any related cmake-target. Please set nlohmann_json_DIR.")
+        endif()
+
+        # nlohmann_json_DIR has to be reset (for later use in tests)
+        set(nlohmann_json_DIR ${JSON_HPP})
+    endif()
+endif()
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
+   "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    target_compile_options(nlohmann_json_schema_validator
         PRIVATE
             -Wall -Wextra)
 endif()
 
-target_link_libraries(json-schema-validator
-    PUBLIC
-        json-hpp)
 if(BUILD_SHARED_LIBS)
-    target_compile_definitions(json-schema-validator
+    target_compile_definitions(nlohmann_json_schema_validator
         PRIVATE
             -DJSON_SCHEMA_VALIDATOR_EXPORTS)
 endif()
@@ -83,38 +103,68 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         find_package(Boost COMPONENTS regex)
         if(NOT Boost_FOUND)
             message(STATUS "GCC less then 4.9 and boost-regex NOT found - no regex used")
-            target_compile_definitions(json-schema-validator PRIVATE -DJSON_SCHEMA_NO_REGEX)
+            target_compile_definitions(nlohmann_json_schema_validator PRIVATE -DJSON_SCHEMA_NO_REGEX)
         else()
             message(STATUS "GCC less then 4.9 and boost-regex FOUND - using boost::regex")
-            target_compile_definitions(json-schema-validator PRIVATE -DJSON_SCHEMA_BOOST_REGEX)
-            target_include_directories(json-schema-validator PRIVATE ${Boost_INCLUDE_DIRS})
-            target_link_libraries(json-schema-validator PRIVATE ${Boost_LIBRARIES})
+            target_compile_definitions(nlohmann_json_schema_validator PRIVATE -DJSON_SCHEMA_BOOST_REGEX)
+            target_include_directories(nlohmann_json_schema_validator PRIVATE ${Boost_INCLUDE_DIRS})
+            target_link_libraries(nlohmann_json_schema_validator PRIVATE ${Boost_LIBRARIES})
         endif()
     endif()
 endif()
 
-if(NOT TARGET json-hpp) # if used as a subdirectory do not install json-schema.hpp
-    install(
-        FILES
-           ${CMAKE_CURRENT_SOURCE_DIR}/src/json-schema.hpp
-        DESTINATION
-            ${CMAKE_INSTALL_PREFIX}/include
-    )
-endif()
+install(TARGETS nlohmann_json_schema_validator
+        EXPORT ${PROJECT_NAME}Targets
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
+
+install(FILES src/nlohmann/json-schema.hpp
+        DESTINATION include/nlohmann)
 
 if (BUILD_EXAMPLES)
-    # simple json-schema-validator-executable
+    # simple nlohmann_json_schema_validator-executable
     add_executable(json-schema-validate app/json-schema-validate.cpp)
-    target_link_libraries(json-schema-validate json-schema-validator)
+    target_link_libraries(json-schema-validate nlohmann_json_schema_validator)
 
     add_executable(readme-json-schema app/readme.cpp)
-    target_link_libraries(readme-json-schema json-schema-validator)
+    target_link_libraries(readme-json-schema nlohmann_json_schema_validator)
 endif()
-
-#add_subdirectory(ng)
 
 if (BUILD_TESTS)
     # test-zone
     enable_testing()
     add_subdirectory(test)
 endif()
+#---------------------------------------------------------------------------##
+# Set Up the Project Targets and Config Files for CMake
+#---------------------------------------------------------------------------##
+
+# Set the install path to the cmake config files
+set(INSTALL_CMAKE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cmake/${PROJECT_NAME})
+
+# Create the ConfigVersion file
+include(CMakePackageConfigHelpers) # write_basic_package_version_file
+write_basic_package_version_file( ${PROJECT_NAME}ConfigVersion.cmake
+                                  VERSION ${PACKAGE_VERSION}
+                                  COMPATIBILITY SameMajorVersion)
+
+# Get the relative path from the INSTALL_CMAKE_DIR to the include directory
+file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/include")
+
+
+# Configure the Config.cmake file with the proper include directory
+set(CONF_INCLUDE_DIRS "\${JSON_SCHEMA_VALIDATOR_CMAKE_DIR}/${REL_INCLUDE_DIR}")
+configure_file(${PROJECT_NAME}Config.cmake.in
+               "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" @ONLY)
+
+# Install the Config.cmake and ConfigVersion.cmake files
+install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+        DESTINATION "${INSTALL_CMAKE_DIR}")
+
+# Install Targets
+install(EXPORT ${PROJECT_NAME}Targets
+        FILE ${PROJECT_NAME}Targets.cmake
+        DESTINATION "${INSTALL_CMAKE_DIR}")

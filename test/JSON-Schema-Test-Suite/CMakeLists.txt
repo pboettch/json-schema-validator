@@ -15,7 +15,7 @@ endif()
 if(JSON_SCHEMA_TEST_SUITE_PATH)
     # json-schema-validator-tester
     add_executable(json-schema-test json-schema-test.cpp)
-    target_link_libraries(json-schema-test json-schema-validator)
+    target_link_libraries(json-schema-test nlohmann_json_schema_validator)
     target_compile_definitions(json-schema-test
         PRIVATE
             JSON_SCHEMA_TEST_SUITE_PATH="${JSON_SCHEMA_TEST_SUITE_PATH}")

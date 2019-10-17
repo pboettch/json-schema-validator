@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <json-schema.hpp>
+#include <nlohmann/json-schema.hpp>
 
 /** @return number of failed tests */
 size_t
