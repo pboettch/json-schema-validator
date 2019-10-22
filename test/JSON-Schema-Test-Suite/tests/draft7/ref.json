@@ -271,7 +271,7 @@
         "tests": [
             {
                 "description": "valid tree",
-                "data": { 
+                "data": {
                     "meta": "root",
                     "nodes": [
                         {
@@ -300,7 +300,7 @@
             },
             {
                 "description": "invalid tree",
-                "data": { 
+                "data": {
                     "meta": "root",
                     "nodes": [
                         {
@@ -333,7 +333,7 @@
         "description": "refs with quote",
         "schema": {
             "properties": {
-                "foo\"bar": {"$ref": "#/definitions/foo\"bar"}
+                "foo\"bar": {"$ref": "#/definitions/foo%22bar"}
             },
             "definitions": {
                 "foo\"bar": {"type": "number"}
