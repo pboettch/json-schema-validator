@@ -214,10 +214,3 @@ If you have cloned this repository providing a path the repository-root via the
 cmake-variable `JSON_SCHEMA_TEST_SUITE_PATH` will enable the test-target(s).
 
 All required tests are **OK**.
-
-# Additional features
-
-## Default values
-
-The goal is to create an empty document, based on schema-defined
-default-values, recursively populated.
