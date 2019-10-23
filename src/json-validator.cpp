@@ -83,8 +83,8 @@ class root_schema : public schema
 	std::shared_ptr<schema> root_;
 
 	struct schema_file {
-		std::map<json::json_pointer, std::shared_ptr<schema>> schemas;
-		std::map<json::json_pointer, std::shared_ptr<schema_ref>> unresolved; // contains all unresolved references from any other file seen during parsing
+		std::map<std::string, std::shared_ptr<schema>> schemas;
+		std::map<std::string, std::shared_ptr<schema_ref>> unresolved; // contains all unresolved references from any other file seen during parsing
 		json unknown_keywords;
 	};
 
@@ -110,16 +110,16 @@ public:
 	void insert(const json_uri &uri, const std::shared_ptr<schema> &s)
 	{
 		auto &file = get_or_create_file(uri.location());
-		auto schema = file.schemas.lower_bound(uri.pointer());
-		if (schema != file.schemas.end() && !(file.schemas.key_comp()(uri.pointer(), schema->first))) {
+		auto schema = file.schemas.lower_bound(uri.fragment());
+		if (schema != file.schemas.end() && !(file.schemas.key_comp()(uri.fragment(), schema->first))) {
 			throw std::invalid_argument("schema with " + uri.to_string() + " already inserted");
 			return;
 		}
 
-		file.schemas.insert({uri.pointer(), s});
+		file.schemas.insert({uri.fragment(), s});
 
 		// was someone referencing this newly inserted schema?
-		auto unresolved = file.unresolved.find(uri.pointer());
+		auto unresolved = file.unresolved.find(uri.fragment());
 		if (unresolved != file.unresolved.end()) {
 			unresolved->second->set_target(s);
 			file.unresolved.erase(unresolved);
@@ -130,14 +130,14 @@ public:
 	{
 		auto &file = get_or_create_file(uri.location());
 		auto new_uri = uri.append(key);
-		auto pointer = new_uri.pointer();
+		auto fragment = new_uri.fragment();
 
 		// is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
-		auto unresolved = file.unresolved.find(pointer);
+		auto unresolved = file.unresolved.find(fragment);
 		if (unresolved != file.unresolved.end())
 			schema::make(value, this, {}, {{new_uri}});
 		else // no, nothing ref'd it
-			file.unknown_keywords[pointer] = value;
+			file.unknown_keywords[fragment] = value;
 	}
 
 	std::shared_ptr<schema> get_or_create_ref(const json_uri &uri)
@@ -145,26 +145,26 @@ public:
 		auto &file = get_or_create_file(uri.location());
 
 		// existing schema
-		auto schema = file.schemas.find(uri.pointer());
+		auto schema = file.schemas.find(uri.fragment());
 		if (schema != file.schemas.end())
 			return schema->second;
 
 		// referencing an unknown keyword, turn it into schema
 		try {
-			auto &subschema = file.unknown_keywords.at(uri.pointer());
+			auto &subschema = file.unknown_keywords.at(uri.fragment());
 			auto s = schema::make(subschema, this, {}, {{uri}});
-			file.unknown_keywords.erase(uri.pointer());
+			file.unknown_keywords.erase(uri.fragment());
 			return s;
 		} catch (...) {
 		}
 
 		// get or create a schema_ref
-		auto r = file.unresolved.lower_bound(uri.pointer());
-		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.pointer(), r->first))) {
+		auto r = file.unresolved.lower_bound(uri.fragment());
+		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.fragment(), r->first))) {
 			return r->second;
 		} else {
 			return file.unresolved.insert(r,
-			                              {uri.pointer(), std::make_shared<schema_ref>(uri.to_string(), this)})
+			                              {uri.fragment(), std::make_shared<schema_ref>(uri.to_string(), this)})
 			    ->second;
 		}
 	}

@@ -55,9 +55,6 @@ Numerical validation uses nlohmann integer, unsigned and floating point types, d
 the schema type is "integer" or "number". Bignum (i.e. arbitrary precision and
 range) is not supported at this time.
 
-Currently JSON-URI with "plain name fragments" are not supported: referring to an URI
-with `$ref: "file.json#plain"` will not work.
-
 # How to use
 
 The current state of the build-system needs at least version **3.6.0** of NLohmann's

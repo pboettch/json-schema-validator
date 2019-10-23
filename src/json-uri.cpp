@@ -45,15 +45,14 @@ void json_uri::update(const std::string &uri)
 	auto location = uri.substr(0, pointer_separator);
 
 	if (location.size()) {          // a location part has been found
-		pointer_ = ""_json_pointer; // if a location is given, the pointer is emptied
 
 		// if it is an URN take it as it is
 		if (location.find("urn:") == 0) {
 			urn_ = location;
 
 			// and clear URL members
-			proto_ = "";
-			hostname_ = "";
+			scheme_ = "";
+			authority_ = "";
 			path_ = "";
 
 		} else { // it is an URL
@@ -65,13 +64,13 @@ void json_uri::update(const std::string &uri)
 
 				urn_ = ""; // clear URN-member if URL is parsed
 
-				proto_ = location.substr(pos, proto - pos);
+				scheme_ = location.substr(pos, proto - pos);
 				pos = 3 + proto; // 3 == "://"
 
-				auto hostname = location.find("/", pos);
-				if (hostname != std::string::npos) { // and the hostname (no proto without hostname)
-					hostname_ = location.substr(pos, hostname - pos);
-					pos = hostname;
+				auto authority = location.find("/", pos);
+				if (authority != std::string::npos) { // and the hostname (no proto without hostname)
+					authority_ = location.substr(pos, authority - pos);
+					pos = authority;
 				}
 			}
 
@@ -91,7 +90,13 @@ void json_uri::update(const std::string &uri)
 		}
 	}
 
-	pointer_ = json::json_pointer(pointer);
+	pointer_ = ""_json_pointer;
+	identifier_ = "";
+
+	if (pointer[0] == '/')
+		pointer_ = json::json_pointer(pointer);
+	else
+		identifier_ = pointer;
 }
 
 const std::string json_uri::location() const
@@ -101,10 +106,10 @@ const std::string json_uri::location() const
 
 	std::stringstream s;
 
-	if (proto_.size() > 0)
-		s << proto_ << "://";
+	if (scheme_.size() > 0)
+		s << scheme_ << "://";
 
-	s << hostname_
+	s << authority_
 	  << path_;
 
 	return s.str();
@@ -114,7 +119,12 @@ std::string json_uri::to_string() const
 {
 	std::stringstream s;
 
-	s << location() << " # " << pointer_.to_string();
+	s << location() << " # ";
+
+	if (identifier_ == "")
+		s << pointer_.to_string();
+	else
+		s << identifier_;
 
 	return s.str();
 }

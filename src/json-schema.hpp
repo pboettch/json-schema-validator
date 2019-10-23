@@ -48,10 +48,12 @@ class JSON_SCHEMA_VALIDATOR_API json_uri
 {
 	std::string urn_;
 
-	std::string proto_;
-	std::string hostname_;
+	std::string scheme_;
+	std::string authority_;
 	std::string path_;
-	json::json_pointer pointer_;
+
+	json::json_pointer pointer_; // fragment part if JSON-Pointer
+	std::string identifier_;     // fragment part if Locatation Independent ID
 
 protected:
 	// decodes a JSON uri and replaces all or part of the currently stored values
@@ -59,7 +61,8 @@ protected:
 
 	std::tuple<std::string, std::string, std::string, std::string, std::string> tie() const
 	{
-		return std::tie(urn_, proto_, hostname_, path_, pointer_);
+		return std::tie(urn_, scheme_, authority_, path_,
+		                identifier_ != "" ? identifier_ : pointer_);
 	}
 
 public:
@@ -68,11 +71,20 @@ public:
 		update(uri);
 	}
 
-	const std::string protocol() const { return proto_; }
-	const std::string hostname() const { return hostname_; }
+	const std::string scheme() const { return scheme_; }
+	const std::string authority() const { return authority_; }
 	const std::string path() const { return path_; }
 
 	const json::json_pointer pointer() const { return pointer_; }
+	const std::string identifier() const { return identifier_; }
+
+	const std::string fragment() const
+	{
+		if (identifier_ == "")
+			return pointer_;
+		else
+			return identifier_;
+	}
 
 	const std::string url() const { return location(); }
 	const std::string location() const;
@@ -91,6 +103,9 @@ public:
 	// append a pointer-field to the pointer-part of this uri
 	json_uri append(const std::string &field) const
 	{
+		if (identifier_ != "")
+			return *this;
+
 		json_uri u = *this;
 		u.pointer_ /= field;
 		return u;

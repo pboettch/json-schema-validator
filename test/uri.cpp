@@ -16,95 +16,18 @@ using nlohmann::json_uri;
 
 static int errors;
 
-#define EXPECT_EQ(a, b)                                              \
-	do {                                                             \
-		if (a.to_string() != b) {                                    \
-			std::cerr << "Failed: '" << a << "' != '" << b << "'\n"; \
-			errors++;                                                \
-		}                                                            \
-	} while (0)
-
-// test-schema taken from spec with modifications
-auto schema = R"(
+static void EXPECT_EQ(const std::string &a, const std::string &b)
 {
-	"$id": "http://example.com/root.json",
-	"definitions": {
-		"A": { "$id": "#foo" },
-		"B": {
-			"$id": "other.json",
-			"definitions": {
-				"X": { "$id": "#bar" },
-				"Y": { "$id": "t/inner.json" }
-			}
-		},
-		"C": {
-			"$id": "urn:uuid:ee564b8a-7a87-4125-8c96-e9f123d6766f",
-			"definitions": {
-				"Z": { "$id": "#bar" },
-				"9": { "$id": "http://example.com/drole.json" }
-			}
-		}
+	if (a != b) {
+		std::cerr << "Failed: '" << a << "' != '" << b << "'\n";
+		errors++;
 	}
 }
-)"_json;
 
-// resolve all refs
-class store
+static void EXPECT_EQ(const nlohmann::json_uri &a, const std::string &b)
 {
-public:
-	std::vector<json> schemas_;
-	std::map<nlohmann::json_uri, const json *> schema_store_;
-
-public:
-	void insert_schema(json &s, std::vector<nlohmann::json_uri> base_uris)
-	{
-		auto id = s.find("$id");
-		if (id != s.end())
-			base_uris.push_back(base_uris.back().derive(id.value()));
-
-		for (auto &u : base_uris)
-			schema_store_[u] = &s;
-
-		for (auto i = s.begin();
-		     i != s.end();
-		     ++i) {
-
-			switch (i.value().type()) {
-			case json::value_t::object: { // child is object, thus a schema
-				std::vector<nlohmann::json_uri> subschema_uri = base_uris;
-
-				for (auto &ss : subschema_uri)
-					ss = ss.append(nlohmann::json_uri::escape(i.key()));
-
-				insert_schema(i.value(), subschema_uri);
-			} break;
-
-			case json::value_t::string:
-				// this schema is a reference
-				if (i.key() == "$ref") {
-					auto id = base_uris.back().derive(i.value());
-					i.value() = id.to_string();
-				}
-
-				break;
-
-			default:
-				break;
-			}
-		}
-	}
-};
-
-//static void store_test(void)
-//{
-//	store  s;
-//
-//	s.insert_schema(schema, {{""}});
-//
-//	for (auto &i : s.schema_store_) {
-//		std::cerr << i.first << " " << *i.second << "\n";
-//	}
-//}
+	EXPECT_EQ(a.to_string(), b);
+}
 
 static void paths(json_uri start,
                   const std::string &full,
@@ -135,6 +58,31 @@ static void paths(json_uri start,
 	EXPECT_EQ(g, no_path + "/new.json # ");
 }
 
+static void pointer_plain_name(json_uri start,
+                               const std::string &full,
+                               const std::string &full_path,
+                               const std::string &no_path)
+{
+	auto a = start.derive("#/json/path");
+	EXPECT_EQ(a, full + " # /json/path");
+
+	a = start.derive("#/json/special_%22");
+	EXPECT_EQ(a, full + " # /json/special_\"");
+
+	a = a.derive("#foo");
+	EXPECT_EQ(a, full + " # foo");
+
+	a = a.derive("#foo/looks_like_json/poiner/but/isnt");
+	EXPECT_EQ(a, full + " # foo/looks_like_json/poiner/but/isnt");
+	EXPECT_EQ(a.identifier(), "foo/looks_like_json/poiner/but/isnt");
+	EXPECT_EQ(a.pointer(), "");
+
+	a = a.derive("#/looks_like_json/poiner/and/it/is");
+	EXPECT_EQ(a, full + " # /looks_like_json/poiner/and/it/is");
+	EXPECT_EQ(a.pointer(), "/looks_like_json/poiner/and/it/is");
+	EXPECT_EQ(a.identifier(), "");
+}
+
 int main(void)
 {
 	json_uri empty("");
@@ -149,8 +97,10 @@ int main(void)
 	      "http://json-schema.org/draft-07",
 	      "http://json-schema.org");
 
-	// plain name fragments instead of JSON-pointers, are not supported, yet
-	//store_test();
+	pointer_plain_name(http,
+	                   "http://json-schema.org/draft-07/schema",
+	                   "http://json-schema.org/draft-07",
+	                   "http://json-schema.org");
 
 	return errors;
 }
