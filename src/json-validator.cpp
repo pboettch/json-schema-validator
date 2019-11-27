@@ -130,7 +130,7 @@ public:
 	{
 		auto &file = get_or_create_file(uri.location());
 		auto new_uri = uri.append(key);
-		auto fragment = new_uri.fragment();
+		auto fragment = new_uri.pointer();
 
 		// is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
 		auto unresolved = file.unresolved.find(fragment);
@@ -138,6 +138,11 @@ public:
 			schema::make(value, this, {}, {{new_uri}});
 		else // no, nothing ref'd it, keep for later
 			file.unknown_keywords[fragment] = value;
+
+		// recursively add possible subschemas of unknown keywords
+		if (value.type() == json::value_t::object)
+			for (auto &subsch : value.items())
+				insert_unknown_keyword(new_uri, subsch.key(), subsch.value());
 	}
 
 	std::shared_ptr<schema> get_or_create_ref(const json_uri &uri)
@@ -151,7 +156,7 @@ public:
 
 		// referencing an unknown keyword, turn it into schema
 		try {
-			auto &subschema = file.unknown_keywords.at(uri.fragment());
+			auto &subschema = file.unknown_keywords.at(uri.pointer());
 			auto s = schema::make(subschema, this, {}, {{uri}});
 			file.unknown_keywords.erase(uri.fragment());
 			return s;
