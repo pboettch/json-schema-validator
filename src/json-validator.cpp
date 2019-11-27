@@ -791,12 +791,14 @@ class object : public schema
 				schema_p->second->validate(ptr / p.key(), p.value(), e);
 			}
 
+#ifndef NO_STD_REGEX
 			// check all matching patternProperties
 			for (auto &schema_pp : patternProperties_)
 				if (REGEX_NAMESPACE::regex_search(p.key(), schema_pp.first)) {
 					a_prop_or_pattern_matched = true;
 					schema_pp.second->validate(ptr / p.key(), p.value(), e);
 				}
+#endif
 
 			// check additionalProperties as a last resort
 			if (!a_prop_or_pattern_matched && additionalProperties_) {
