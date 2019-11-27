@@ -136,7 +136,7 @@ public:
 		auto unresolved = file.unresolved.find(fragment);
 		if (unresolved != file.unresolved.end())
 			schema::make(value, this, {}, {{new_uri}});
-		else // no, nothing ref'd it
+		else // no, nothing ref'd it, keep for later
 			file.unknown_keywords[fragment] = value;
 	}
 
@@ -161,11 +161,11 @@ public:
 		// get or create a schema_ref
 		auto r = file.unresolved.lower_bound(uri.fragment());
 		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.fragment(), r->first))) {
-			return r->second;
+			return r->second; // unresolved, already seen previously - use existing reference
 		} else {
 			return file.unresolved.insert(r,
 			                              {uri.fragment(), std::make_shared<schema_ref>(uri.to_string(), this)})
-			    ->second;
+			    ->second; // unresolved, create reference
 		}
 	}
 
@@ -1092,12 +1092,12 @@ std::shared_ptr<schema> schema::make(json &schema,
 		return nullptr; // TODO error/throw? when schema is invalid
 	}
 
-	for (auto &uri : uris) { // for all URI references this schema
+	for (auto &uri : uris) { // for all URIs this schema is referenced by
 		root->insert(uri, sch);
 
 		if (schema.type() == json::value_t::object)
 			for (auto &u : schema.items())
-				root->insert_unknown_keyword(uri, u.key(), u.value());
+				root->insert_unknown_keyword(uri, u.key(), u.value()); // insert unknown keywords for later reference
 	}
 	return sch;
 }
