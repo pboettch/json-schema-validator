@@ -148,56 +148,56 @@ static json good_person = {{"name", "Albert"}, {"age", 42}};
 
 int main()
 {
-	/* json-parse the schema */
+    /* json-parse the schema */
 
-	json_validator validator; // create validator
+    json_validator validator; // create validator
 
-	try {
-		validator.set_root_schema(person_schema); // insert root-schema
-	} catch (const std::exception &e) {
-		std::cerr << "Validation of schema failed, here is why: " << e.what() << "\n";
-		return EXIT_FAILURE;
-	}
+    try {
+        validator.set_root_schema(person_schema); // insert root-schema
+    } catch (const std::exception &e) {
+        std::cerr << "Validation of schema failed, here is why: " << e.what() << "\n";
+        return EXIT_FAILURE;
+    }
 
-	/* json-parse the people - API of 1.0.0, default throwing error handler */
+    /* json-parse the people - API of 1.0.0, default throwing error handler */
 
-	for (auto &person : {bad_person, good_person}) {
-		std::cout << "About to validate this person:\n"
-		          << std::setw(2) << person << std::endl;
-		try {
-			validator.validate(person); // validate the document - uses the default throwing error-handler
-			std::cout << "Validation succeeded\n";
-		} catch (const std::exception &e) {
-			std::cerr << "Validation failed, here is why: " << e.what() << "\n";
-		}
-	}
+    for (auto &person : {bad_person, good_person}) {
+        std::cout << "About to validate this person:\n"
+                  << std::setw(2) << person << std::endl;
+        try {
+            validator.validate(person); // validate the document - uses the default throwing error-handler
+            std::cout << "Validation succeeded\n";
+        } catch (const std::exception &e) {
+            std::cerr << "Validation failed, here is why: " << e.what() << "\n";
+        }
+    }
 
-	/* json-parse the people - with custom error handler */
-	class custom_error_handler : public nlohmann::json_schema::basic_error_handler
-	{
-		void error(const nlohmann::json_pointer<nlohmann::basic_json<>> &pointer, const json &instance,
-			const std::string &message) override
-		{
-			nlohmann::json_schema::basic_error_handler::error(pointer, instance, message);
-			std::cerr << "ERROR: '" << pointer << "' - '" << instance << "': " << message << "\n";
-		}
-	};
+    /* json-parse the people - with custom error handler */
+    class custom_error_handler : public nlohmann::json_schema::basic_error_handler
+    {
+        void error(const nlohmann::json_pointer<nlohmann::basic_json<>> &pointer, const json &instance,
+            const std::string &message) override
+        {
+            nlohmann::json_schema::basic_error_handler::error(pointer, instance, message);
+            std::cerr << "ERROR: '" << pointer << "' - '" << instance << "': " << message << "\n";
+        }
+    };
 
 
-	for (auto &person : {bad_person, good_person}) {
-		std::cout << "About to validate this person:\n"
-		          << std::setw(2) << person << std::endl;
+    for (auto &person : {bad_person, good_person}) {
+        std::cout << "About to validate this person:\n"
+                  << std::setw(2) << person << std::endl;
 
-		custom_error_handler err;
-		validator.validate(person, err); // validate the document
+        custom_error_handler err;
+        validator.validate(person, err); // validate the document
 
-		if (err)
-			std::cerr << "Validation failed\n";
-		else
-			std::cout << "Validation succeeded\n";
-	}
+        if (err)
+            std::cerr << "Validation failed\n";
+        else
+            std::cout << "Validation succeeded\n";
+    }
 
-	return EXIT_SUCCESS;
+    return EXIT_SUCCESS;
 }
 ```
 
@@ -223,7 +223,7 @@ provided manually to the constructor of the validator:
 
 ```C++
 json_validator validator(loader,
-						 nlohmann::json_schema::default_string_format_check);
+                         nlohmann::json_schema::default_string_format_check);
 ```
 
 # Contributing
