@@ -19,7 +19,8 @@ def get_version():
 class JsonSchemaValidatorConan(ConanFile):
     name = 'JsonSchemaValidator'
     version = get_version()
-    url = 'https://github.com/lukaszlaszko/json-schema-validator'
+    url = 'https://github.com/pboettch/json-schema-validator'
+    license = 'MIT'
     settings = 'os', 'compiler', 'build_type', 'arch'
     options = {
         'shared': [True, False],
