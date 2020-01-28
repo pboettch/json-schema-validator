@@ -1,6 +1,6 @@
 import os
 import re
-from conans import load, ConanFile, CMake
+from conans import load, tools, ConanFile, CMake
 
 
 def get_version():
@@ -60,7 +60,7 @@ class JsonSchemaValidatorConan(ConanFile):
 
         libdir = os.path.join(self.package_folder, "lib")
         self.cpp_info.libdirs = [libdir]
-        self.cpp_info.libs += self.collect_libs(libdir)
+        self.cpp_info.libs += tools.collect_libs(self, libdir)
 
         bindir = os.path.join(self.package_folder, "bin")
         self.output.info("Appending PATH environment variable: {}".format(bindir))
