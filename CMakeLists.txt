@@ -129,6 +129,9 @@ if (BUILD_EXAMPLES)
 
     add_executable(readme-json-schema app/readme.cpp)
     target_link_libraries(readme-json-schema nlohmann_json_schema_validator)
+
+    install(TARGETS json-schema-validate readme-json-schema
+            DESTINATION bin)
 endif()
 
 if (BUILD_TESTS)
