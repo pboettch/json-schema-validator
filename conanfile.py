@@ -38,8 +38,6 @@ class JsonSchemaValidatorConan(ConanFile):
         'app/*',
     ]
 
-    _build_subfolder = 'build_subfolder'
-
     requires = (
         'nlohmann_json/3.7.3'
     )
