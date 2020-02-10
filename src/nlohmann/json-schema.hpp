@@ -71,14 +71,14 @@ public:
 		update(uri);
 	}
 
-	const std::string scheme() const { return scheme_; }
-	const std::string authority() const { return authority_; }
-	const std::string path() const { return path_; }
+	const std::string &scheme() const { return scheme_; }
+	const std::string &authority() const { return authority_; }
+	const std::string &path() const { return path_; }
 
-	const json::json_pointer pointer() const { return pointer_; }
-	const std::string identifier() const { return identifier_; }
+	const json::json_pointer &pointer() const { return pointer_; }
+	const std::string &identifier() const { return identifier_; }
 
-	const std::string fragment() const
+	std::string fragment() const
 	{
 		if (identifier_ == "")
 			return pointer_;
@@ -86,8 +86,8 @@ public:
 			return identifier_;
 	}
 
-	const std::string url() const { return location(); }
-	const std::string location() const;
+	std::string url() const { return location(); }
+	std::string location() const;
 
 	static std::string escape(const std::string &);
 
