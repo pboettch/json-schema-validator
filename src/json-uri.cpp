@@ -44,7 +44,7 @@ void json_uri::update(const std::string &uri)
 
 	auto location = uri.substr(0, pointer_separator);
 
-	if (location.size()) {          // a location part has been found
+	if (location.size()) { // a location part has been found
 
 		// if it is an URN take it as it is
 		if (location.find("urn:") == 0) {
@@ -99,7 +99,7 @@ void json_uri::update(const std::string &uri)
 		identifier_ = pointer;
 }
 
-const std::string json_uri::location() const
+std::string json_uri::location() const
 {
 	if (urn_.size())
 		return urn_;
