@@ -1150,6 +1150,11 @@ void json_validator::set_root_schema(const json &schema)
 	root_->set_root_schema(schema);
 }
 
+void json_validator::set_root_schema(json &&schema)
+{
+	root_->set_root_schema(std::move(schema));
+}
+
 void json_validator::validate(const json &instance) const
 {
 	throwing_error_handler err;
