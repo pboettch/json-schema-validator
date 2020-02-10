@@ -176,6 +176,7 @@ public:
 
 	// insert and set the root-schema
 	void set_root_schema(const json &);
+	void set_root_schema(json &&);
 
 	// validate a json-document based on the root-schema
 	void validate(const json &) const;
