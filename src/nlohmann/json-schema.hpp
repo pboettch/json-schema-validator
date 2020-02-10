@@ -171,6 +171,7 @@ public:
 	json_validator(schema_loader = nullptr, format_checker = nullptr);
 	json_validator(json_validator &&);
 	json_validator(const json &, schema_loader = nullptr, format_checker = nullptr);
+	json_validator(json &&, schema_loader = nullptr, format_checker = nullptr);
 	~json_validator();
 	json_validator &operator=(json_validator &&);
 

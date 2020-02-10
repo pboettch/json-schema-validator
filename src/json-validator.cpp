@@ -1129,14 +1129,20 @@ namespace json_schema
 
 json_validator::json_validator(schema_loader loader,
                                format_checker format)
-    : root_(std::unique_ptr<root_schema>(new root_schema(loader, format)))
+    : root_(std::unique_ptr<root_schema>(new root_schema(std::move(loader), std::move(format))))
 {
 }
 
 json_validator::json_validator(const json &schema, schema_loader loader, format_checker format)
-    : json_validator(loader, format)
+    : json_validator(std::move(loader), std::move(format))
 {
 	set_root_schema(schema);
+}
+
+json_validator::json_validator(json &&schema, schema_loader loader, format_checker format)
+    : json_validator(std::move(loader), std::move(format))
+{
+	set_root_schema(std::move(schema));
 }
 
 // move constructor, destructor and move assignment operator can be defaulted here
