@@ -176,6 +176,9 @@ public:
 	json_validator(json_validator &&);
 	json_validator &operator=(json_validator &&);
 
+	json_validator(json_validator const &) = delete;
+	json_validator &operator=(json_validator const &) = delete;
+
 	~json_validator();
 
 	// insert and set the root-schema
