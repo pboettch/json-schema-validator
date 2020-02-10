@@ -169,11 +169,14 @@ class JSON_SCHEMA_VALIDATOR_API json_validator
 
 public:
 	json_validator(schema_loader = nullptr, format_checker = nullptr);
-	json_validator(json_validator &&);
+
 	json_validator(const json &, schema_loader = nullptr, format_checker = nullptr);
 	json_validator(json &&, schema_loader = nullptr, format_checker = nullptr);
-	~json_validator();
+
+	json_validator(json_validator &&);
 	json_validator &operator=(json_validator &&);
+
+	~json_validator();
 
 	// insert and set the root-schema
 	void set_root_schema(const json &);
