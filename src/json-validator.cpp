@@ -36,6 +36,8 @@ protected:
 	root_schema *root_;
 
 public:
+	virtual ~schema() = default;
+
 	schema(root_schema *root)
 	    : root_(root) {}
 
