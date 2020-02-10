@@ -103,9 +103,9 @@ class root_schema : public schema
 	}
 
 public:
-	root_schema(schema_loader loader,
-	            format_checker format)
-	    : schema(this), loader_(loader), format_check_(format) {}
+	root_schema(schema_loader &&loader,
+	            format_checker &&format)
+	    : schema(this), loader_(std::move(loader)), format_check_(std::move(format)) {}
 
 	format_checker &format_check() { return format_check_; }
 
