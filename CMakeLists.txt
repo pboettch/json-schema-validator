@@ -74,15 +74,14 @@ else()
         # find nlohmann/json.hpp
 
         message(STATUS ${nlohmann_json_orignal_DIR})
-
         find_path(JSON_HPP nlohmann/json.hpp
                   PATHS ${nlohmann_json_orignal_DIR})
 
-        if(EXISTS ${JSON_HPP}/nlohmann/json.hpp)
+        if(EXISTS ${JSON_HPP})
             message(STATUS "Found nlohmann/json.hpp in given path: ${JSON_HPP}")
             target_include_directories(
                 nlohmann_json_schema_validator
-                PUBLIC $<BUILD_INTERFACE:${JSON_HPP}>)
+                PUBLIC $<BUILD_INTERFACE:${nlohmann_json_orignal_DIR}>)
         else()
             message(FATAL_ERROR "could not find nlohmann/json.hpp or any related cmake-target. Please set nlohmann_json_DIR.")
         endif()
