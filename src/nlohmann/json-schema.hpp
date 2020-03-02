@@ -186,10 +186,10 @@ public:
 	void set_root_schema(json &&);
 
 	// validate a json-document based on the root-schema
-	void validate(const json &) const;
+	json validate(const json &) const;
 
 	// validate a json-document based on the root-schema with a custom error-handler
-	void validate(const json &, error_handler &) const;
+	json validate(const json &, error_handler &) const;
 };
 
 } // namespace json_schema
