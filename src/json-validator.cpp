@@ -49,6 +49,33 @@ public:
 	                                    std::vector<nlohmann::json_uri> uris);
 };
 
+class schema_with_default : public schema
+{
+	json defaultValue_{};
+
+public:
+	schema_with_default(json &sch, root_schema *root)
+	    : schema(root)
+	{
+		const auto attr = sch.find("default");
+		if (attr != sch.end()) {
+			defaultValue_ = std::move(attr.value());
+			sch.erase(attr);
+		}
+	}
+
+	schema_with_default(const json &sch, root_schema *root)
+	    : schema(root)
+	{
+		const auto attr = sch.find("default");
+		if (attr != sch.end()) {
+			defaultValue_ = attr.value();
+		}
+	}
+
+	virtual ~schema_with_default() = default;
+};
+
 class schema_ref : public schema
 {
 	const std::string id_;
@@ -523,7 +550,7 @@ public:
 	}
 };
 
-class string : public schema
+class string : public schema_with_default
 {
 	std::pair<bool, size_t> maxLength_{false, 0};
 	std::pair<bool, size_t> minLength_{false, 0};
@@ -583,7 +610,7 @@ class string : public schema
 
 public:
 	string(json &sch, root_schema *root)
-	    : schema(root)
+	    : schema_with_default(sch, root)
 	{
 		auto attr = sch.find("maxLength");
 		if (attr != sch.end()) {
@@ -616,7 +643,7 @@ public:
 };
 
 template <typename T>
-class numeric : public schema
+class numeric : public schema_with_default
 {
 	std::pair<bool, T> maximum_{false, 0};
 	std::pair<bool, T> minimum_{false, 0};
@@ -655,7 +682,7 @@ class numeric : public schema
 
 public:
 	numeric(const json &sch, root_schema *root, std::set<std::string> &kw)
-	    : schema(root)
+	    : schema_with_default(sch, root)
 	{
 		auto attr = sch.find("maximum");
 		if (attr != sch.end()) {
@@ -713,7 +740,7 @@ public:
 	    : schema(root) {}
 };
 
-class boolean : public schema
+class boolean : public schema_with_default
 {
 	bool true_;
 	void validate(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
@@ -733,7 +760,7 @@ class boolean : public schema
 
 public:
 	boolean(json &sch, root_schema *root)
-	    : schema(root), true_(sch) {}
+	    : schema_with_default(sch, root), true_(sch) {}
 };
 
 class required : public schema
@@ -752,7 +779,7 @@ public:
 	    : schema(root), required_(r) {}
 };
 
-class object : public schema
+class object : public schema_with_default
 {
 	std::pair<bool, size_t> maxProperties_{false, 0};
 	std::pair<bool, size_t> minProperties_{false, 0};
@@ -822,7 +849,7 @@ public:
 	object(json &sch,
 	       root_schema *root,
 	       const std::vector<nlohmann::json_uri> &uris)
-	    : schema(root)
+	    : schema_with_default(sch, root)
 	{
 		auto attr = sch.find("maxProperties");
 		if (attr != sch.end()) {
@@ -896,7 +923,7 @@ public:
 	}
 };
 
-class array : public schema
+class array : public schema_with_default
 {
 	std::pair<bool, size_t> maxItems_{false, 0};
 	std::pair<bool, size_t> minItems_{false, 0};
@@ -966,7 +993,7 @@ class array : public schema
 
 public:
 	array(json &sch, root_schema *root, const std::vector<nlohmann::json_uri> &uris)
-	    : schema(root)
+	    : schema_with_default(sch, root)
 	{
 		auto attr = sch.find("maxItems");
 		if (attr != sch.end()) {
