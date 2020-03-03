@@ -28,10 +28,7 @@ static json person_schema = R"(
 						"street":{
 							"type": "string",
 							"default": "Abbey Road"
-						}
-					}
-				}
-    },
+    }}}},
     "required": [
                  "name",
                  "age"
