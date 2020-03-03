@@ -13,7 +13,7 @@ add_library(nlohmann_json_schema_validator
     src/json-schema-draft7.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp
-    src/json_patch.cpp
+    src/json-patch.cpp
     src/string-format-check.cpp)
 
 target_include_directories(nlohmann_json_schema_validator

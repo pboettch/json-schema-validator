@@ -8,7 +8,7 @@
  */
 #include <nlohmann/json-schema.hpp>
 
-#include "json_patch.hpp"
+#include "json-patch.hpp"
 
 #include <memory>
 #include <set>
