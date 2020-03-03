@@ -12,23 +12,26 @@ static json person_schema = R"(
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "A person",
     "properties": {
-        "name": {
-            "description": "Name",
-            "type": "string"
-        },
-        "age": {
-            "description": "Age of the person",
-            "type": "number",
-            "minimum": 2,
-            "maximum": 200
-        },
-				"address":{
-					"type": "object",
-					"properties":{
-						"street":{
-							"type": "string",
-							"default": "Abbey Road"
-    }}}},
+      "name": {
+          "description": "Name",
+          "type": "string"
+      },
+      "age": {
+          "description": "Age of the person",
+          "type": "number",
+          "minimum": 2,
+          "maximum": 200
+      },
+      "address":{
+        "type": "object",
+        "properties":{
+          "street":{
+            "type": "string",
+            "default": "Abbey Road"
+          }
+        }
+      }
+    },
     "required": [
                  "name",
                  "age"
