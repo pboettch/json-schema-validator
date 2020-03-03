@@ -814,6 +814,17 @@ class object : public schema
 
 	void validate(const json::json_pointer &ptr, json &instance, error_handler &e) const override
 	{
+		// reverse search
+		for (auto const &prop : properties_) {
+			const auto finding = instance.find(prop.first);
+			if (instance.end() == finding) { // if the prop is not in the instance
+				const auto &defaultValue = prop.second->defaultValue(ptr, instance, e);
+				if (!defaultValue.empty()) { // if default value is available
+					instance[prop.first] = defaultValue;
+				}
+			}
+		}
+
 		if (maxProperties_.first && instance.size() > maxProperties_.second)
 			e.error(ptr, instance, "too many properties");
 
@@ -854,17 +865,6 @@ class object : public schema
 				additionalProperties_->validate(ptr / p.key(), p.value(), additional_prop_err);
 				if (additional_prop_err)
 					e.error(ptr, instance, "validation failed for additional property '" + p.key() + "': " + additional_prop_err.message_);
-			}
-		}
-
-		// reverse search
-		for (auto const &prop : properties_) {
-			const auto finding = instance.find(prop.first);
-			if (instance.end() == finding) { // if the prop is not in the instance
-				const auto &defaultValue = prop.second->defaultValue(ptr, instance, e);
-				if (!defaultValue.empty()) { // if default value is available
-					instance[prop.first] = defaultValue;
-				}
 			}
 		}
 
