@@ -8,11 +8,14 @@
  */
 #include <nlohmann/json-schema.hpp>
 
+#include "json_patch.hpp"
+
 #include <memory>
 #include <set>
 #include <sstream>
 
 using nlohmann::json;
+using nlohmann::json_patch;
 using nlohmann::json_uri;
 using nlohmann::json_schema::root_schema;
 using namespace nlohmann::json_schema;
@@ -43,7 +46,7 @@ public:
 	schema(root_schema *root)
 	    : root_(root) {}
 
-	virtual void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const = 0;
+	virtual void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const = 0;
 
 	virtual const json &defaultValue(const json::json_pointer &, const json &, error_handler &) const
 	{
@@ -61,7 +64,7 @@ class schema_ref : public schema
 	const std::string id_;
 	std::shared_ptr<schema> target_;
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const final
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
 		if (target_)
 			target_->validate(ptr, instance, patch, e);
@@ -227,7 +230,7 @@ public:
 		} while (1);
 	}
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const final
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
 		if (root_)
 			root_->validate(ptr, instance, patch, e);
@@ -277,7 +280,7 @@ class logical_not : public schema
 {
 	std::shared_ptr<schema> subschema_;
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const final
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
 		first_error_handler esub;
 		subschema_->validate(ptr, instance, patch, esub);
@@ -312,7 +315,7 @@ class logical_combination : public schema
 {
 	std::vector<std::shared_ptr<schema>> subschemata_;
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const final
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
 		size_t count = 0;
 
@@ -400,7 +403,7 @@ class type_schema : public schema
 		return defaultValue_;
 	}
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const override final
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override final
 	{
 		// depending on the type of instance run the type specific validator - if present
 		auto type = type_[(uint8_t) instance.type()];
@@ -587,7 +590,7 @@ class string : public schema
 		return len;
 	}
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &, error_handler &e) const override
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		if (minLength_.first) {
 			if (utf8_length(instance) < minLength_.second) {
@@ -677,7 +680,7 @@ class numeric : public schema
 		return std::fabs(res) > std::fabs(eps);
 	}
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &, error_handler &e) const override
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		T value = instance; // conversion of json to value_type
 
@@ -736,7 +739,7 @@ public:
 
 class null : public schema
 {
-	void validate(const json::json_pointer &ptr, const json &instance, json &, error_handler &e) const override
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		if (!instance.is_null())
 			e.error(ptr, instance, "expected to be null");
@@ -749,7 +752,7 @@ public:
 
 class boolean_type : public schema
 {
-	void validate(const json::json_pointer &, const json &, json &, error_handler &) const override {}
+	void validate(const json::json_pointer &, const json &, json_patch &, error_handler &) const override {}
 
 public:
 	boolean_type(json &, root_schema *root)
@@ -759,7 +762,7 @@ public:
 class boolean : public schema
 {
 	bool true_;
-	void validate(const json::json_pointer &ptr, const json &instance, json &, error_handler &e) const override
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		if (!true_) { // false schema
 			// empty array
@@ -783,7 +786,7 @@ class required : public schema
 {
 	const std::vector<std::string> required_;
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &, error_handler &e) const override final
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override final
 	{
 		for (auto &r : required_)
 			if (instance.find(r) == instance.end())
@@ -811,7 +814,7 @@ class object : public schema
 
 	std::shared_ptr<schema> propertyNames_;
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const override
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override
 	{
 		if (maxProperties_.first && instance.size() > maxProperties_.second)
 			e.error(ptr, instance, "too many properties");
@@ -860,7 +863,7 @@ class object : public schema
 			if (instance.end() == finding) { // if the prop is not in the instance
 				const auto &defaultValue = prop.second->defaultValue(ptr, instance, e);
 				if (!defaultValue.empty()) { // if default value is available
-					patch[ptr / prop.first] = defaultValue;
+					patch.add((ptr / prop.first), defaultValue);
 				}
 			}
 		}
@@ -963,7 +966,7 @@ class array : public schema
 
 	std::shared_ptr<schema> contains_;
 
-	void validate(const json::json_pointer &ptr, const json &instance, json &patch, error_handler &e) const override
+	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override
 	{
 		if (maxItems_.first && instance.size() > maxItems_.second)
 			e.error(ptr, instance, "array has too many items");
@@ -1224,9 +1227,9 @@ json json_validator::validate(const json &instance) const
 json json_validator::validate(const json &instance, error_handler &err) const
 {
 	json::json_pointer ptr;
-	json mergePatch{};
-	root_->validate(ptr, instance, mergePatch, err);
-	return mergePatch;
+	json_patch patch{};
+	root_->validate(ptr, instance, patch, err);
+	return patch;
 }
 
 } // namespace json_schema
