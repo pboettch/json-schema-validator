@@ -1,5 +1,5 @@
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 
 #include <nlohmann/json-schema.hpp>
 
@@ -21,7 +21,16 @@ static json person_schema = R"(
             "type": "number",
             "minimum": 2,
             "maximum": 200
-        }
+        },
+				"address":{
+					"type": "object",
+					"properties":{
+						"street":{
+							"type": "string",
+							"default": "Abbey Road"
+						}
+					}
+				}
     },
     "required": [
                  "name",
@@ -34,7 +43,8 @@ static json person_schema = R"(
 
 // The people are defined with brace initialization
 static json bad_person = {{"age", 42}};
-static json good_person = {{"name", "Albert"}, {"age", 42}};
+static json good_person = {{"name", "Albert"}, {"age", 42}, {"address", {{"street", "Main Street"}}}};
+static json good_defaulted_person = {{"name", "Knut"}, {"age", 69}, {"address", {}}};
 
 int main()
 {
@@ -51,12 +61,13 @@ int main()
 
 	/* json-parse the people - API of 1.0.0, default throwing error handler */
 
-	for (auto &person : {bad_person, good_person}) {
+	for (auto &person : {bad_person, good_person, good_defaulted_person}) {
 		std::cout << "About to validate this person:\n"
 		          << std::setw(2) << person << std::endl;
 		try {
-			validator.validate(person); // validate the document - uses the default throwing error-handler
+			auto defaultPatch = validator.validate(person); // validate the document - uses the default throwing error-handler
 			std::cout << "Validation succeeded\n";
+			std::cout << "Patch with defaults: " << defaultPatch.dump(2) << std::endl;
 		} catch (const std::exception &e) {
 			std::cerr << "Validation failed, here is why: " << e.what() << "\n";
 		}
@@ -71,7 +82,6 @@ int main()
 			std::cerr << "ERROR: '" << ptr << "' - '" << instance << "': " << message << "\n";
 		}
 	};
-
 
 	for (auto &person : {bad_person, good_person}) {
 		std::cout << "About to validate this person:\n"
