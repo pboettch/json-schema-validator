@@ -10,65 +10,41 @@ using nlohmann::json_schema::json_validator;
 static json person_schema = R"(
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-		"title": "Dict",
-		"type": "array",
-		"items": {
-			"title": "A person",
-			"properties": {
-					"name": {
-							"description": "Name",
-							"type": "string"
-					},
-					"age": {
-							"description": "Age of the person",
-							"type": "number",
-							"minimum": 2,
-							"maximum": 200
-					},
-					"address":{
-						"type": "object",
-						"properties":{
-							"street":{
-								"type": "string",
-								"default": "Abbey Road"
-							}
+    "title": "A person",
+    "properties": {
+        "name": {
+            "description": "Name",
+            "type": "string"
+        },
+        "age": {
+            "description": "Age of the person",
+            "type": "number",
+            "minimum": 2,
+            "maximum": 200
+        },
+				"address":{
+					"type": "object",
+					"properties":{
+						"street":{
+							"type": "string",
+							"default": "Abbey Road"
 						}
 					}
-				},
-				"required": [
-									"name",
-									"age"
-									],
-				"type": "object"
-			}
-		}
+				}
+    },
+    "required": [
+                 "name",
+                 "age"
+                 ],
+    "type": "object"
+}
+
 )"_json;
 
 // The people are defined with brace initialization
-static json bad_person = R"([
-	{"age": 42}
-	])"_json;
-
-static json good_person = R"([
-	{
-		"name": "Albert",
-		"age": 42,
-		"address": {"street": "Main Street"}
-	}
-])"_json;
-
-static json good_defaulted_person = R"([
-	{
-		"name": "Albert",
-		"age": 42,
-		"address": {"street": "Main Street"}
-	},
-	{
-		"name": "Knut",
-		"age": 69,
-		"address": {}
-	}
-])"_json;
+static json bad_person = {{"age", 42}};
+static json good_person = {{"name", "Albert"}, {"age", 42}, {"address", {{"street", "Main Street"}}}};
+static json good_defaulted_person = {{"name", "Knut"}, {"age", 69}, {"address", {}}};
 
 int main()
 {
