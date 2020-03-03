@@ -190,6 +190,12 @@ public:
 
 	// validate a json-document based on the root-schema with a custom error-handler
 	json validate(const json &, error_handler &) const;
+
+	// validate a json-document based on the root-schema. It fills the document with default values where specified in the schema.
+	void validate_and_fill(json &) const;
+
+	// validate a json-document based on the root-schema with a custom error-handler. It fills the document with default values where specified in the schema.
+	void validate_and_fill(json &, error_handler &) const;
 };
 
 } // namespace json_schema

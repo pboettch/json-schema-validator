@@ -37,7 +37,7 @@ static const json person_schema = R"(
     "type": "object"
 })"_json;
 
-int main(void)
+int immutable_validation()
 {
 	json_validator validator{};
 
@@ -95,6 +95,43 @@ int main(void)
 		std::cerr << "Patch with defaults contains wrong value" << std::endl;
 		return 1;
 	}
+	return 0;
+}
+
+int validation_and_fill()
+{
+	json_validator validator{};
+
+	// add address which is optional that should generate a diff containing a default street
+	json person_missing_address = R"({
+    "name": "Knut",
+    "age": 12,
+    "address": {}
+})"_json;
+
+	validator.set_root_schema(person_schema);
+
+	validator.validate_and_fill(person_missing_address);
+
+	if (!person_missing_address.contains("/address/street"_json_pointer)) {
+		std::cerr << "Validated document should contain default value" << std::endl;
+		return 1;
+	}
+
+	if (person_missing_address["/address/street"_json_pointer].get<std::string>() != "Abbey Road") {
+		std::cerr << "Validated document with defaults contains wrong value" << std::endl;
+		return 1;
+	}
 
 	return 0;
+}
+
+int main(void)
+{
+	int ret = 0;
+
+	ret += immutable_validation();
+	ret += validation_and_fill();
+
+	return ret;
 }
