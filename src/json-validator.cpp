@@ -814,6 +814,7 @@ class object : public schema
 
 	void validate(const json::json_pointer &ptr, json &instance, error_handler &e) const override
 	{
+		std::set<std::string> ignoredProperties{};
 		// reverse search
 		for (auto const &prop : properties_) {
 			const auto finding = instance.find(prop.first);
@@ -821,6 +822,7 @@ class object : public schema
 				const auto &defaultValue = prop.second->defaultValue(ptr, instance, e);
 				if (!defaultValue.empty()) { // if default value is available
 					instance[prop.first] = defaultValue;
+					ignoredProperties.emplace(prop.first);
 				}
 			}
 		}
@@ -840,6 +842,12 @@ class object : public schema
 			if (propertyNames_) {
 				json v = p.key();
 				propertyNames_->validate(ptr, v, e);
+			}
+
+			const auto finding = ignoredProperties.find(p.key());
+			if (ignoredProperties.end() != finding) {
+				// defaults shall not invalidate schemas
+				continue;
 			}
 
 			bool a_prop_or_pattern_matched = false;
