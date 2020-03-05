@@ -39,6 +39,10 @@ add_executable(issue-25-default-values issue-25-default-values.cpp)
 target_link_libraries(issue-25-default-values nlohmann_json_schema_validator)
 add_test(NAME issue-25-default-values COMMAND issue-25-default-values)
 
+add_executable(issue-xx-test-with-defaults issue-xx.cpp)
+target_link_libraries(issue-xx-test-with-defaults nlohmann_json_schema_validator)
+add_test(NAME issue-xx-test-with-defaults COMMAND issue-xx-test-with-defaults)
+
 # Unit test for string format checks
 add_executable("string-format-check-test" "string-format-check-test.cpp")
 target_include_directories("string-format-check-test" PRIVATE "${PROJECT_SOURCE_DIR}/src/")
