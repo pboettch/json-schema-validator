@@ -3,9 +3,6 @@
 namespace nlohmann
 {
 
-json_patch::json_patch()
-    : j_{R"([])"_json} {}
-
 json_patch::json_patch(json &&patch)
     : j_{std::move(patch)}
 {

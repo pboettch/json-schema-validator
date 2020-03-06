@@ -20,7 +20,7 @@ private:
 class json_patch
 {
 public:
-	json_patch();
+	json_patch() = default;
 	json_patch(json &&patch);
 	json_patch(const json &patch);
 
