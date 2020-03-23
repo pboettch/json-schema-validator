@@ -75,7 +75,7 @@ class schema_ref : public schema
 	const json &defaultValue(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
 	{
 		if (target_)
-			target_->defaultValue(ptr, instance, e);
+			return target_->defaultValue(ptr, instance, e);
 		else
 			e.error(ptr, instance, "unresolved schema-reference " + id_);
 
@@ -241,7 +241,7 @@ public:
 	const json &defaultValue(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
 	{
 		if (root_)
-			root_->defaultValue(ptr, instance, e);
+			return root_->defaultValue(ptr, instance, e);
 		else
 			e.error(ptr, "", "no root schema has yet been set for validating an instance");
 

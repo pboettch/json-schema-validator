@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # all argument are considered as a program to call (with its arguments),
-# the last argument is read from via '<'
+# the last argument is read from stdin via '<'
 
 set -e
 
