@@ -115,12 +115,12 @@ endif()
 
 install(TARGETS nlohmann_json_schema_validator
         EXPORT ${PROJECT_NAME}Targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin)
+        LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+        RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(FILES src/nlohmann/json-schema.hpp
-        DESTINATION include/nlohmann)
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/include/nlohmann)
 
 if (BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
