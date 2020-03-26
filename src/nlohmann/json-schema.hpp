@@ -71,14 +71,14 @@ public:
 		update(uri);
 	}
 
-	const std::string scheme() const { return scheme_; }
-	const std::string authority() const { return authority_; }
-	const std::string path() const { return path_; }
+	const std::string &scheme() const { return scheme_; }
+	const std::string &authority() const { return authority_; }
+	const std::string &path() const { return path_; }
 
-	const json::json_pointer pointer() const { return pointer_; }
-	const std::string identifier() const { return identifier_; }
+	const json::json_pointer &pointer() const { return pointer_; }
+	const std::string &identifier() const { return identifier_; }
 
-	const std::string fragment() const
+	std::string fragment() const
 	{
 		if (identifier_ == "")
 			return pointer_;
@@ -86,8 +86,8 @@ public:
 			return identifier_;
 	}
 
-	const std::string url() const { return location(); }
-	const std::string location() const;
+	std::string url() const { return location(); }
+	std::string location() const;
 
 	static std::string escape(const std::string &);
 
@@ -169,19 +169,27 @@ class JSON_SCHEMA_VALIDATOR_API json_validator
 
 public:
 	json_validator(schema_loader = nullptr, format_checker = nullptr);
-	json_validator(json_validator &&);
+
 	json_validator(const json &, schema_loader = nullptr, format_checker = nullptr);
-	~json_validator();
+	json_validator(json &&, schema_loader = nullptr, format_checker = nullptr);
+
+	json_validator(json_validator &&);
 	json_validator &operator=(json_validator &&);
+
+	json_validator(json_validator const &) = delete;
+	json_validator &operator=(json_validator const &) = delete;
+
+	~json_validator();
 
 	// insert and set the root-schema
 	void set_root_schema(const json &);
+	void set_root_schema(json &&);
 
 	// validate a json-document based on the root-schema
-	void validate(const json &) const;
+	json validate(const json &) const;
 
 	// validate a json-document based on the root-schema with a custom error-handler
-	void validate(const json &, error_handler &) const;
+	json validate(const json &, error_handler &) const;
 };
 
 } // namespace json_schema

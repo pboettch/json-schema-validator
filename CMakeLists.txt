@@ -13,6 +13,7 @@ add_library(nlohmann_json_schema_validator
     src/json-schema-draft7.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp
+    src/json-patch.cpp
     src/string-format-check.cpp)
 
 target_include_directories(nlohmann_json_schema_validator
@@ -29,6 +30,10 @@ set_target_properties(nlohmann_json_schema_validator
                           VERSION ${PROJECT_VERSION}
                           SOVERSION 1)
 
+# if used as a sub-directory, do not create install-rules -
+# because of the dependency to nlohmann_json.
+set(JSON_VALIDATOR_INSTALL ON)
+
 # here we decice how nlohmann::json is found and used to build this project
 
 # first, check whether a nlohmann_json::nlohmann_json target exists already
@@ -39,11 +44,15 @@ if(TARGET nlohmann_json::nlohmann_json)
         nlohmann_json_schema_validator
         PUBLIC nlohmann_json::nlohmann_json)
 
+    set(JSON_VALIDATOR_INSTALL OFF)
+
 elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next to nlohmann-json's git repo
     message(STATUS "Found nlohmann_json-target - linking with it")
     target_link_libraries(
         nlohmann_json_schema_validator
         PUBLIC nlohmann_json)
+    set(JSON_VALIDATOR_INSTALL OFF)
+
 else()
     if (NOT IS_ABSOLUTE ${nlohmann_json_DIR}) # make nlohmann_json_DIR absolute
         get_filename_component(nlohmann_json_DIR
@@ -122,6 +131,7 @@ install(TARGETS nlohmann_json_schema_validator
 install(FILES src/nlohmann/json-schema.hpp
         DESTINATION ${CMAKE_INSTALL_PREFIX}/include/nlohmann)
 
+
 if (BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
     add_executable(json-schema-validate app/json-schema-validate.cpp)
@@ -129,6 +139,9 @@ if (BUILD_EXAMPLES)
 
     add_executable(readme-json-schema app/readme.cpp)
     target_link_libraries(readme-json-schema nlohmann_json_schema_validator)
+
+    install(TARGETS json-schema-validate readme-json-schema
+            DESTINATION bin)
 endif()
 
 if (BUILD_TESTS)
@@ -136,35 +149,36 @@ if (BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
-#---------------------------------------------------------------------------##
-# Set Up the Project Targets and Config Files for CMake
-#---------------------------------------------------------------------------##
 
-# Set the install path to the cmake config files
-set(INSTALL_CMAKE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cmake/${PROJECT_NAME})
+if(JSON_VALIDATOR_INSTALL)
+    # Set Up the Project Targets and Config Files for CMake
 
-# Create the ConfigVersion file
-include(CMakePackageConfigHelpers) # write_basic_package_version_file
-write_basic_package_version_file( ${PROJECT_NAME}ConfigVersion.cmake
-                                  VERSION ${PACKAGE_VERSION}
-                                  COMPATIBILITY SameMajorVersion)
+    # Set the install path to the cmake config files
+    set(INSTALL_CMAKE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cmake/${PROJECT_NAME})
 
-# Get the relative path from the INSTALL_CMAKE_DIR to the include directory
-file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/include")
+    # Create the ConfigVersion file
+    include(CMakePackageConfigHelpers) # write_basic_package_version_file
+    write_basic_package_version_file( ${PROJECT_NAME}ConfigVersion.cmake
+                                      VERSION ${PACKAGE_VERSION}
+                                      COMPATIBILITY SameMajorVersion)
+
+    # Get the relative path from the INSTALL_CMAKE_DIR to the include directory
+    file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/include")
 
 
-# Configure the Config.cmake file with the proper include directory
-set(CONF_INCLUDE_DIRS "\${JSON_SCHEMA_VALIDATOR_CMAKE_DIR}/${REL_INCLUDE_DIR}")
-configure_file(${PROJECT_NAME}Config.cmake.in
-               "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" @ONLY)
+    # Configure the Config.cmake file with the proper include directory
+    set(CONF_INCLUDE_DIRS "\${JSON_SCHEMA_VALIDATOR_CMAKE_DIR}/${REL_INCLUDE_DIR}")
+    configure_file(${PROJECT_NAME}Config.cmake.in
+                   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" @ONLY)
 
-# Install the Config.cmake and ConfigVersion.cmake files
-install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        DESTINATION "${INSTALL_CMAKE_DIR}")
+    # Install the Config.cmake and ConfigVersion.cmake files
+    install(FILES
+            "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+            "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+            DESTINATION "${INSTALL_CMAKE_DIR}")
 
-# Install Targets
-install(EXPORT ${PROJECT_NAME}Targets
-        FILE ${PROJECT_NAME}Targets.cmake
-        DESTINATION "${INSTALL_CMAKE_DIR}")
+    # Install Targets
+    install(EXPORT ${PROJECT_NAME}Targets
+            FILE ${PROJECT_NAME}Targets.cmake
+            DESTINATION "${INSTALL_CMAKE_DIR}")
+endif()
