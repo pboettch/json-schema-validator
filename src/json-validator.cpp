@@ -1118,6 +1118,13 @@ std::shared_ptr<schema> schema::make(json &schema,
                                      const std::vector<std::string> &keys,
                                      std::vector<nlohmann::json_uri> uris)
 {
+	// remove URIs which contain plain name identifiers, as sub-schemas cannot be referenced
+	for (auto uri = uris.begin(); uri != uris.end();)
+		if (uri->identifier() != "")
+			uri = uris.erase(uri);
+		else
+			uri++;
+
 	// append to all URIs the keys for this sub-schema
 	for (auto &key : keys)
 		for (auto &uri : uris)
