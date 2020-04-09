@@ -1163,7 +1163,7 @@ std::shared_ptr<schema> schema::make(json &schema,
 		schema.erase("title");
 		schema.erase("description");
 	} else {
-		return nullptr; // TODO error/throw? when schema is invalid
+		throw std::invalid_argument("invalid JSON-type for a schema for " + uris[0].to_string() + ", expected: boolean or object");
 	}
 
 	for (auto &uri : uris) { // for all URIs this schema is referenced by
