@@ -177,14 +177,19 @@ public:
 			return schema->second;
 
 		// referencing an unknown keyword, turn it into schema
-		try {
-			auto &subschema = file.unknown_keywords.at(uri.pointer()); // null is returned if not existing
-			auto s = schema::make(subschema, this, {}, {{uri}});       //  A JSON Schema MUST be an object or a boolean.
-			if (s) {                                                   // nullptr if invalid schema, e.g. null
-				file.unknown_keywords.erase(uri.fragment());
-				return s;
+		//
+		// an unknown keyword can only be referenced by a json-pointer,
+		// not by a plain name fragment
+		if (uri.pointer() != "") {
+			try {
+				auto &subschema = file.unknown_keywords.at(uri.pointer()); // null is returned if not existing
+				auto s = schema::make(subschema, this, {}, {{uri}});       //  A JSON Schema MUST be an object or a boolean.
+				if (s) {                                                   // nullptr if invalid schema, e.g. null
+					file.unknown_keywords.erase(uri.fragment());
+					return s;
+				}
+			} catch (nlohmann::detail::out_of_range &) { // at() did not find it
 			}
-		} catch (nlohmann::detail::out_of_range &) { // at() did not find it
 		}
 
 		// get or create a schema_ref
