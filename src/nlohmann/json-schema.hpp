@@ -61,6 +61,13 @@ protected:
 
 	std::tuple<std::string, std::string, std::string, std::string, std::string> tie() const
 	{
+		// The original
+		//    return std::tie(urn_, scheme_, authority_, path_,
+		//                    identifier_ != "" ? identifier_ : pointer_);
+		//
+		// does not compile under Visual Studio 2019
+		// The error occurs when including this file, NOT when building this project
+		//
 		if (identifier_ != "") {
 			return std::tie(urn_, scheme_, authority_, path_, identifier_);
 		} else {
