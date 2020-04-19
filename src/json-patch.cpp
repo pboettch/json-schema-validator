@@ -1,5 +1,15 @@
 #include "json-patch.hpp"
 
+#ifdef __has_cpp_attribute
+#if __has_cpp_attribute(maybe_unused)
+#define JSV_MAYBE_UNUSED [[maybe_unused]]
+#endif
+#endif
+
+#ifndef JSV_MAYBE_UNUSED
+#define JSV_MAYBE_UNUSED
+#endif
+
 namespace nlohmann
 {
 
@@ -59,7 +69,7 @@ void json_patch::validateJsonPatch(json const &patch)
 
 		try {
 			// try parse to path
-			[[maybe_unused]] const auto p = json::json_pointer{op["path"].get<std::string>()};
+			JSV_MAYBE_UNUSED const auto p = json::json_pointer{op["path"].get<std::string>()};
 		} catch (json::exception &e) {
 			throw JsonPatchFormatException{e.what()};
 		}
