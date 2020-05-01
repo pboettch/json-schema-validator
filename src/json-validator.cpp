@@ -62,22 +62,26 @@ public:
 class schema_ref : public schema
 {
 	const std::string id_;
-	std::shared_ptr<schema> target_;
+	std::weak_ptr<schema> target_;
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
-		if (target_)
-			target_->validate(ptr, instance, patch, e);
+		auto target = target_.lock();
+
+		if (target)
+			target->validate(ptr, instance, patch, e);
 		else
-			e.error(ptr, instance, "unresolved schema-reference " + id_);
+			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
 	}
 
 	const json &defaultValue(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
 	{
-		if (target_)
-			return target_->defaultValue(ptr, instance, e);
+		auto target = target_.lock();
+
+		if (target)
+			return target->defaultValue(ptr, instance, e);
 		else
-			e.error(ptr, instance, "unresolved schema-reference " + id_);
+			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
 
 		return EmptyDefault;
 	}
@@ -87,7 +91,7 @@ public:
 	    : schema(root), id_(id) {}
 
 	const std::string &id() const { return id_; }
-	void set_target(std::shared_ptr<schema> target) { target_ = target; }
+	void set_target(const std::shared_ptr<schema> &target) { target_ = target; }
 };
 
 } // namespace
