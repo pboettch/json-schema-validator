@@ -4,7 +4,12 @@ int main(void)
 {
 	nlohmann::json nlBase{{"$ref", "#/unknown/keywords"}};
 	nlohmann::json_schema::json_validator validator;
-	validator.set_root_schema(nlBase); // this line will log the caught exception
 
-	return 0;
+	try {
+		validator.set_root_schema(nlBase); // this line will log the caught exception
+	} catch (const std::exception &e) {
+		if (std::string("after all files have been parsed, '<root>' has still undefined references.") == e.what())
+			return EXIT_SUCCESS;
+	}
+	return EXIT_FAILURE;
 }
