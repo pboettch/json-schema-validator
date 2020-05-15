@@ -44,8 +44,14 @@ target_link_libraries(issue-98 nlohmann_json_schema_validator)
 add_test(NAME issue-98-erase-exception-unknown-keywords COMMAND issue-98)
 
 # Unit test for string format checks
-add_executable("string-format-check-test" "string-format-check-test.cpp")
-target_include_directories("string-format-check-test" PRIVATE "${PROJECT_SOURCE_DIR}/src/")
-target_link_libraries("string-format-check-test" nlohmann_json_schema_validator)
+add_executable(string-format-check-test string-format-check-test.cpp)
+target_include_directories(string-format-check-test PRIVATE ${PROJECT_SOURCE_DIR}/src/)
+target_link_libraries(string-format-check-test nlohmann_json_schema_validator)
 
-add_test(NAME "string-format-check-test" COMMAND "string-format-check-test")
+add_test(NAME string-format-check-test COMMAND string-format-check-test)
+
+# Unit test for json-patch
+add_executable(json-patch json-patch.cpp)
+target_include_directories(json-patch PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(json-patch nlohmann_json_schema_validator)
+add_test(NAME json-patch COMMAND json-patch)

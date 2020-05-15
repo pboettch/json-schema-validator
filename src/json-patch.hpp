@@ -24,9 +24,9 @@ public:
 	json_patch(json &&patch);
 	json_patch(const json &patch);
 
-	json_patch &add(std::string path, json value);
-	json_patch &replace(std::string path, json value);
-	json_patch &remove(std::string path);
+	json_patch &add(const json::json_pointer &, json value);
+	json_patch &replace(const json::json_pointer &, json value);
+	json_patch &remove(const json::json_pointer &);
 
 	operator json() const { return j_; }
 

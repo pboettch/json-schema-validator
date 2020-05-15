@@ -1245,7 +1245,7 @@ json json_validator::validate(const json &instance) const
 json json_validator::validate(const json &instance, error_handler &err) const
 {
 	json::json_pointer ptr;
-	json_patch patch{};
+	json_patch patch;
 	root_->validate(ptr, instance, patch, err);
 	return patch;
 }

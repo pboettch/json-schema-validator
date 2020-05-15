@@ -1,75 +1,115 @@
 #include "json-patch.hpp"
 
+#include <nlohmann/json-schema.hpp>
+
+namespace
+{
+
+// originally from http://jsonpatch.com/, http://json.schemastore.org/json-patch
+// with fixes
+const nlohmann::json patch_schema = R"patch({
+    "title": "JSON schema for JSONPatch files",
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "array",
+
+    "items": {
+        "oneOf": [
+            {
+                "additionalProperties": false,
+                "required": [ "value", "op", "path"],
+                "properties": {
+                    "path" : { "$ref": "#/definitions/path" },
+                    "op": {
+                        "description": "The operation to perform.",
+                        "type": "string",
+                        "enum": [ "add", "replace", "test" ]
+                    },
+                    "value": {
+                        "description": "The value to add, replace or test."
+                    }
+                }
+            },
+            {
+                "additionalProperties": false,
+                "required": [ "op", "path"],
+                "properties": {
+                    "path" : { "$ref": "#/definitions/path" },
+                    "op": {
+                        "description": "The operation to perform.",
+                        "type": "string",
+                        "enum": [ "remove" ]
+                    }
+                }
+            },
+            {
+                "additionalProperties": false,
+                "required": [ "from", "op", "path" ],
+                "properties": {
+                    "path" : { "$ref": "#/definitions/path" },
+                    "op": {
+                        "description": "The operation to perform.",
+                        "type": "string",
+                        "enum": [ "move", "copy" ]
+                    },
+                    "from": {
+                        "$ref": "#/definitions/path",
+                        "description": "A JSON Pointer path pointing to the location to move/copy from."
+                    }
+                }
+            }
+        ]
+    },
+    "definitions": {
+        "path": {
+            "description": "A JSON Pointer path.",
+            "type": "string"
+        }
+    }
+})patch"_json;
+}; // namespace
+
 namespace nlohmann
 {
 
 json_patch::json_patch(json &&patch)
-    : j_{std::move(patch)}
+    : j_(std::move(patch))
 {
 	validateJsonPatch(j_);
 }
 
 json_patch::json_patch(const json &patch)
-    : j_{std::move(patch)}
+    : j_(std::move(patch))
 {
 	validateJsonPatch(j_);
 }
 
-json_patch &json_patch::add(std::string path, json value)
+json_patch &json_patch::add(const json::json_pointer &ptr, json value)
 {
-	j_.push_back(json{{"op", "add"}, {"path", std::move(path)}, {"value", std::move(value)}});
+	j_.push_back(json{{"op", "add"}, {"path", ptr}, {"value", std::move(value)}});
 	return *this;
 }
 
-json_patch &json_patch::replace(std::string path, json value)
+json_patch &json_patch::replace(const json::json_pointer &ptr, json value)
 {
-	j_.push_back(json{{"op", "replace"}, {"path", std::move(path)}, {"value", std::move(value)}});
+	j_.push_back(json{{"op", "replace"}, {"path", ptr}, {"value", std::move(value)}});
 	return *this;
 }
 
-json_patch &json_patch::remove(std::string path)
+json_patch &json_patch::remove(const json::json_pointer &ptr)
 {
-	j_.push_back(json{{"op", "remove"}, {"path", std::move(path)}});
+	j_.push_back(json{{"op", "remove"}, {"path", ptr}});
 	return *this;
 }
 
 void json_patch::validateJsonPatch(json const &patch)
 {
-	if (!patch.is_array()) {
-		throw JsonPatchFormatException{"Json is not an array"};
-	}
+	// static put here to have it created at the first usage of validateJsonPatch
+	static nlohmann::json_schema::json_validator patch_validator(patch_schema);
 
-	for (auto const &op : patch) {
-		if (!op.is_object()) {
-			throw JsonPatchFormatException{"Each json patch entry needs to be an op object"};
-		}
+	patch_validator.validate(patch);
 
-		if (!op.contains("op")) {
-			throw JsonPatchFormatException{"Each json patch entry needs op element"};
-		}
-
-		const auto opType = op["op"].get<std::string>();
-		if ((opType != "add") && (opType != "remove") && (opType != "replace")) {
-			throw JsonPatchFormatException{std::string{"Operation "} + opType + std::string{"is invalid"}};
-		}
-
-		if (!op.contains("path")) {
-			throw JsonPatchFormatException{"Each json patch entry needs path element"};
-		}
-
-		try {
-			// try parse to path
-			[[maybe_unused]] const auto p = json::json_pointer{op["path"].get<std::string>()};
-		} catch (json::exception &e) {
-			throw JsonPatchFormatException{e.what()};
-		}
-
-		if (opType != "remove") {
-			if (!op.contains("value")) {
-				throw JsonPatchFormatException{"Remove and replace needs value element"};
-			}
-		}
-	}
+	for (auto const &op : patch)
+		json::json_pointer(op["path"].get<std::string>());
 }
 
 } // namespace nlohmann
