@@ -478,6 +478,7 @@ public:
 		    {"boolean", json::value_t::boolean},
 		    {"integer", json::value_t::number_integer},
 		    {"number", json::value_t::number_float},
+		    {"binary", json::value_t::binary},
 		};
 
 		std::set<std::string> known_keywords;
@@ -491,17 +492,37 @@ public:
 
 			case json::value_t::string: {
 				auto schema_type = attr.value().get<std::string>();
+
+				// add supporting validation binary types
+				if (schema_type == "string") {
+					auto found = sch.find("contentEncoding");
+					if (found != sch.end() && found->get<std::string>() == "binary") {
+						schema_type = "binary";
+					}
+				}
+
 				for (auto &t : schema_types)
 					if (t.first == schema_type)
 						type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
 			} break;
 
 			case json::value_t::array: // "type": ["type1", "type2"]
-				for (auto &schema_type : attr.value())
+			{
+				json type_array = attr.value();
+
+				auto has_string_type = std::find(type_array.begin(), type_array.end(), "string");
+				if (has_string_type != type_array.end()) {
+					auto encodingFound = sch.find("contentEncoding");
+					if (encodingFound != sch.end() && encodingFound.value() == "binary") {
+						type_array.emplace_back("binary");
+					}
+				}
+
+				for (auto &schema_type : type_array)
 					for (auto &t : schema_types)
 						if (t.first == schema_type)
 							type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
-				break;
+			} break;
 
 			default:
 				break;
@@ -1089,6 +1110,21 @@ public:
 	}
 };
 
+/**\brief just a placeholder
+ */
+class binary : public schema
+{
+	void validate(const json::json_pointer &, const json &, json_patch &, error_handler &) const override
+	{
+	}
+
+public:
+	binary(json &, root_schema *root)
+	    : schema(root)
+	{
+	}
+};
+
 std::shared_ptr<schema> type_schema::make(json &schema,
                                           json::value_t type,
                                           root_schema *root,
@@ -1115,6 +1151,9 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 
 	case json::value_t::discarded: // not a real type - silence please
 		break;
+
+	case json::value_t::binary: // can use for validate bson or other binary representation of json
+		return std::make_shared<binary>(schema, root);
 	}
 	return nullptr;
 }

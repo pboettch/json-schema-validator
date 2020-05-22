@@ -55,3 +55,8 @@ add_executable(json-patch json-patch.cpp)
 target_include_directories(json-patch PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(json-patch nlohmann_json_schema_validator)
 add_test(NAME json-patch COMMAND json-patch)
+
+add_executable(binary-validation binary-validation.cpp)
+target_include_directories(binary-validation PRIVATE ${PROJECT_SOURCE_DIR}/src)
+target_link_libraries(binary-validation PRIVATE nlohmann_json_schema_validator)
+add_test(NAME binary-validation COMMAND binary-validation)
