@@ -105,6 +105,7 @@ class root_schema : public schema
 {
 	schema_loader loader_;
 	format_checker format_check_;
+	content_checker content_check_;
 
 	std::shared_ptr<schema> root_;
 
@@ -128,10 +129,18 @@ class root_schema : public schema
 
 public:
 	root_schema(schema_loader &&loader,
-	            format_checker &&format)
-	    : schema(this), loader_(std::move(loader)), format_check_(std::move(format)) {}
+	            format_checker &&format,
+	            content_checker &&content)
+
+	    : schema(this),
+	      loader_(std::move(loader)),
+	      format_check_(std::move(format)),
+	      content_check_(std::move(content))
+	{
+	}
 
 	format_checker &format_check() { return format_check_; }
+	content_checker &content_check() { return content_check_; }
 
 	void insert(const json_uri &uri, const std::shared_ptr<schema> &s)
 	{
@@ -461,7 +470,23 @@ class type_schema : public schema
 					else_->validate(ptr, instance, patch, e);
 			}
 		}
+
+		// special treatment
+		if (instance.type() == json::value_t::string && std::get<0>(content_)) {
+			if (root_->content_check() == nullptr)
+				e.error(ptr, instance, std::string("a content checker was not provided but a contentEncoding or contentMediaType for this string have been present: '") + std::get<1>(content_) + "' '" + std::get<2>(content_) + "'");
+			else {
+				try {
+					root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
+				} catch (const std::exception &ex) {
+					e.error(ptr, instance, std::string("content-checking failed: ") + ex.what());
+				}
+			}
+		}
 	}
+
+protected:
+	std::tuple<bool, std::string, std::string> content_{false, "", ""};
 
 public:
 	type_schema(json &sch,
@@ -581,6 +606,20 @@ public:
 					sch.erase(attr_else);
 				}
 			}
+			sch.erase(attr);
+		}
+
+		attr = sch.find("contentEncoding");
+		if (attr != sch.end()) {
+			std::get<0>(content_) = true;
+			std::get<1>(content_) = attr.value().get<std::string>();
+			sch.erase(attr);
+		}
+
+		attr = sch.find("contentMediaType");
+		if (attr != sch.end()) {
+			std::get<0>(content_) = true;
+			std::get<2>(content_) = attr.value().get<std::string>();
 			sch.erase(attr);
 		}
 	}
@@ -1212,19 +1251,33 @@ namespace json_schema
 {
 
 json_validator::json_validator(schema_loader loader,
-                               format_checker format)
-    : root_(std::unique_ptr<root_schema>(new root_schema(std::move(loader), std::move(format))))
+                               format_checker format,
+                               content_checker content)
+    : root_(std::unique_ptr<root_schema>(new root_schema(std::move(loader),
+                                                         std::move(format),
+                                                         std::move(content))))
 {
 }
 
-json_validator::json_validator(const json &schema, schema_loader loader, format_checker format)
-    : json_validator(std::move(loader), std::move(format))
+json_validator::json_validator(const json &schema,
+                               schema_loader loader,
+                               format_checker format,
+                               content_checker content)
+    : json_validator(std::move(loader),
+                     std::move(format),
+                     std::move(content))
 {
 	set_root_schema(schema);
 }
 
-json_validator::json_validator(json &&schema, schema_loader loader, format_checker format)
-    : json_validator(std::move(loader), std::move(format))
+json_validator::json_validator(json &&schema,
+                               schema_loader loader,
+                               format_checker format,
+                               content_checker content)
+
+    : json_validator(std::move(loader),
+                     std::move(format),
+                     std::move(content))
 {
 	set_root_schema(std::move(schema));
 }
