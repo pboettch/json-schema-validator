@@ -39,6 +39,50 @@ static void loader(const json_uri &uri, json &schema)
 	}
 }
 
+// from here
+// https://stackoverflow.com/a/34571089/880584
+static std::string base64_decode(const std::string &in)
+{
+	std::string out;
+
+	std::vector<int> T(256, -1);
+	for (int i = 0; i < 64; i++)
+		T["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[i]] = i;
+
+	unsigned val = 0;
+	int valb = -8;
+	for (uint8_t c : in) {
+		if (c == '=')
+			break;
+
+		if (T[c] == -1) {
+			throw std::invalid_argument("base64-decode: unexpected character in encode string: '" + std::string(1, c) + "'");
+		}
+		val = (val << 6) + T[c];
+		valb += 6;
+		if (valb >= 0) {
+			out.push_back(char((val >> valb) & 0xFF));
+			valb -= 8;
+		}
+	}
+	return out;
+}
+
+static void content(const std::string &contentEncoding, const std::string &contentMediaType, const json &instance)
+{
+	std::string content = instance;
+
+	if (contentEncoding == "base64")
+		content = base64_decode(instance);
+	else if (contentEncoding != "")
+		throw std::invalid_argument("unable to check for contentEncoding '" + contentEncoding + "'");
+
+	if (contentMediaType == "application/json")
+		auto dummy = json::parse(content); // throws if conversion fails
+	else if (contentMediaType != "")
+		throw std::invalid_argument("unable to check for contentMediaType '" + contentMediaType + "'");
+}
+
 int main(void)
 {
 	json validation; // a validation case following the JSON-test-suite-schema
@@ -62,7 +106,8 @@ int main(void)
 		const auto &schema = test_group["schema"];
 
 		json_validator validator(loader,
-								  nlohmann::json_schema::default_string_format_check);
+		                         nlohmann::json_schema::default_string_format_check,
+		                         content);
 
 		validator.set_root_schema(schema);
 
