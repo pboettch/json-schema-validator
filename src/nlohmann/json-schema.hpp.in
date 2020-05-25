@@ -131,19 +131,19 @@ namespace json_schema
 
 inline std::string get_schema_validator_version_string()
 {
-	return "2.1.1";
+	return "${PROJECT_VERSION}";
 }
 inline uint get_schema_validator_version_major()
 {
-	return 2;
+	return ${PROJECT_VERSION_MAJOR};
 }
 inline int get_schema_validator_version_minor()
 {
-	return 1;
+	return ${PROJECT_VERSION_MINOR};
 }
 inline uint get_schema_validator_version_patch()
 {
-	return 1;
+	return ${PROJECT_VERSION_PATCH};
 }
 
 extern json draft7_schema_builtin;

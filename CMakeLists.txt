@@ -1,12 +1,17 @@
-project(nlohmann_json_schema_validator
-        LANGUAGES CXX)
-
-set(PROJECT_VERSION 2.1.1)
 
 cmake_minimum_required(VERSION 3.2)
+cmake_policy(SET CMP0048 NEW) # Needed to set version with project
+
+project(nlohmann_json_schema_validator
+        VERSION 2.1.1
+        LANGUAGES CXX)
 
 option(BUILD_TESTS    "Build tests"    ON)
 option(BUILD_EXAMPLES "Build examples" ON)
+
+# generate file with version
+configure_file ("${CMAKE_CURRENT_SOURCE_DIR}/src/nlohmann/json-schema.hpp.in"
+                "${CMAKE_CURRENT_SOURCE_DIR}/src/nlohmann/json-schema.hpp")
 
 # the library
 add_library(nlohmann_json_schema_validator
