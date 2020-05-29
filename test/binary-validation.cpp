@@ -14,6 +14,19 @@ static int error_count = 0;
 		}                                                            \
 	} while (0)
 
+#define EXPECT_THROW(foo)            \
+	{                                \
+		bool ok = false;             \
+		try {                        \
+			foo;                     \
+		} catch (std::exception &) { \
+			ok = true;               \
+		}                            \
+		if (ok == false) {           \
+			error_count++;           \
+		}                            \
+	}
+
 using json = nlohmann::json;
 using validator = nlohmann::json_schema::json_validator;
 
@@ -153,29 +166,10 @@ int main()
 	EXPECT_EQ(err.failed_pointers[0], "/something");
 	err.reset();
 
-	// check without content-callback everything fails
+	// check that without content callback you get exception with schema with contentEncoding or contentMeditType
 	validator val_no_content;
 
-	/////////////////////////////////////
-	val_no_content.set_root_schema(bson_schema);
-
-	// all right
-	val_no_content.validate({{"standard_string", "some string"}, {"binary_data", binary}}, err);
-	EXPECT_EQ(err.failed_pointers.size(), 1);
-	err.reset();
-
-	// invalid binary data
-	val_no_content.validate({{"binary_data", "string, but expect binary data"}}, err);
-	EXPECT_EQ(err.failed_pointers.size(), 1);
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "/binary_data");
-	err.reset();
-
-	// also check that simple string not accept binary data
-	val_no_content.validate({{"standard_string", binary}, {"binary_data", binary}}, err);
-	EXPECT_EQ(err.failed_pointers.size(), 2);
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "/binary_data");
-	EXPECT_EQ(err.failed_pointers[1].to_string(), "/standard_string");
-	err.reset();
+	EXPECT_THROW(val_no_content.set_root_schema(bson_schema));
 
 	return error_count;
 }

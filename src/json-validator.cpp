@@ -720,6 +720,10 @@ public:
 			sch.erase(attr);
 		}
 
+		if (std::get<0>(content_) == true && root_->content_check() == nullptr) {
+			throw std::invalid_argument{"schema contains contentEncoding/contentMediaType but content checker was not set"};
+		}
+
 #ifndef NO_STD_REGEX
 		attr = sch.find("pattern");
 		if (attr != sch.end()) {
