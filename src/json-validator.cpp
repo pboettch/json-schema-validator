@@ -470,24 +470,7 @@ class type_schema : public schema
 					else_->validate(ptr, instance, patch, e);
 			}
 		}
-
-		// special treatment
-		if ((instance.type() == json::value_t::string || instance.type() == json::value_t::binary) &&
-		    std::get<0>(content_)) {
-			if (root_->content_check() == nullptr)
-				e.error(ptr, instance, std::string("a content checker was not provided but a contentEncoding or contentMediaType for this string have been present: '") + std::get<1>(content_) + "' '" + std::get<2>(content_) + "'");
-			else {
-				try {
-					root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
-				} catch (const std::exception &ex) {
-					e.error(ptr, instance, std::string("content-checking failed: ") + ex.what());
-				}
-			}
-		}
 	}
-
-protected:
-	std::tuple<bool, std::string, std::string> content_{false, "", ""};
 
 public:
 	type_schema(json &sch,
@@ -553,6 +536,11 @@ public:
 		// we stick with JSON-schema: use the integer-validator if instance-value is unsigned
 		type_[(uint8_t) json::value_t::number_unsigned] = type_[(uint8_t) json::value_t::number_integer];
 
+		// special for binary types
+		if (type_[(uint8_t) json::value_t::string]) {
+			type_[(uint8_t) json::value_t::binary] = type_[(uint8_t) json::value_t::string];
+		}
+
 		attr = sch.find("enum");
 		if (attr != sch.end()) {
 			enum_ = {true, attr.value()};
@@ -609,41 +597,6 @@ public:
 			}
 			sch.erase(attr);
 		}
-
-		attr = sch.find("contentEncoding");
-		if (attr != sch.end()) {
-			std::get<0>(content_) = true;
-			std::get<1>(content_) = attr.value().get<std::string>();
-
-			// special case for nlohmann::json-binary-types
-			//
-			// https://github.com/pboettch/json-schema-validator/pull/114
-			//
-			// We cannot use explicitly in a schema: {"type": "binary"} or
-			// "type": ["binary", "number"] we have to be implicit. For a
-			// schema where "contentEncoding" is set to "binary", an instance
-			// of type json::value_t::binary is accepted. If a
-			// contentEncoding-callback has to be provided and is called
-			// accordingly. For encoding=binary, no other type validations are done
-
-			if (attr.value() == "binary") {
-				// clear out all other type-schemas
-				for (auto &type_valid : type_)
-					type_valid = nullptr;
-
-				// when no schema-type is explicitly given, we accept binary-values
-				type_[(uint8_t) json::value_t::binary] = type_schema::make(sch, json::value_t::binary, root, uris, known_keywords);
-			}
-
-			sch.erase(attr);
-		}
-
-		attr = sch.find("contentMediaType");
-		if (attr != sch.end()) {
-			std::get<0>(content_) = true;
-			std::get<2>(content_) = attr.value().get<std::string>();
-			sch.erase(attr);
-		}
 	}
 };
 
@@ -658,11 +611,12 @@ class string : public schema
 #endif
 
 	std::pair<bool, std::string> format_;
+	std::tuple<bool, std::string, std::string> content_{false, "", ""};
 
 	std::size_t utf8_length(const std::string &s) const
 	{
 		size_t len = 0;
-		for (const unsigned char &c : s)
+		for (unsigned char c : s)
 			if ((c & 0xc0) != 0x80)
 				len++;
 		return len;
@@ -684,6 +638,24 @@ class string : public schema
 				s << "instance is too long as per maxLength: " << maxLength_.second;
 				e.error(ptr, instance, s.str());
 			}
+		}
+
+		if (std::get<0>(content_)) {
+			if (root_->content_check() == nullptr)
+				e.error(ptr, instance, std::string("a content checker was not provided but a contentEncoding or contentMediaType for this string have been present: '") + std::get<1>(content_) + "' '" + std::get<2>(content_) + "'");
+			else {
+				try {
+					root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
+				} catch (const std::exception &ex) {
+					e.error(ptr, instance, std::string("content-checking failed: ") + ex.what());
+				}
+			}
+		} else if (instance.type() == json::value_t::binary) {
+			e.error(ptr, instance, "expected string, but get binary data");
+		}
+
+		if (instance.type() != json::value_t::string) {
+			return; // next checks only for strings
 		}
 
 #ifndef NO_STD_REGEX
@@ -718,6 +690,33 @@ public:
 		attr = sch.find("minLength");
 		if (attr != sch.end()) {
 			minLength_ = {true, attr.value()};
+			sch.erase(attr);
+		}
+
+		attr = sch.find("contentEncoding");
+		if (attr != sch.end()) {
+			std::get<0>(content_) = true;
+			std::get<1>(content_) = attr.value().get<std::string>();
+
+			// special case for nlohmann::json-binary-types
+			//
+			// https://github.com/pboettch/json-schema-validator/pull/114
+			//
+			// We cannot use explicitly in a schema: {"type": "binary"} or
+			// "type": ["binary", "number"] we have to be implicit. For a
+			// schema where "contentEncoding" is set to "binary", an instance
+			// of type json::value_t::binary is accepted. If a
+			// contentEncoding-callback has to be provided and is called
+			// accordingly. For encoding=binary, no other type validations are done
+
+			sch.erase(attr);
+		}
+
+		attr = sch.find("contentMediaType");
+		if (attr != sch.end()) {
+			std::get<0>(content_) = true;
+			std::get<2>(content_) = attr.value().get<std::string>();
+
 			sch.erase(attr);
 		}
 
@@ -1177,13 +1176,8 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 	case json::value_t::discarded: // not a real type - silence please
 		break;
 
-	case json::value_t::binary: {
-		// can be used for validate bson or other binary representation of json
-		// - specific to nlohmann::json - this type is not standardized
-		// json-schema-draft-7
-		json tmp = true;
-		return std::make_shared<boolean>(tmp, root); // always true - content-check with do the work
-	}
+	case json::value_t::binary:
+		break;
 	}
 	return nullptr;
 }
