@@ -80,18 +80,17 @@ public:
 
 static void content(const std::string &contentEncoding, const std::string &contentMediaType, const json &instance)
 {
-	if (instance.type() != json::value_t::binary)
-		throw std::invalid_argument("invalid instance type for binary content checker");
-
 	std::cerr << "mediaType: '" << contentMediaType << "', encoding: '" << contentEncoding << "'\n";
 
-	if (contentMediaType != "")
-		throw std::invalid_argument("unable to check for contentMediaType " + contentMediaType);
-
 	if (contentEncoding == "binary") {
-
-	} else if (contentEncoding != "")
-		throw std::invalid_argument("unable to check for contentEncoding " + contentEncoding);
+		if (instance.type() != json::value_t::binary) {
+			throw std::invalid_argument{"expected binary data"};
+		}
+	} else {
+		if (instance.type() == json::value_t::binary) {
+			throw std::invalid_argument{"expected string, but get binary"};
+		}
+	}
 }
 
 int main()
@@ -117,9 +116,8 @@ int main()
 
 	// invalid binary data
 	val.validate({{"binary_data", "string, but expect binary data"}}, err);
-	EXPECT_EQ(err.failed_pointers.size(), 2);
+	EXPECT_EQ(err.failed_pointers.size(), 1);
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "/binary_data");
-	EXPECT_EQ(err.failed_pointers[1].to_string(), "/binary_data"); // second error comes from content-checker
 	err.reset();
 
 	// also check that simple string not accept binary data
@@ -133,10 +131,13 @@ int main()
 
 	// check simple types
 	val.set_root_schema(array_of_types);
-	val.validate({{"something", "string"}}, err);
 	val.validate({{"something", 1}}, err);
 	val.validate({{"something", false}}, err);
-	EXPECT_EQ(err.failed_pointers.size(), 4); // binary encoding invalidated all other types
+	// TODO when we set `string` in array and set `contentEncoding` = "binary" - what it means? We expected string or binary?
+	// Or we expect only binary? Now if you set `contentEncoding` = "binary", then it means that you expect only binary data,
+	// not string
+	//val.validate({{"something", "string"}}, err); -> produce error about type
+	EXPECT_EQ(err.failed_pointers.size(), 0);
 	err.reset();
 
 	// check binary data
@@ -165,9 +166,8 @@ int main()
 
 	// invalid binary data
 	val_no_content.validate({{"binary_data", "string, but expect binary data"}}, err);
-	EXPECT_EQ(err.failed_pointers.size(), 2);
+	EXPECT_EQ(err.failed_pointers.size(), 1);
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "/binary_data");
-	EXPECT_EQ(err.failed_pointers[1].to_string(), "/binary_data"); // second error comes from content-checker
 	err.reset();
 
 	// also check that simple string not accept binary data
@@ -176,7 +176,6 @@ int main()
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "/binary_data");
 	EXPECT_EQ(err.failed_pointers[1].to_string(), "/standard_string");
 	err.reset();
-
 
 	return error_count;
 }
