@@ -1,12 +1,12 @@
 project(nlohmann_json_schema_validator
-    LANGUAGES CXX)
+        LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.1.0)
+set(PROJECT_VERSION 2.1.1)
 
 cmake_minimum_required(VERSION 3.2)
 
-option(BUILD_TESTS      "Build tests"    ON)
-option(BUILD_EXAMPLES   "Build examples" ON)
+option(BUILD_TESTS    "Build tests"    ON)
+option(BUILD_EXAMPLES "Build examples" ON)
 
 # the library
 add_library(nlohmann_json_schema_validator

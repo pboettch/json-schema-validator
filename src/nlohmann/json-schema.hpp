@@ -133,6 +133,7 @@ extern json draft7_schema_builtin;
 
 typedef std::function<void(const json_uri & /*id*/, json & /*value*/)> schema_loader;
 typedef std::function<void(const std::string & /*format*/, const std::string & /*value*/)> format_checker;
+typedef std::function<void(const std::string & /*contentEncoding*/, const std::string & /*contentMediaType*/, const json & /*instance*/)> content_checker;
 
 // Interface for validation error handlers
 class JSON_SCHEMA_VALIDATOR_API error_handler
@@ -168,10 +169,10 @@ class JSON_SCHEMA_VALIDATOR_API json_validator
 	std::unique_ptr<root_schema> root_;
 
 public:
-	json_validator(schema_loader = nullptr, format_checker = nullptr);
+	json_validator(schema_loader = nullptr, format_checker = nullptr, content_checker = nullptr);
 
-	json_validator(const json &, schema_loader = nullptr, format_checker = nullptr);
-	json_validator(json &&, schema_loader = nullptr, format_checker = nullptr);
+	json_validator(const json &, schema_loader = nullptr, format_checker = nullptr, content_checker = nullptr);
+	json_validator(json &&, schema_loader = nullptr, format_checker = nullptr, content_checker = nullptr);
 
 	json_validator(json_validator &&);
 	json_validator &operator=(json_validator &&);

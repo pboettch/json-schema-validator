@@ -50,7 +50,6 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
         # some optional tests will fail
         set_tests_properties(
             JSON-Suite::Optional::bignum
-            JSON-Suite::Optional::content
             JSON-Suite::Optional::zeroTerminatedFloats
             JSON-Suite::Optional::non-bmp-regex
 
