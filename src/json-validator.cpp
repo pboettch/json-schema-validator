@@ -672,6 +672,10 @@ public:
 
 		attr = sch.find("format");
 		if (attr != sch.end()) {
+			if (root_->format_check() == nullptr) {
+				throw std::invalid_argument{"a format checker was not provided but a format keyword for this string is present: " + format_.second};
+			}
+
 			format_ = {true, attr.value()};
 			sch.erase(attr);
 		}
