@@ -45,6 +45,8 @@ if(TARGET nlohmann_json::nlohmann_json)
         PUBLIC nlohmann_json::nlohmann_json)
 
     set(JSON_VALIDATOR_INSTALL OFF)
+    set(BUILD_TESTS OFF)
+    set(BUILD_EXAMPLES OFF)
 
 elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next to nlohmann-json's git repo
     message(STATUS "Found nlohmann_json-target - linking with it")
@@ -52,6 +54,8 @@ elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next 
         nlohmann_json_schema_validator
         PUBLIC nlohmann_json)
     set(JSON_VALIDATOR_INSTALL OFF)
+    set(BUILD_TESTS OFF)
+    set(BUILD_EXAMPLES OFF)
 
 else()
     if (NOT IS_ABSOLUTE ${nlohmann_json_DIR}) # make nlohmann_json_DIR absolute
