@@ -106,6 +106,14 @@ access nlohmann-json:
 a sub-directory (via `add_subdirectory()`), 2 and 3 can be
 assisted by setting the `nlohmann_json_DIR`-variable.
 
+### Building with Hunter package manager
+
+To enable access to nlohmann json library, Hunter can be used. Just run with HUNTER_ENABLED=ON option. No further dependencies needed
+
+```bash
+cmake [..] -DHUNTER_ENABLED=ON [..]
+```
+
 ### Building as a CMake-subdirectory from within another project
 
 Adding this library as a subdirectory to a parent project is one way of
