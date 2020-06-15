@@ -67,3 +67,12 @@ script:
   - cmake .. -Dnlohmann_json_DIR=.. ${CMAKE_OPTIONS} -GNinja && cmake --build . --config Release
   - ctest -C Release -V -j
   - cd ..
+
+  # Remove previous build and tests
+  - rm -r build
+
+  # Compile and execute with Hunter package manager instead of using local json.hpp
+  - mkdir -p build && cd build
+  - cmake .. -DHUNTER_ENABLED=ON ${CMAKE_OPTIONS} -GNinja && cmake --build . --config Release
+  - ctest -C Release -V -j
+  - cd ..

@@ -1,3 +1,13 @@
+# Add Hunter support (Disabled by default)
+option(HUNTER_ENABLED "Enable Hunter package manager support" OFF)
+if(HUNTER_ENABLED)
+    include("cmake/HunterGate.cmake")
+    HunterGate(
+        URL "https://github.com/cpp-pm/hunter/archive/v0.23.262.tar.gz"
+        SHA1 "eb51e633e08cdbe2153caf255e9c23968fecb29d"
+    )
+endif()
+
 project(nlohmann_json_schema_validator
         LANGUAGES CXX)
 
@@ -8,13 +18,8 @@ cmake_minimum_required(VERSION 3.2)
 option(BUILD_TESTS    "Build tests"    ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 
-option(HUNTER_ENABLED "Enable Hunter package manager support" OFF)
+# Add nlohmann_json::nlohmann_json using Hunter package manager
 if(HUNTER_ENABLED)
-    include(cmake/HunterGate.cmake)
-    HunterGate(URL https://github.com/cpp-pm/hunter/archive/v0.23.253.tar.gz
-               SHA1 88ea6d37c897a81a080eb9ae0f69d7807bbb3c73)
-
-    # Add nlohmann_json::nlohmann_json (if HUNTER_ENABLED=ON, otherwise command is ignored)
     hunter_add_package(nlohmann_json)
 endif()
 
