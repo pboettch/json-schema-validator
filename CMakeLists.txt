@@ -1,3 +1,11 @@
+# Add Hunter support (Disabled by default)
+option(HUNTER_ENABLED "Enable Hunter package manager support" OFF)
+include("cmake/HunterGate.cmake")
+HunterGate(
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.253.tar.gz"
+    SHA1 "88ea6d37c897a81a080eb9ae0f69d7807bbb3c73"
+)
+
 project(nlohmann_json_schema_validator
         LANGUAGES CXX)
 
@@ -7,6 +15,9 @@ cmake_minimum_required(VERSION 3.2)
 
 option(BUILD_TESTS    "Build tests"    ON)
 option(BUILD_EXAMPLES "Build examples" ON)
+
+# Add nlohmann_json::nlohmann_json (if HUNTER_ENABLED=ON, otherwise command is ignored)
+hunter_add_package(nlohmann_json)
 
 # the library
 add_library(nlohmann_json_schema_validator
@@ -158,8 +169,8 @@ endif()
 if(JSON_VALIDATOR_INSTALL)
     # Set Up the Project Targets and Config Files for CMake
 
-    # Set the install path to the cmake config files
-    set(INSTALL_CMAKE_DIR ${CMAKE_INSTALL_PREFIX}/lib/cmake/${PROJECT_NAME})
+    # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
+    set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
 
     # Create the ConfigVersion file
     include(CMakePackageConfigHelpers) # write_basic_package_version_file
@@ -168,7 +179,7 @@ if(JSON_VALIDATOR_INSTALL)
                                       COMPATIBILITY SameMajorVersion)
 
     # Get the relative path from the INSTALL_CMAKE_DIR to the include directory
-    file(RELATIVE_PATH REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/include")
+    file(RELATIVE_PATH REL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/include")
 
 
     # Configure the Config.cmake file with the proper include directory
