@@ -19,14 +19,15 @@ static const json person_schema = R"(
             "minimum": 2,
             "maximum": 200
         },
-            "address":{
-                "type": "object",
-                "properties":{
-                    "street":{
-                        "type": "string",
-                        "default": "Abbey Road"
+        "address": {
+            "type": "object",
+            "default": {},
+            "properties": {
+                "street": {
+                    "type": "string",
+                    "default": "Abbey Road"
+                }
             }
-          }
         }
     },
     "required": [
@@ -40,61 +41,114 @@ static const json person_schema = R"(
 int main(void)
 {
 	json_validator validator{};
-
-	// add address which is optional that should generate a diff containing a default street
-	json person_missing_address = R"({
-    "name": "Hans",
-    "age": 69,
-    "address": {}
-})"_json;
-
 	validator.set_root_schema(person_schema);
 
-	const auto default_patch = validator.validate(person_missing_address);
+	{
+		// add address which is optional that should generate a diff containing a default street
+		json person_emtpy_address = R"({
+		"name": "Hans",
+		"age": 69,
+		"address": {}
+		})"_json;
 
-	if (!default_patch.is_array()) {
-		std::cerr << "Patch with defaults is expected to be an array" << std::endl;
-		return 1;
+		const auto default_patch = validator.validate(person_emtpy_address);
+
+		if (!default_patch.is_array()) {
+			std::cerr << "Patch with defaults is expected to be an array" << std::endl;
+			return 1;
+		}
+
+		if (default_patch.size() != 1) {
+			std::cerr << "Patch with defaults is expected to contain one opperation" << std::endl;
+			return 1;
+		}
+
+		const auto &single_op = default_patch[0];
+
+		if (!single_op.contains("op")) {
+			std::cerr << "Patch with defaults is expected to contain opperation entry" << std::endl;
+			return 1;
+		}
+
+		if (single_op["op"].get<std::string>() != "add") {
+			std::cerr << "Patch with defaults is expected to contain add opperation" << std::endl;
+			return 1;
+		}
+
+		if (!single_op.contains("path")) {
+			std::cerr << "Patch with defaults is expected to contain a path" << std::endl;
+			return 1;
+		}
+
+		const auto &readPath = single_op["path"].get<std::string>();
+		if (readPath != "/address/street") {
+			std::cerr << "Patch with defaults contains wrong path. It is " << readPath << " and should be "
+				<< "/address/street" << std::endl;
+			return 1;
+		}
+
+		if (!single_op.contains("value")) {
+			std::cerr << "Patch with defaults is expected to contain a value" << std::endl;
+			return 1;
+		}
+
+		if (single_op["value"].get<std::string>() != "Abbey Road") {
+			std::cerr << "Patch with defaults contains wrong value" << std::endl;
+			return 1;
+		}
 	}
+	{
+		// add address which is optional that should generate a diff containing a default street
+		json person_missing_address = R"({
+		"name": "Hans",
+		"age": 69
+		})"_json;
 
-	if (default_patch.size() != 1) {
-		std::cerr << "Patch with defaults is expected to contain one opperation" << std::endl;
-		return 1;
+		const auto default_patch = validator.validate(person_missing_address);
+
+		if (!default_patch.is_array()) {
+			std::cerr << "Patch with defaults is expected to be an array" << std::endl;
+			return 1;
+		}
+
+		if (default_patch.size() != 1) {
+			std::cerr << "Patch with defaults is expected to contain one opperation" << std::endl;
+			return 1;
+		}
+
+		const auto &single_op = default_patch[0];
+
+		if (!single_op.contains("op")) {
+			std::cerr << "Patch with defaults is expected to contain opperation entry" << std::endl;
+			return 1;
+		}
+
+		if (single_op["op"].get<std::string>() != "add") {
+			std::cerr << "Patch with defaults is expected to contain add opperation" << std::endl;
+			return 1;
+		}
+
+		if (!single_op.contains("path")) {
+			std::cerr << "Patch with defaults is expected to contain a path" << std::endl;
+			return 1;
+		}
+
+		const auto &readPath = single_op["path"].get<std::string>();
+		if (readPath != "/address") {
+			std::cerr << "Patch with defaults contains wrong path. It is " << readPath << " and should be "
+				<< "/address" << std::endl;
+			return 1;
+		}
+
+		if (!single_op.contains("value")) {
+			std::cerr << "Patch with defaults is expected to contain a value" << std::endl;
+			return 1;
+		}
+
+		if ( !single_op["value"].is_object() || !single_op["value"].empty()) {
+			std::cerr << "Patch with defaults contains wrong value" << std::endl;
+			return 1;
+		}
 	}
-
-	const auto &single_op = default_patch[0];
-
-	if (!single_op.contains("op")) {
-		std::cerr << "Patch with defaults is expected to contain opperation entry" << std::endl;
-		return 1;
-	}
-
-	if (single_op["op"].get<std::string>() != "add") {
-		std::cerr << "Patch with defaults is expected to contain add opperation" << std::endl;
-		return 1;
-	}
-
-	if (!single_op.contains("path")) {
-		std::cerr << "Patch with defaults is expected to contain a path" << std::endl;
-		return 1;
-	}
-
-	const auto &readPath = single_op["path"].get<std::string>();
-	if (readPath != "/address/street") {
-		std::cerr << "Patch with defaults contains wrong path. It is " << readPath << " and should be "
-		          << "/address/street" << std::endl;
-		return 1;
-	}
-
-	if (!single_op.contains("value")) {
-		std::cerr << "Patch with defaults is expected to contain a value" << std::endl;
-		return 1;
-	}
-
-	if (single_op["value"].get<std::string>() != "Abbey Road") {
-		std::cerr << "Patch with defaults contains wrong value" << std::endl;
-		return 1;
-	}
-
 	return 0;
 }

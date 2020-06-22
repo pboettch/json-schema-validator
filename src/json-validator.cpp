@@ -33,7 +33,7 @@ using namespace nlohmann::json_schema;
 namespace
 {
 
-static const json EmptyDefault{};
+static const json EmptyDefault = nullptr;
 
 class schema
 {
@@ -402,7 +402,7 @@ bool logical_combination<oneOf>::is_validate_complete(const json &instance, cons
 
 class type_schema : public schema
 {
-	json defaultValue_{};
+	json defaultValue_ = EmptyDefault;
 	std::vector<std::shared_ptr<schema>> type_;
 	std::pair<bool, json> enum_, const_;
 	std::vector<std::shared_ptr<schema>> logic_;
@@ -882,7 +882,7 @@ class object : public schema
 			const auto finding = instance.find(prop.first);
 			if (instance.end() == finding) { // if the prop is not in the instance
 				const auto &defaultValue = prop.second->defaultValue(ptr, instance, e);
-				if (!defaultValue.empty()) { // if default value is available
+				if (!defaultValue.is_null()) { // if default value is available
 					patch.add((ptr / prop.first), defaultValue);
 				}
 			}
