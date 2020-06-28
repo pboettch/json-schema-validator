@@ -28,6 +28,25 @@ static const json person_schema = R"(
                     "default": "Abbey Road"
                 }
             }
+        },
+        "work address": {
+            "type": "object",
+            "default": null,
+            "properties": {
+                "street": {
+                    "type": "string",
+                    "default": "Abbey Road"
+                }
+            }
+        },
+        "other address": {
+            "type": "object",
+            "properties": {
+                "street": {
+                    "type": "string",
+                    "default": "Abbey Road"
+                }
+            }
         }
     },
     "required": [
@@ -98,7 +117,8 @@ int main(void)
 		}
 	}
 	{
-		// add address which is optional that should generate a diff containing a default street
+		// add address which is optional that should generate a diff containing a empty object
+		// but not work address which is null or other address which has no default
 		json person_missing_address = R"({
 		"name": "Hans",
 		"age": 69
