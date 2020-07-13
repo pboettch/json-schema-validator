@@ -616,7 +616,7 @@ class string : public schema
 	std::size_t utf8_length(const std::string &s) const
 	{
 		size_t len = 0;
-		for (unsigned char c : s)
+		for (auto c : s)
 			if ((c & 0xc0) != 0x80)
 				len++;
 		return len;
