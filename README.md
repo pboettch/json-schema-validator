@@ -49,6 +49,21 @@ a validation error occurs and decide what to do (throwing, counting, collecting)
 Another goal was to use Niels Lohmann's JSON-library. This is why the validator
 lives in his namespace.
 
+# Thread-safety
+
+Instance validation is thread-safe and the same validator-object can be used by
+different threads:
+
+The validate method is `const` which indicated the object is not modified when
+being called:
+
+```C++
+	json json_validator::validate(const json &) const;
+```
+
+Validator-object creation however is not thread-safe. A validator has to be
+created in one (main?) thread once.
+
 # Weaknesses
 
 Numerical validation uses nlohmann-json's integer, unsigned and floating point
