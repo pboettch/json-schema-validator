@@ -170,30 +170,35 @@ if(JSON_VALIDATOR_INSTALL)
 
     # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
     set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-
-    # Create the ConfigVersion file
-    include(CMakePackageConfigHelpers) # write_basic_package_version_file
-    write_basic_package_version_file( ${PROJECT_NAME}ConfigVersion.cmake
-                                      VERSION ${PACKAGE_VERSION}
-                                      COMPATIBILITY SameMajorVersion)
-
-    # Get the relative path from the INSTALL_CMAKE_DIR to the include directory
-    file(RELATIVE_PATH REL_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "${CMAKE_INSTALL_PREFIX}/include")
-
-
-    # Configure the Config.cmake file with the proper include directory
-    set(CONF_INCLUDE_DIRS "\${JSON_SCHEMA_VALIDATOR_CMAKE_DIR}/${REL_INCLUDE_DIR}")
-    configure_file(${PROJECT_NAME}Config.cmake.in
-                   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake" @ONLY)
-
-    # Install the Config.cmake and ConfigVersion.cmake files
-    install(FILES
-            "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-            "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-            DESTINATION "${INSTALL_CMAKE_DIR}")
+    set(INSTALL_CMAKEDIR_ROOT share/cmake)
 
     # Install Targets
     install(EXPORT ${PROJECT_NAME}Targets
             FILE ${PROJECT_NAME}Targets.cmake
             DESTINATION "${INSTALL_CMAKE_DIR}")
+
+
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+        )
+
+
+    configure_package_config_file(
+        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
+        )
+
+    install(
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+        DESTINATION
+            ${INSTALL_CMAKE_DIR}
+        )
+
+
 endif()
