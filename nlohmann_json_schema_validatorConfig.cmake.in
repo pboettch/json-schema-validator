@@ -1,13 +1,8 @@
-# Config file for the json-schema-validator
-# It defines the following variables
-#  NLOHMANN_JSON_SCHEMA_VALIDATOR_INCLUDE_DIRS - include directories for json-schema-validator
-#  nlohmann_json_schema_validator              - json-schema-validator library to link against
+@PACKAGE_INIT@
 
-# Compute paths
-get_filename_component(NLOHMANN_JSON_SCHEMA_VALIDATOR_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
-set(NLOHMANN_JSON_SCHEMA_VALIDATOR_INCLUDE_DIRS @CONF_INCLUDE_DIRS@)
+find_package(nlohmann_json 3.8.0 REQUIRED)
 
-# Our library dependencies (contains definitions for IMPORTED targets)
-if(NOT TARGET json-schema-validator)
-    include("${NLOHMANN_JSON_SCHEMA_VALIDATOR_CMAKE_DIR}/nlohmann_json_schema_validatorTargets.cmake")
-endif()
+include("${CMAKE_CURRENT_LIST_DIR}/nlohmann_json_schema_validatorTargets.cmake")
+check_required_components(
+  "nlohmann_json_schema_validator"
+  )
