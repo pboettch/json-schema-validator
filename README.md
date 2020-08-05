@@ -54,7 +54,7 @@ lives in his namespace.
 Instance validation is thread-safe and the same validator-object can be used by
 different threads:
 
-The validate method is `const` which indicated the object is not modified when
+The validate method is `const` which indicates the object is not modified when
 being called:
 
 ```C++
@@ -308,15 +308,33 @@ All required tests are **OK**.
 
 # Format
 
-Optionally JSON-schema-validator can validation predefined or user-defined formats.
+Optionally JSON-schema-validator can validate predefined or user-defined formats.
 Therefore a format-checker-function can be provided by the user which is called by
-the validator when a format-check is required.
+the validator when a format-check is required (ie. the schema contains a format-field).
+
+This is how the prototype looks like and how it can be passed to the validation-instance:
+
+```C++
+static void my_format_checker(const std::string &format, const std::string &value)
+{
+	if (format == "something") {
+		if (!check_value_for_something(value))
+			throw std::invalid_argument("value is not a good something");
+	} else
+		throw std::logic_error("Don't know how to validate " + format);
+}
+
+// when creating the validator
+
+json_validator validator(nullptr, // or loader-callback
+                         my_format_checker); // create validator
+```
 
 The library contains a default-checker, which does some checks. It needs to be
 provided manually to the constructor of the validator:
 
 ```C++
-json_validator validator(loader,
+json_validator validator(loader, // or nullptr for no loader
                          nlohmann::json_schema::default_string_format_check);
 ```
 
