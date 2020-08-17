@@ -145,8 +145,8 @@ public:
 	void insert(const json_uri &uri, const std::shared_ptr<schema> &s)
 	{
 		auto &file = get_or_create_file(uri.location());
-		auto schema = file.schemas.lower_bound(uri.fragment());
-		if (schema != file.schemas.end() && !(file.schemas.key_comp()(uri.fragment(), schema->first))) {
+		auto xschema = file.schemas.lower_bound(uri.fragment());
+		if (xschema != file.schemas.end() && !(file.schemas.key_comp()(uri.fragment(), xschema->first))) {
 			throw std::invalid_argument("schema with " + uri.to_string() + " already inserted");
 			return;
 		}
@@ -185,9 +185,9 @@ public:
 		auto &file = get_or_create_file(uri.location());
 
 		// existing schema
-		auto schema = file.schemas.find(uri.fragment());
-		if (schema != file.schemas.end())
-			return schema->second;
+		auto xschema = file.schemas.find(uri.fragment());
+		if (xschema != file.schemas.end())
+			return xschema->second;
 
 		// referencing an unknown keyword, turn it into schema
 		//
@@ -216,10 +216,10 @@ public:
 		}
 	}
 
-	void set_root_schema(json schema)
+	void set_root_schema(json aschema)
 	{
 		files_.clear();
-		root_ = schema::make(schema, this, {}, {{"#"}});
+		root_ = schema::make(aschema, this, {}, {{"#"}});
 
 		// load all files which have not yet been loaded
 		do {
