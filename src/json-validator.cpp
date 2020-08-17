@@ -145,8 +145,8 @@ public:
 	void insert(const json_uri &uri, const std::shared_ptr<schema> &s)
 	{
 		auto &file = get_or_create_file(uri.location());
-		auto schema = file.schemas.lower_bound(uri.fragment());
-		if (schema != file.schemas.end() && !(file.schemas.key_comp()(uri.fragment(), schema->first))) {
+		auto sch = file.schemas.lower_bound(uri.fragment());
+		if (sch != file.schemas.end() && !(file.schemas.key_comp()(uri.fragment(), sch->first))) {
 			throw std::invalid_argument("schema with " + uri.to_string() + " already inserted");
 			return;
 		}
@@ -185,9 +185,9 @@ public:
 		auto &file = get_or_create_file(uri.location());
 
 		// existing schema
-		auto schema = file.schemas.find(uri.fragment());
-		if (schema != file.schemas.end())
-			return schema->second;
+		auto sch = file.schemas.find(uri.fragment());
+		if (sch != file.schemas.end())
+			return sch->second;
 
 		// referencing an unknown keyword, turn it into schema
 		//
@@ -216,10 +216,10 @@ public:
 		}
 	}
 
-	void set_root_schema(json schema)
+	void set_root_schema(json sch)
 	{
 		files_.clear();
-		root_ = schema::make(schema, this, {}, {{"#"}});
+		root_ = schema::make(sch, this, {}, {{"#"}});
 
 		// load all files which have not yet been loaded
 		do {
@@ -233,11 +233,11 @@ public:
 			for (auto &loc : locations) {
 				if (files_[loc].schemas.size() == 0) { // nothing has been loaded for this file
 					if (loader_) {
-						json sch;
+						json loaded_schema;
 
-						loader_(loc, sch);
+						loader_(loc, loaded_schema);
 
-						schema::make(sch, this, {}, {{loc}});
+						schema::make(loaded_schema, this, {}, {{loc}});
 						new_schema_loaded = true;
 					} else {
 						throw std::invalid_argument("external schema reference '" + loc + "' needs loading, but no loader callback given");
