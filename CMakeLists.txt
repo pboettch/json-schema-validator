@@ -116,7 +116,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     target_compile_options(nlohmann_json_schema_validator
         PRIVATE
-            -Wall -Wextra)
+            -Wall -Wextra -Wshadow)
 endif()
 
 if(BUILD_SHARED_LIBS)
