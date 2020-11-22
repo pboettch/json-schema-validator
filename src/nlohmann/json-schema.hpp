@@ -61,8 +61,7 @@ protected:
 
 	std::tuple<std::string, std::string, std::string, std::string, std::string> tie() const
 	{
-		return std::tie(urn_, scheme_, authority_, path_,
-		                identifier_ != "" ? identifier_ : pointer_);
+		return {urn_, scheme_, authority_, path_, identifier_ != "" ? identifier_ : pointer_};
 	}
 
 public:
