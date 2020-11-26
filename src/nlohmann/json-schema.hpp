@@ -59,10 +59,9 @@ protected:
 	// decodes a JSON uri and replaces all or part of the currently stored values
 	void update(const std::string &uri);
 
-	std::tuple<std::string, std::string, std::string, std::string, std::string> tie() const
+	std::tuple<std::string, std::string, std::string, std::string, std::string> as_tuple() const
 	{
-		return std::tie(urn_, scheme_, authority_, path_,
-		                identifier_ != "" ? identifier_ : pointer_);
+		return {urn_, scheme_, authority_, path_, identifier_ != "" ? identifier_ : pointer_};
 	}
 
 public:
@@ -115,12 +114,12 @@ public:
 
 	friend bool operator<(const json_uri &l, const json_uri &r)
 	{
-		return l.tie() < r.tie();
+		return l.as_tuple() < r.as_tuple();
 	}
 
 	friend bool operator==(const json_uri &l, const json_uri &r)
 	{
-		return l.tie() == r.tie();
+		return l.as_tuple() == r.as_tuple();
 	}
 
 	friend std::ostream &operator<<(std::ostream &os, const json_uri &u);
