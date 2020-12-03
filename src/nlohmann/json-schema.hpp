@@ -61,7 +61,7 @@ protected:
 
 	std::tuple<std::string, std::string, std::string, std::string, std::string> as_tuple() const
 	{
-		return {urn_, scheme_, authority_, path_, identifier_ != "" ? identifier_ : pointer_};
+		return std::make_tuple(urn_, scheme_, authority_, path_, identifier_ != "" ? identifier_ : pointer_);
 	}
 
 public:
