@@ -8,10 +8,16 @@ if(HUNTER_ENABLED)
     )
 endif()
 
+# Read version from file VERSION
+FILE(READ "VERSION" PROJECT_VERSION)
+STRING(STRIP "${PROJECT_VERSION}" PROJECT_VERSION)
+cmake_policy(SET CMP0048 NEW)
+
 project(nlohmann_json_schema_validator
+        VERSION "${PROJECT_VERSION}"
         LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.1.1)
+message(STATUS "Version: ${PROJECT_VERSION}")
 
 cmake_minimum_required(VERSION 3.2)
 
