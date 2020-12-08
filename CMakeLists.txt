@@ -162,8 +162,12 @@ if(JSON_VALIDATOR_INSTALL)
             ARCHIVE DESTINATION lib
             RUNTIME DESTINATION bin)
 
-    install(FILES src/nlohmann/json-schema.hpp
-            DESTINATION include/nlohmann)
+    install(FILES 
+                src/nlohmann/json-schema.hpp
+                src/nlohmann/json-schema-decl.hpp
+                ${LIB_VERSION_HPP_FILE}
+            DESTINATION
+                include/nlohmann)
 endif()
 
 if (BUILD_EXAMPLES)
