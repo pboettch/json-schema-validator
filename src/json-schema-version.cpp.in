@@ -1,0 +1,44 @@
+#include <nlohmann/json-schema-version.hpp>
+
+namespace nlohmann
+{
+namespace json_schema
+{
+namespace about
+{
+
+const std::string &version_txt()
+{
+	// clang-format off
+	static std::string version{"${${PROJECT_NAME}_VERSION}"};
+	// clang-format on
+	return version;
+}
+
+// clang-format off
+template <>
+bool check_library_version<${${PROJECT_NAME}_VERSION_MAJOR}>() noexcept
+{
+	return true;
+}
+// clang-format on
+
+// clang-format off
+template <>
+bool check_library_version<${${PROJECT_NAME}_VERSION_MAJOR}, ${${PROJECT_NAME}_VERSION_MINOR}>() noexcept
+{
+	return true;
+}
+// clang-format on
+
+// clang-format off
+template <>
+bool check_library_version<${${PROJECT_NAME}_VERSION_MAJOR}, ${${PROJECT_NAME}_VERSION_MINOR}, ${${PROJECT_NAME}_VERSION_PATCH}>() noexcept
+{
+	return true;
+}
+// clang-format on
+
+} // namespace about
+} // namespace json_schema
+} // namespace nlohmann
