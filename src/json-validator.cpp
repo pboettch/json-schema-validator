@@ -172,7 +172,10 @@ public:
 		if (unresolved != file.unresolved.end())
 			schema::make(value, this, {}, {{new_uri}});
 		else // no, nothing ref'd it, keep for later
-			file.unknown_keywords[fragment] = value;
+			// could use fragment here, but better not to: if key is an integer the pointer will be interpreted as
+			// an array. This cannot be the case here, so we force using key as a string when storing the
+			// unknown_keyword-schema.
+			file.unknown_keywords[uri.pointer()][key] = value;
 
 		// recursively add possible subschemas of unknown keywords
 		if (value.type() == json::value_t::object)
