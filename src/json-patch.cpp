@@ -66,7 +66,7 @@ const nlohmann::json patch_schema = R"patch({
         }
     }
 })patch"_json;
-}; // namespace
+} // namespace
 
 namespace nlohmann
 {
