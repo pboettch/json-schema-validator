@@ -1,3 +1,4 @@
+# Prefers json submodule
 # Add Hunter support (Disabled by default)
 option(HUNTER_ENABLED "Enable Hunter package manager support" OFF)
 if(HUNTER_ENABLED)
@@ -19,9 +20,9 @@ option(BUILD_TESTS    "Build tests"    ON)
 option(BUILD_EXAMPLES "Build examples" ON)
 
 # Add nlohmann_json::nlohmann_json using Hunter package manager
-# if(HUNTER_ENABLED)
-#     hunter_add_package(nlohmann_json)
-# endif()
+if(HUNTER_ENABLED)
+    hunter_add_package(nlohmann_json)
+endif()
 
 include_directories(../json/single_include)
 
@@ -55,72 +56,64 @@ set(JSON_VALIDATOR_INSTALL ON)
 
 # first, check whether a nlohmann_json::nlohmann_json target exists already
 # -> we are used as a sub-directory from within another project
-# if(TARGET nlohmann_json::nlohmann_json)
-#     message(STATUS "Found nlohmann_json::nlohmann_json-target - linking with it")
-#     target_link_libraries(
-#         nlohmann_json_schema_validator
-#         PUBLIC nlohmann_json::nlohmann_json)
+if(TARGET nlohmann_json::nlohmann_json)
+    message(STATUS "Found nlohmann_json::nlohmann_json-target - linking with it")
+    target_link_libraries(
+        nlohmann_json_schema_validator
+        PUBLIC nlohmann_json::nlohmann_json)
 
-    # set(JSON_VALIDATOR_INSTALL OFF)
-    # set(BUILD_TESTS OFF)
-    # set(BUILD_EXAMPLES OFF)
+    set(JSON_VALIDATOR_INSTALL OFF)
+    set(BUILD_TESTS OFF)
+    set(BUILD_EXAMPLES OFF)
 
-# else
-if(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next to nlohmann-json's git repo
+elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next to nlohmann-json's git repo
     message(STATUS "Found nlohmann_json-target - linking with it")
     target_link_libraries(
         nlohmann_json_schema_validator
-        nlohmann_json)
+        PUBLIC nlohmann_json)
     set(JSON_VALIDATOR_INSTALL OFF)
     set(BUILD_TESTS OFF)
     set(BUILD_EXAMPLES OFF)
 
 else()
-#     if (NOT IS_ABSOLUTE ${nlohmann_json_DIR}) # make nlohmann_json_DIR absolute
-#         get_filename_component(nlohmann_json_DIR
-#                                "${CMAKE_CURRENT_BINARY_DIR}/${nlohmann_json_DIR}"
-#                                REALPATH)
-#     endif()
+    if (NOT IS_ABSOLUTE ${nlohmann_json_DIR}) # make nlohmann_json_DIR absolute
+        get_filename_component(nlohmann_json_DIR
+                               "${CMAKE_CURRENT_BINARY_DIR}/${nlohmann_json_DIR}"
+                               REALPATH)
+    endif()
 
-    set(nlohmann_json_DIR ${PHASAR_SRC_DIR}/external/json/)
+    set(nlohmann_json_DIR ../../${CMAKE_CURRENT_SOURCE_DIR}/external/json/)
     set(nlohmann_json_orignal_DIR ${nlohmann_json_DIR}) # save path for later use
-    message(1 ${nlohmann_json_DIR})
-    message(2 ${nlohmann_json_orignal_DIR})
-
 
     # find nlohmann_json-cmake-package
-    #find_package(nlohmann_json QUIET)
+    find_package(nlohmann_json QUIET)
 
     if(TARGET nlohmann_json::nlohmann_json)
         message(STATUS "Found nlohmann_json-cmake-package - linking with it")
         target_link_libraries(
             nlohmann_json_schema_validator
-            nlohmann_json)
-    # else()
+            PUBLIC
+            nlohmann_json::nlohmann_json)
+    else()
 
-    #     # find nlohmann/json.hpp
+        # find nlohmann/json.hpp
 
-    #     message(STATUS ${nlohmann_json_orignal_DIR})
+        message(STATUS ${nlohmann_json_orignal_DIR})
 
-    #     # find_path(JSON_HPP nlohmann/json.hpp
-    #     #           ${nlohmann_json_orignal_DIR})
+        find_path(JSON_HPP nlohmann/json.hpp
+                  PATHS ${nlohmann_json_orignal_DIR})
 
-    #     set(JSON_HPP=${nlohmann_json_orignal_DIR})
+        if(EXISTS ${JSON_HPP}/nlohmann/json.hpp)
+            message(STATUS "Found nlohmann/json.hpp in given path: ${JSON_HPP}")
+            target_include_directories(
+                nlohmann_json_schema_validator
+                PUBLIC $<BUILD_INTERFACE:${JSON_HPP}>)
+        # else()
+        #     message(FATAL_ERROR "could not find nlohmann/json.hpp or any related cmake-target. Please set nlohmann_json_DIR.")
+        endif()
 
-    #     message(HIIII ${JSON_HPP})
-
-    #     # if(EXISTS ${JSON_HPP}/nlohmann/json.hpp)
-    #     #     message(STATUS "Found nlohmann/json.hpp in given path: ${JSON_HPP}")
-    #     #     target_include_directories(
-    #     #         nlohmann_json_schema_validator
-    #     #         PUBLIC $<BUILD_INTERFACE:${JSON_HPP}>)
-    #     # else()
-    #     #     message(FATAL_ERROR "could not find nlohmann/json.hpp or any related cmake-target. Please set nlohmann_json_DIR.")
-    #     # endif()
-
-    #     # nlohmann_json_DIR has to be reset (for later use in tests)
-    #     set(nlohmann_json_DIR ${JSON_HPP})
-    #     message(HHHH ${nlohmann_json_DIR})
+        # nlohmann_json_DIR has to be reset (for later use in tests)
+        set(nlohmann_json_DIR ${JSON_HPP})
     endif()
 endif()
 
@@ -164,10 +157,6 @@ if(JSON_VALIDATOR_INSTALL)
             DESTINATION include/nlohmann)
 endif()
 
-#message(HERE IT IS)
-#message(${nlohmann_json_DIR})
-#message(${JSON_HPP})
-
 if (BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
     add_executable(json-schema-validate app/json-schema-validate.cpp)
@@ -183,11 +172,11 @@ if (BUILD_EXAMPLES)
             DESTINATION bin)
 endif()
 
-# if (BUILD_TESTS)
-#     # test-zone
-#     enable_testing()
-#     add_subdirectory(test)
-# endif()
+if (BUILD_TESTS)
+    # test-zone
+    enable_testing()
+    add_subdirectory(test)
+endif()
 
 if(JSON_VALIDATOR_INSTALL)
     # Set Up the Project Targets and Config Files for CMake
