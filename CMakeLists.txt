@@ -92,8 +92,7 @@ else()
         message(STATUS "Found nlohmann_json-cmake-package - linking with it")
         target_link_libraries(
             nlohmann_json_schema_validator
-            PUBLIC
-            nlohmann_json::nlohmann_json)
+            PUBLIC nlohmann_json::nlohmann_json)
     else()
 
         # find nlohmann/json.hpp
