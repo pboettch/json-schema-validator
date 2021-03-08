@@ -23,6 +23,8 @@ if(HUNTER_ENABLED)
     hunter_add_package(nlohmann_json)
 endif()
 
+include_directories(../json/single_include)
+
 # the library
 add_library(nlohmann_json_schema_validator
     src/json-schema-draft7.json.cpp
@@ -79,6 +81,7 @@ else()
                                REALPATH)
     endif()
 
+    set(nlohmann_json_DIR ../../${CMAKE_CURRENT_SOURCE_DIR}/external/json/)
     set(nlohmann_json_orignal_DIR ${nlohmann_json_DIR}) # save path for later use
 
     # find nlohmann_json-cmake-package
@@ -88,7 +91,8 @@ else()
         message(STATUS "Found nlohmann_json-cmake-package - linking with it")
         target_link_libraries(
             nlohmann_json_schema_validator
-            PUBLIC nlohmann_json::nlohmann_json)
+            PUBLIC
+            nlohmann_json::nlohmann_json)
     else()
 
         # find nlohmann/json.hpp
@@ -103,8 +107,8 @@ else()
             target_include_directories(
                 nlohmann_json_schema_validator
                 PUBLIC $<BUILD_INTERFACE:${JSON_HPP}>)
-        else()
-            message(FATAL_ERROR "could not find nlohmann/json.hpp or any related cmake-target. Please set nlohmann_json_DIR.")
+        # else()
+        #     message(FATAL_ERROR "could not find nlohmann/json.hpp or any related cmake-target. Please set nlohmann_json_DIR.")
         endif()
 
         # nlohmann_json_DIR has to be reset (for later use in tests)
