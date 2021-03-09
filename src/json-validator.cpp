@@ -13,6 +13,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <deque>
 
 using nlohmann::json;
 using nlohmann::json_patch;
@@ -171,11 +172,31 @@ public:
 		auto unresolved = file.unresolved.find(fragment);
 		if (unresolved != file.unresolved.end())
 			schema::make(value, this, {}, {{new_uri}});
-		else // no, nothing ref'd it, keep for later
-			// could use fragment here, but better not to: if key is an integer the pointer will be interpreted as
-			// an array. This cannot be the case here, so we force using key as a string when storing the
-			// unknown_keyword-schema.
-			file.unknown_keywords[uri.pointer()][key] = value;
+		else { // no, nothing ref'd it, keep for later
+
+			// need to create an object for each reference-token in the
+			// JSON-Pointer When not existing, a stringified integer reference
+			// token (e.g. "123") in the middle of the pointer will be
+			// interpreted a an array-index and an array will be created.
+
+			// json_pointer's reference_tokens is private - get them
+			std::deque<std::string> ref_tokens;
+			auto uri_pointer = uri.pointer();
+			while (!uri_pointer.empty()) {
+				ref_tokens.push_front(uri_pointer.back());
+				uri_pointer.pop_back();
+			}
+
+			// for each token create an object, if not already existing
+			auto unk_kw = &file.unknown_keywords;
+			for (auto &rt : ref_tokens) {
+				auto existing_object = unk_kw->find(rt);
+				if (existing_object == unk_kw->end())
+					(*unk_kw)[rt] =  json::object();
+				unk_kw = &(*unk_kw)[rt];
+			}
+			(*unk_kw)[key] = value;
+		}
 
 		// recursively add possible subschemas of unknown keywords
 		if (value.type() == json::value_t::object)
