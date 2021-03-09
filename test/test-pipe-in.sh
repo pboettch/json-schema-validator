@@ -7,7 +7,7 @@ set -e
 
 arr=( "$@" )
 
-input=${arr[-1]}
+input=${arr[${#arr[@]}-1]}
 unset 'arr[${#arr[@]}-1]'
 
 ${arr[@]} < $input
