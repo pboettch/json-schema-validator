@@ -189,7 +189,7 @@ public:
 	json validate(const json &) const;
 
 	// validate a json-document based on the root-schema with a custom error-handler
-	json validate(const json &, error_handler &) const;
+	json validate(const json &, error_handler &, const json_uri &initial_uri = json_uri("#")) const;
 };
 
 } // namespace json_schema

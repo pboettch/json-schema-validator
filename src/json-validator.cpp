@@ -102,7 +102,7 @@ namespace nlohmann
 namespace json_schema
 {
 
-class root_schema : public schema
+class root_schema
 {
 	schema_loader loader_;
 	format_checker format_check_;
@@ -133,8 +133,7 @@ public:
 	            format_checker &&format,
 	            content_checker &&content)
 
-	    : schema(this),
-	      loader_(std::move(loader)),
+	    : loader_(std::move(loader)),
 	      format_check_(std::move(format)),
 	      content_check_(std::move(content))
 	{
@@ -280,22 +279,31 @@ public:
 				                            "' has still undefined references.");
 	}
 
-	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
+	void validate(const json::json_pointer &ptr,
+	              const json &instance,
+	              json_patch &patch,
+	              error_handler &e,
+	              const json_uri &initial) const
 	{
-		if (root_)
-			root_->validate(ptr, instance, patch, e);
-		else
+		if (!root_) {
 			e.error(ptr, "", "no root schema has yet been set for validating an instance");
-	}
+			return;
+		}
 
-	const json &defaultValue(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
-	{
-		if (root_)
-			return root_->defaultValue(ptr, instance, e);
-		else
-			e.error(ptr, "", "no root schema has yet been set for validating an instance");
+		auto file_entry = files_.find(initial.location());
+		if (file_entry == files_.end()) {
+			e.error(ptr, "", "no file found serving requested root-URI. " + initial.location());
+			return;
+		}
 
-		return EmptyDefault;
+		auto &file = file_entry->second;
+		auto sch = file.schemas.find(initial.fragment());
+		if (sch == file.schemas.end()) {
+			e.error(ptr, "", "no schema find for request initial URI: " + initial.to_string());
+			return;
+		}
+
+		sch->second->validate(ptr, instance, patch, e);
 	}
 };
 
@@ -1356,11 +1364,11 @@ json json_validator::validate(const json &instance) const
 	return validate(instance, err);
 }
 
-json json_validator::validate(const json &instance, error_handler &err) const
+json json_validator::validate(const json &instance, error_handler &err, const json_uri &initial_uri) const
 {
 	json::json_pointer ptr;
 	json_patch patch;
-	root_->validate(ptr, instance, patch, err);
+	root_->validate(ptr, instance, patch, err, initial_uri);
 	return patch;
 }
 
