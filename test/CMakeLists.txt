@@ -65,3 +65,7 @@ add_executable(binary-validation binary-validation.cpp)
 target_include_directories(binary-validation PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(binary-validation PRIVATE nlohmann_json_schema_validator)
 add_test(NAME binary-validation COMMAND binary-validation)
+
+add_executable(issue-149-entry-selection issue-149-entry-selection.cpp)
+target_link_libraries(issue-149-entry-selection PRIVATE nlohmann_json_schema_validator)
+add_test(NAME issue-149-entry-selection COMMAND issue-149-entry-selection)
