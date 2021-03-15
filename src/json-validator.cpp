@@ -456,7 +456,7 @@ class type_schema : public schema
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override final
 	{
 		// depending on the type of instance run the type specific validator - if present
-		auto type = type_[(uint8_t) instance.type()];
+		auto type = type_[static_cast<uint8_t>(instance.type())];
 
 		if (type)
 			type->validate(ptr, instance, patch, e);
@@ -500,7 +500,7 @@ public:
 	type_schema(json &sch,
 	            root_schema *root,
 	            const std::vector<nlohmann::json_uri> &uris)
-	    : schema(root), type_((uint8_t) json::value_t::discarded + 1)
+    : schema(root), type_(static_cast<uint8_t>(json::value_t::discarded) + 1)
 	{
 		// association between JSON-schema-type and NLohmann-types
 		static const std::vector<std::pair<std::string, json::value_t>> schema_types = {
@@ -518,7 +518,7 @@ public:
 		auto attr = sch.find("type");
 		if (attr == sch.end()) // no type field means all sub-types possible
 			for (auto &t : schema_types)
-				type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
+				type_[static_cast<uint8_t> (t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
 		else {
 			switch (attr.value().type()) { // "type": "type"
 
@@ -526,14 +526,14 @@ public:
 				auto schema_type = attr.value().get<std::string>();
 				for (auto &t : schema_types)
 					if (t.first == schema_type)
-						type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
+						type_[static_cast<uint8_t> (t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
 			} break;
 
 			case json::value_t::array: // "type": ["type1", "type2"]
 				for (auto &schema_type : attr.value())
 					for (auto &t : schema_types)
 						if (t.first == schema_type)
-							type_[(uint8_t) t.second] = type_schema::make(sch, t.second, root, uris, known_keywords);
+							type_[static_cast<uint8_t> (t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
 				break;
 
 			default:
@@ -553,16 +553,16 @@ public:
 
 		// with nlohmann::json float instance (but number in schema-definition) can be seen as unsigned or integer -
 		// reuse the number-validator for integer values as well, if they have not been specified explicitly
-		if (type_[(uint8_t) json::value_t::number_float] && !type_[(uint8_t) json::value_t::number_integer])
-			type_[(uint8_t) json::value_t::number_integer] = type_[(uint8_t) json::value_t::number_float];
+		if (type_[static_cast<uint8_t> (json::value_t::number_float)] && !type_[static_cast<uint8_t> (json::value_t::number_integer)])
+			type_[static_cast<uint8_t> (json::value_t::number_integer)] = type_[static_cast<uint8_t> (json::value_t::number_float)];
 
 		// #54: JSON-schema does not differentiate between unsigned and signed integer - nlohmann::json does
 		// we stick with JSON-schema: use the integer-validator if instance-value is unsigned
-		type_[(uint8_t) json::value_t::number_unsigned] = type_[(uint8_t) json::value_t::number_integer];
+		type_[static_cast<uint8_t> (json::value_t::number_unsigned)] = type_[static_cast<uint8_t> (json::value_t::number_integer)];
 
 		// special for binary types
-		if (type_[(uint8_t) json::value_t::string]) {
-			type_[(uint8_t) json::value_t::binary] = type_[(uint8_t) json::value_t::string];
+		if (type_[static_cast<uint8_t> (json::value_t::string)]) {
+			type_[static_cast<uint8_t> (json::value_t::binary)] = type_[static_cast<uint8_t> (json::value_t::string)];
 		}
 
 		attr = sch.find("enum");
@@ -784,7 +784,7 @@ class numeric : public schema
 	bool violates_multiple_of(T x) const
 	{
 		double res = std::remainder(x, multipleOf_.second);
-		double eps = std::nextafter(x, 0) - x;
+		double eps = std::nextafter(x, 0) - static_cast<double>(x);
 		return std::fabs(res) > std::fabs(eps);
 	}
 
