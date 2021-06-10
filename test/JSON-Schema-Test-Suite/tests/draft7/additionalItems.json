@@ -19,7 +19,7 @@
         ]
     },
     {
-        "description": "items is schema, no additionalItems",
+        "description": "when items is schema, additionalItems does nothing",
         "schema": {
             "items": {},
             "additionalItems": false
@@ -33,14 +33,24 @@
         ]
     },
     {
-        "description": "array of items with no additionalItems",
+        "description": "array of items with no additionalItems permitted",
         "schema": {
             "items": [{}, {}, {}],
             "additionalItems": false
         },
         "tests": [
             {
-                "description": "fewer number of items present",
+                "description": "empty array",
+                "data": [ ],
+                "valid": true
+            },
+            {
+                "description": "fewer number of items present (1)",
+                "data": [ 1 ],
+                "valid": true
+            },
+            {
+                "description": "fewer number of items present (2)",
                 "data": [ 1, 2 ],
                 "valid": true
             },
@@ -81,6 +91,58 @@
                 "description": "only the first item is validated",
                 "data": [1, "foo", false],
                 "valid": true
+            }
+        ]
+    },
+    {
+        "description": "additionalItems should not look in applicators, valid case",
+        "schema": {
+            "allOf": [
+                { "items": [ { "type": "integer" } ] }
+            ],
+            "additionalItems": { "type": "boolean" }
+        },
+        "tests": [
+            {
+                "description": "items defined in allOf are not examined",
+                "data": [ 1, null ],
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "additionalItems should not look in applicators, invalid case",
+        "schema": {
+            "allOf": [
+                { "items": [ { "type": "integer" }, { "type": "string" } ] }
+            ],
+            "items": [ {"type": "integer" } ],
+            "additionalItems": { "type": "boolean" }
+        },
+        "tests": [
+            {
+                "description": "items defined in allOf are not examined",
+                "data": [ 1, "hello" ],
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "items validation adjusts the starting index for additionalItems",
+        "schema": {
+            "items": [ { "type": "string" } ],
+            "additionalItems": { "type": "integer" }
+        },
+        "tests": [
+            {
+                "description": "valid items",
+                "data": [ "x", 2, 3 ],
+                "valid": true
+            },
+            {
+                "description": "wrong type of second item",
+                "data": [ "x", "y" ],
+                "valid": false
             }
         ]
     }

@@ -54,7 +54,7 @@
         "schema": {
             "$id": "http://localhost:1234/",
             "items": {
-                "$id": "folder/",
+                "$id": "baseUriChange/",
                 "items": {"$ref": "folderInteger.json"}
             }
         },
@@ -81,7 +81,7 @@
             },
             "definitions": {
                 "baz": {
-                    "$id": "folder/",
+                    "$id": "baseUriChangeFolder/",
                     "type": "array",
                     "items": {"$ref": "folderInteger.json"}
                 }
@@ -110,7 +110,7 @@
             },
             "definitions": {
                 "baz": {
-                    "$id": "folder/",
+                    "$id": "baseUriChangeFolderInSubschema/",
                     "definitions": {
                         "bar": {
                             "type": "array",
@@ -165,6 +165,29 @@
                     }
                 },
                 "valid": false
+            }
+        ]
+    },
+    {
+        "description": "remote ref with ref to definitions",
+        "schema": {
+            "$id": "http://localhost:1234/schema-remote-ref-ref-defs1.json",
+            "$ref": "ref-and-definitions.json"
+        },
+        "tests": [
+            {
+                "description": "invalid",
+                "data": {
+                    "bar": 1
+                },
+                "valid": false
+            },
+            {
+                "description": "valid",
+                "data": {
+                    "bar": "a"
+                },
+                "valid": true
             }
         ]
     }

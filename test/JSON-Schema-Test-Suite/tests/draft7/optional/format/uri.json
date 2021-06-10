@@ -9,7 +9,7 @@
                 "valid": true
             },
             {
-                "description": "a valid URL with anchor tag and parantheses",
+                "description": "a valid URL with anchor tag and parentheses",
                 "data": "http://foo.com/blah_(wikipedia)_blah#cite-1",
                 "valid": true
             },
@@ -96,6 +96,11 @@
             {
                 "description": "an invalid URI with spaces and missing scheme",
                 "data": ":// should fail",
+                "valid": false
+            },
+            {
+                "description": "an invalid URI with comma in scheme",
+                "data": "bar,baz:foo",
                 "valid": false
             }
         ]

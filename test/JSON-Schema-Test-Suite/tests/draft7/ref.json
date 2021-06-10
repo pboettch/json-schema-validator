@@ -75,13 +75,15 @@
     {
         "description": "escaped pointer ref",
         "schema": {
-            "tilda~field": {"type": "integer"},
-            "slash/field": {"type": "integer"},
-            "percent%field": {"type": "integer"},
+            "definitions": {
+                "tilde~field": {"type": "integer"},
+                "slash/field": {"type": "integer"},
+                "percent%field": {"type": "integer"}
+            },
             "properties": {
-                "tilda": {"$ref": "#/tilda~0field"},
-                "slash": {"$ref": "#/slash~1field"},
-                "percent": {"$ref": "#/percent%25field"}
+                "tilde": {"$ref": "#/definitions/tilde~0field"},
+                "slash": {"$ref": "#/definitions/slash~1field"},
+                "percent": {"$ref": "#/definitions/percent%25field"}
             }
         },
         "tests": [
@@ -91,8 +93,8 @@
                 "valid": false
             },
             {
-                "description": "tilda invalid",
-                "data": {"tilda": "aoeu"},
+                "description": "tilde invalid",
+                "data": {"tilde": "aoeu"},
                 "valid": false
             },
             {
@@ -106,8 +108,8 @@
                 "valid": true
             },
             {
-                "description": "tilda valid",
-                "data": {"tilda": 123},
+                "description": "tilde valid",
+                "data": {"tilde": 123},
                 "valid": true
             },
             {
@@ -125,7 +127,7 @@
                 "b": {"$ref": "#/definitions/a"},
                 "c": {"$ref": "#/definitions/b"}
             },
-            "$ref": "#/definitions/c"
+            "allOf": [{ "$ref": "#/definitions/c" }]
         },
         "tests": [
             {
@@ -210,9 +212,34 @@
         ]
     },
     {
+        "description": "property named $ref, containing an actual $ref",
+        "schema": {
+            "properties": {
+                "$ref": {"$ref": "#/definitions/is-string"}
+            },
+            "definitions": {
+                "is-string": {
+                    "type": "string"
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "property named $ref valid",
+                "data": {"$ref": "a"},
+                "valid": true
+            },
+            {
+                "description": "property named $ref invalid",
+                "data": {"$ref": 2},
+                "valid": false
+            }
+        ]
+    },
+    {
         "description": "$ref to boolean schema true",
         "schema": {
-            "$ref": "#/definitions/bool",
+            "allOf": [{ "$ref": "#/definitions/bool" }],
             "definitions": {
                 "bool": true
             }
@@ -228,7 +255,7 @@
     {
         "description": "$ref to boolean schema false",
         "schema": {
-            "$ref": "#/definitions/bool",
+            "allOf": [{ "$ref": "#/definitions/bool" }],
             "definitions": {
                 "bool": false
             }
@@ -383,32 +410,6 @@
         ]
     },
     {
-        "description": "Location-independent identifier with absolute URI",
-        "schema": {
-            "allOf": [{
-                "$ref": "http://localhost:1234/bar#foo"
-            }],
-            "definitions": {
-                "A": {
-                    "$id": "http://localhost:1234/bar#foo",
-                    "type": "integer"
-                }
-            }
-        },
-        "tests": [
-            {
-                "data": 1,
-                "description": "match",
-                "valid": true
-            },
-            {
-                "data": "a",
-                "description": "mismatch",
-                "valid": false
-            }
-        ]
-    },
-    {
         "description": "Location-independent identifier with base URI change in subschema",
         "schema": {
             "$id": "http://localhost:1234/root",
@@ -437,6 +438,138 @@
                 "data": "a",
                 "description": "mismatch",
                 "valid": false
+            }
+        ]
+    },
+    {
+        "description": "naive replacement of $ref with its destination is not correct",
+        "schema": {
+            "definitions": {
+                "a_string": { "type": "string" }
+            },
+            "enum": [
+                { "$ref": "#/definitions/a_string" }
+            ]
+        },
+        "tests": [
+            {
+                "description": "do not evaluate the $ref inside the enum, matching any string",
+                "data": "this is a string",
+                "valid": false
+            },
+            {
+                "description": "do not evaluate the $ref inside the enum, definition exact match",
+                "data": { "type": "string" },
+                "valid": false
+            },
+            {
+                "description": "match the enum exactly",
+                "data": { "$ref": "#/definitions/a_string" },
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "refs with relative uris and defs",
+        "schema": {
+            "$id": "http://example.com/schema-relative-uri-defs1.json",
+            "properties": {
+                "foo": {
+                    "$id": "schema-relative-uri-defs2.json",
+                    "definitions": {
+                        "inner": {
+                            "properties": {
+                                "bar": { "type": "string" }
+                            }
+                        }
+                    },
+                    "allOf": [ { "$ref": "#/definitions/inner" } ]
+                }
+            },
+            "allOf": [ { "$ref": "schema-relative-uri-defs2.json" } ]
+        },
+        "tests": [
+            {
+                "description": "invalid on inner field",
+                "data": {
+                    "foo": {
+                        "bar": 1
+                    },
+                    "bar": "a"
+                },
+                "valid": false
+            },
+            {
+                "description": "invalid on outer field",
+                "data": {
+                    "foo": {
+                        "bar": "a"
+                    },
+                    "bar": 1
+                },
+                "valid": false
+            },
+            {
+                "description": "valid on both fields",
+                "data": {
+                    "foo": {
+                        "bar": "a"
+                    },
+                    "bar": "a"
+                },
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "relative refs with absolute uris and defs",
+        "schema": {
+            "$id": "http://example.com/schema-refs-absolute-uris-defs1.json",
+            "properties": {
+                "foo": {
+                    "$id": "http://example.com/schema-refs-absolute-uris-defs2.json",
+                    "definitions": {
+                        "inner": {
+                            "properties": {
+                                "bar": { "type": "string" }
+                            }
+                        }
+                    },
+                    "allOf": [ { "$ref": "#/definitions/inner" } ]
+                }
+            },
+            "allOf": [ { "$ref": "schema-refs-absolute-uris-defs2.json" } ]
+        },
+        "tests": [
+            {
+                "description": "invalid on inner field",
+                "data": {
+                    "foo": {
+                        "bar": 1
+                    },
+                    "bar": "a"
+                },
+                "valid": false
+            },
+            {
+                "description": "invalid on outer field",
+                "data": {
+                    "foo": {
+                        "bar": "a"
+                    },
+                    "bar": 1
+                },
+                "valid": false
+            },
+            {
+                "description": "valid on both fields",
+                "data": {
+                    "foo": {
+                        "bar": "a"
+                    },
+                    "bar": "a"
+                },
+                "valid": true
             }
         ]
     }

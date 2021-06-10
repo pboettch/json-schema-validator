@@ -68,21 +68,28 @@ void rfc3339_time_check(const std::string &value)
 
 	range_check(hour, 0, 23);
 	range_check(minute, 0, 59);
+
+	int offsetHour = 0,
+	    offsetMinute = 0;
+
+	/* don't check the numerical offset if time zone is specified as 'Z' */
+	if (!matches[5].str().empty()) {
+		offsetHour = std::stoi(matches[5].str());
+		offsetMinute = std::stoi(matches[6].str());
+
+		range_check(offsetHour, -23, 23);
+		range_check(offsetMinute, 0, 59);
+	}
+
 	/**
      * @todo Could be made more exact by querying a leap second database and choosing the
      *       correct maximum in {58,59,60}. This current solution might match some invalid dates
      *       but it won't lead to false negatives. This only works if we know the full date, however
      */
-	range_check(second, 0, 60);
-
-	/* don't check the numerical offset if time zone is specified as 'Z' */
-	if (!matches[5].str().empty()) {
-		const auto offsetHour = std::stoi(matches[5].str());
-		const auto offsetMinute = std::stoi(matches[6].str());
-
-		range_check(offsetHour, -23, 23);
-		range_check(offsetMinute, 0, 59);
-	}
+	if (((hour - offsetHour) % 24) == 23 && ((minute - offsetMinute) % 60) == 59)
+		range_check(second, 0, 60); // possible leap-second
+	else
+		range_check(second, 0, 59);
 }
 
 /**
@@ -124,7 +131,7 @@ void rfc3339_date_time_check(const std::string &value)
 	rfc3339_time_check(matches[2].str());
 }
 
-const std::string decOctet{R"((?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"}; // matches numbers 0-255
+const std::string decOctet{R"((?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]))"}; // matches numbers 0-255
 const std::string ipv4Address{"(?:" + decOctet + R"(\.){3})" + decOctet};
 const std::string h16{R"([0-9A-Fa-f]{1,4})"};
 const std::string h16Left{"(?:" + h16 + ":)"};

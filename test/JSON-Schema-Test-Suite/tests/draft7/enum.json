@@ -33,6 +33,16 @@
                 "description": "objects are deep compared",
                 "data": {"foo": false},
                 "valid": false
+            },
+            {
+                "description": "valid object matches",
+                "data": {"foo": 12},
+                "valid": true
+            },
+            {
+                "description": "extra properties in object is invalid",
+                "data": {"foo": 12, "boo": 42},
+                "valid": false
             }
         ]
     },
@@ -204,6 +214,22 @@
                 "description": "float one is valid",
                 "data": 1.0,
                 "valid": true
+            }
+        ]
+    },
+    {
+        "description": "nul characters in strings",
+        "schema": { "enum": [ "hello\u0000there" ] },
+        "tests": [
+            {
+                "description": "match string with nul",
+                "data": "hello\u0000there",
+                "valid": true
+            },
+            {
+                "description": "do not match string lacking nul",
+                "data": "hellothere",
+                "valid": false
             }
         ]
     }
