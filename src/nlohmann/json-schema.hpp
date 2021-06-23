@@ -9,17 +9,8 @@
 #ifndef NLOHMANN_JSON_SCHEMA_HPP__
 #define NLOHMANN_JSON_SCHEMA_HPP__
 
-#ifdef _WIN32
-#	if defined(JSON_SCHEMA_VALIDATOR_EXPORTS)
-#		define JSON_SCHEMA_VALIDATOR_API __declspec(dllexport)
-#	elif defined(JSON_SCHEMA_VALIDATOR_IMPORTS)
-#		define JSON_SCHEMA_VALIDATOR_API __declspec(dllimport)
-#	else
-#		define JSON_SCHEMA_VALIDATOR_API
-#	endif
-#else
-#	define JSON_SCHEMA_VALIDATOR_API
-#endif
+#include "json-schema-decl.hpp"
+#include <nlohmann/json-schema-version.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -30,6 +21,13 @@
 #else
 #	error "expected existing NLOHMANN_JSON_VERSION_MAJOR preproc variable, please update to NLohmann's JSON 3.8.0"
 #endif
+
+namespace _detail
+{
+using namespace nlohmann::json_schema;
+static const auto version_ok __attribute((unused)) =
+    about::check_library_version<about::VERSION_MAJOR, about::VERSION_MINOR>();
+} // namespace _detail
 
 // make yourself a home - welcome to nlohmann's namespace
 namespace nlohmann

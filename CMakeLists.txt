@@ -8,10 +8,22 @@ if(HUNTER_ENABLED)
     )
 endif()
 
+# Read version from file VERSION
+FILE(READ "VERSION" PROJECT_VERSION)
+STRING(STRIP "${PROJECT_VERSION}" PROJECT_VERSION)
+cmake_policy(SET CMP0048 NEW)
+
 project(nlohmann_json_schema_validator
+        VERSION "${PROJECT_VERSION}"
         LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.1.1)
+message(STATUS "Version: ${PROJECT_VERSION}")
+
+set(LIB_VERSION_CPP_FILE ${CMAKE_CURRENT_BINARY_DIR}/json-schema-version.cpp)
+set(LIB_VERSION_HPP_FILE ${CMAKE_CURRENT_BINARY_DIR}/include/nlohmann/json-schema-version.hpp)
+
+configure_file(src/json-schema-version.cpp.in ${LIB_VERSION_CPP_FILE})
+configure_file(src/json-schema-version.hpp.in ${LIB_VERSION_HPP_FILE})
 
 cmake_minimum_required(VERSION 3.2)
 
@@ -29,12 +41,14 @@ add_library(nlohmann_json_schema_validator
     src/json-uri.cpp
     src/json-validator.cpp
     src/json-patch.cpp
+    ${LIB_VERSION_CPP_FILE}
     src/string-format-check.cpp)
 
 target_include_directories(nlohmann_json_schema_validator
     PUBLIC
         $<INSTALL_INTERFACE:include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>)
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>)
 
 target_compile_features(nlohmann_json_schema_validator
     PUBLIC
@@ -148,8 +162,12 @@ if(JSON_VALIDATOR_INSTALL)
             ARCHIVE DESTINATION lib
             RUNTIME DESTINATION bin)
 
-    install(FILES src/nlohmann/json-schema.hpp
-            DESTINATION include/nlohmann)
+    install(FILES 
+                src/nlohmann/json-schema.hpp
+                src/nlohmann/json-schema-decl.hpp
+                ${LIB_VERSION_HPP_FILE}
+            DESTINATION
+                include/nlohmann)
 endif()
 
 if (BUILD_EXAMPLES)
