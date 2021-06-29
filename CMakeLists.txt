@@ -59,7 +59,6 @@ if(TARGET nlohmann_json::nlohmann_json)
         nlohmann_json_schema_validator
         PUBLIC nlohmann_json::nlohmann_json)
 
-    set(JSON_VALIDATOR_INSTALL OFF)
     set(BUILD_TESTS OFF)
     set(BUILD_EXAMPLES OFF)
 
@@ -68,7 +67,7 @@ elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next 
     target_link_libraries(
         nlohmann_json_schema_validator
         PUBLIC nlohmann_json)
-    set(JSON_VALIDATOR_INSTALL OFF)
+
     set(BUILD_TESTS OFF)
     set(BUILD_EXAMPLES OFF)
 
