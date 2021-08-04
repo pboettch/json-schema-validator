@@ -109,8 +109,8 @@ cmake [..] -DBUILD_SHARED_LIBS=ON [..]
 
 As nlohmann-json is a dependency, this library tries find it.
 
-The cmake-configuration first checks if nlohmann-json is available as an cmake-target. This may happen, because it is used as a submodule in a super-project which already provides and uses nlohmann-json.
-Otherwise, it calls `find_package` for nlohmann-json and requires that library to be installed on the system.
+The cmake-configuration first checks if nlohmann-json is available as a cmake-target. This may be the case, because it is used as a submodule in a super-project which already provides and uses nlohmann-json.
+Otherwise, it calls `find_package` for nlohmann-json and requires nlohmann-json to be installed on the system.
 
 ### Building with Hunter package manager
 
@@ -125,14 +125,7 @@ cmake [..] -DHUNTER_ENABLED=ON [..]
 Adding this library as a subdirectory to a parent project is one way of
 building it.
 
-If the parent project
-
-- already used `find_package()` to find the CMake-package of nlohmann_json, method 1 will work.
-- uses the git-repo of nlohmann_json as a subdirectory, method 1 will work.
-- sets nlohmann_json_DIR, method 2 or 3 will work.
-
-Afterwards a target called `nlohmann_json_schema_validator`
-is available in order to compile and link.
+If the parent project already used `find_package()` to find the CMake-package of nlohmann_json or includes it as a submodule likewise.
 
 ### Building directly, finding a CMake-package. (short)
 
@@ -142,22 +135,7 @@ CMake's `find_package()` to be used.
 This library is using this mechanism if `nlohmann_json::nlohmann_json`-target
 does not exist.
 
-The variable `nlohmann_json_DIR` can be used to help `find_package()` find this package.
-
-### Building directly: provide a path to where to find json.hpp
-
-The last method before fataling out is by providing a path where the file json.hpp can be found.
-
-The variable `nlohmann_json_DIR` has to be used to point to the path
-where `json.hpp` is found in a subdirectory called `nlohmann`, e.g.:
-
-`json.hpp` is located in `/path/to/nlohmann/json.hpp`. The `cmake`-command has to be run as follows:
-
-```bash
-cmake -Dnlohmann_json_DIR=/path/to [..]
-```
-
-### Method 1 - long version
+### Install
 
 Since version 2.1.0 this library can be installed and CMake-package-files will be
 created accordingly. If the installation of nlohmann-json and this library
@@ -165,7 +143,6 @@ is done into default unix-system-paths CMake will be able to find this
 library by simply doing:
 
 ```CMake
-find_package(nlohmann_json REQUIRED)
 find_package(nlohmann_json_schema_validator REQUIRED)
 ```
 
@@ -175,18 +152,6 @@ and
 target_link_libraries(<your-target> [..] nlohmann_json_schema_validator)
 ```
 to build and link.
-
-If a custom path has been used to install this library (and nlohmann-json), `find_package()`
-needs a hint for where to find the package-files, it can be provided by setting the following variables
-
-```CMake
-cmake .. \
-    -Dnlohmann_json_DIR=<path/to/>lib/cmake/nlohmann_json \
-	-Dnlohmann_json_schema_validator_DIR:PATH=<path/to/>/lib/cmake/nlohmann_json_schema_validator
-```
-
-Note that if the this library is used as cmake-package, nlohmann-json also has
-to be used a cmake-package.
 
 ## Code
 
