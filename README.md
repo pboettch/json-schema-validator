@@ -105,23 +105,12 @@ In your initial call to cmake simply add:
 cmake [..] -DBUILD_SHARED_LIBS=ON [..]
 ```
 
-## Providing access to nlohmann-json
+## nlohmann-json integration
 
-The CMake-file of this libraries tries several ways to ultimately include
-`nlohmann/json.hpp`
+As nlohmann-json is a dependency, this library tries find it.
 
-During the cmake-configurate-step there are 3 tries done trying to
-access nlohmann-json:
-
-1. link with a nlohmann_json::nlohmann_json-target,
-2. find the nlohmann_json-cmake-package and link with nlohmann_json::nlohmann_json-target or
-3. find path to `nlohmann/json.hpp`.
-
-1 is there to make it work when this project is added as
-a sub-directory (via `add_subdirectory()`), 2 and 3 can be
-assisted by setting the `nlohmann_json_DIR`-variable.
-
-For 1 there is an example of you to do in example/cmake-submodule.
+The cmake-configuration first checks if nlohmann-json is available as an cmake-target. This may happen, because it is used as a submodule in a super-project which already provides and uses nlohmann-json.
+Otherwise, it calls `find_package` for nlohmann-json and requires that library to be installed on the system.
 
 ### Building with Hunter package manager
 
