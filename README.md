@@ -332,6 +332,8 @@ json_validator validator(nullptr, // or loader-callback
                          my_format_checker); // create validator
 ```
 
+## Default Checker
+
 The library contains a default-checker, which does some checks. It needs to be
 provided manually to the constructor of the validator:
 
@@ -339,6 +341,10 @@ provided manually to the constructor of the validator:
 json_validator validator(loader, // or nullptr for no loader
                          nlohmann::json_schema::default_string_format_check);
 ```
+
+Supported formats: `date-time, date, time, email, hostname, ipv4, ipv6, uuid, regex`
+
+More formats can be added in `src/string-format-check.cpp`. Please contribute implementions for missing json scheme draft format. 
 
 # Contributing
 
