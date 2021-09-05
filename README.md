@@ -344,7 +344,7 @@ json_validator validator(loader, // or nullptr for no loader
 
 Supported formats: `date-time, date, time, email, hostname, ipv4, ipv6, uuid, regex`
 
-More formats can be added in `src/string-format-check.cpp`. Please contribute implementions for missing json scheme draft format. 
+More formats can be added in `src/string-format-check.cpp`. Please contribute implementions for missing json schema draft formats. 
 
 # Contributing
 
