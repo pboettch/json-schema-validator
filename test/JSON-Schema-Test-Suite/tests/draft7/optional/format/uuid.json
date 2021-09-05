@@ -1,0 +1,30 @@
+[
+    {
+        "description": "validation of uuids",
+        "schema": {
+            "format": "uuid"
+        },
+        "tests": [
+            {
+                "description": "a valid uuid",
+                "data": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "valid": true
+            },
+            {
+                "description": "an invalid uuid with shorter length",
+                "data": "3fa85f64-5717-4562-b3fc-2c963",
+                "valid": false
+            },
+            {
+                "description": "an invalid uuid with missing hyphens",
+                "data": "3fa85f6457174562b3fc2c963f66afa6",
+                "valid": true
+            },
+            {
+                "description": "an invalid uuid with hyphens at wrong position",
+                "data": "3fa85f645-717-4562b-3fc2c9-63f66afa6",
+                "valid": true
+            }
+        ]
+    }
+]
