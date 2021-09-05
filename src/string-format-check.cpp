@@ -175,6 +175,8 @@ const std::string host{
     "|" + regName +
     ")"};
 
+const std::string uuid{R"([0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12})"};
+
 // from http://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
 const std::string hostname{R"(^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$)"};
 
@@ -303,6 +305,11 @@ void default_string_format_check(const std::string &format, const std::string &v
 		static const std::regex ipv6Regex{ipv6Address};
 		if (!std::regex_match(value, ipv6Regex)) {
 			throw std::invalid_argument(value + " is not an IPv6 string according to RFC 5954.");
+		}
+	} else if (format == "uuid") {
+		static const std::regex uuidRegex{uuid};
+		if (!std::regex_match(value, uuidRegex)) {
+			throw std::invalid_argument(value + " is not an uuid string according to RFC 4122.");
 		}
 	} else if (format == "regex") {
 		try {
