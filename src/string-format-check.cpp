@@ -61,9 +61,9 @@ void rfc3339_time_check(const std::string &value)
 		throw std::invalid_argument(value + " is not a time string according to RFC 3339.");
 	}
 
-	const auto hour = std::stoi(matches[1].str());
-	const auto minute = std::stoi(matches[2].str());
-	const auto second = std::stoi(matches[3].str());
+	auto hour = std::stoi(matches[1].str());
+	auto minute = std::stoi(matches[2].str());
+	auto second = std::stoi(matches[3].str());
 	// const auto secfrac      = std::stof( matches[4].str() );
 
 	range_check(hour, 0, 23);
@@ -79,6 +79,8 @@ void rfc3339_time_check(const std::string &value)
 
 		range_check(offsetHour, -23, 23);
 		range_check(offsetMinute, 0, 59);
+		if (offsetHour < 0)
+			offsetMinute *= -1;
 	}
 
 	/**
@@ -86,7 +88,14 @@ void rfc3339_time_check(const std::string &value)
      *       correct maximum in {58,59,60}. This current solution might match some invalid dates
      *       but it won't lead to false negatives. This only works if we know the full date, however
      */
-	if (((hour - offsetHour) % 24) == 23 && ((minute - offsetMinute) % 60) == 59)
+
+	auto day_minutes = hour * 60 + minute - (offsetHour * 60 + offsetMinute);
+	if (day_minutes < 0)
+		day_minutes += 60 * 24;
+	hour = day_minutes % 24;
+	minute = day_minutes / 24;
+
+	if (hour == 23 && minute == 59)
 		range_check(second, 0, 60); // possible leap-second
 	else
 		range_check(second, 0, 59);

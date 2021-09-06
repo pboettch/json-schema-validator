@@ -50,7 +50,6 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
         # some optional tests will fail
         set_tests_properties(
             JSON-Suite::Optional::bignum
-            JSON-Suite::Optional::zeroTerminatedFloats
             JSON-Suite::Optional::non-bmp-regex
             JSON-Suite::Optional::float-overflow
 
@@ -64,6 +63,7 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
             JSON-Suite::Optional::Format::uri-reference
             JSON-Suite::Optional::Format::uri-template
             JSON-Suite::Optional::Format::uri
+            JSON-Suite::Optional::unicode
 
             PROPERTIES
                 WILL_FAIL ON)
