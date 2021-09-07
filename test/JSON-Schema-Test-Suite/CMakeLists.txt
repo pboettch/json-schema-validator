@@ -64,7 +64,6 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
             JSON-Suite::Optional::Format::uri-reference
             JSON-Suite::Optional::Format::uri-template
             JSON-Suite::Optional::Format::uri
-            JSON-Suite::Optional::Format::uuid
 
             PROPERTIES
                 WILL_FAIL ON)

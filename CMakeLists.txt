@@ -51,6 +51,16 @@ set(JSON_VALIDATOR_INSTALL ON)
 
 # here we decice how nlohmann::json is found and used to build this project
 
+include(FetchContent)
+
+FetchContent_Declare(json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.9.1
+)
+
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(json)
+
 # first, check whether a nlohmann_json::nlohmann_json target exists already
 # -> we are used as a sub-directory from within another project
 if(TARGET nlohmann_json::nlohmann_json)
@@ -60,8 +70,8 @@ if(TARGET nlohmann_json::nlohmann_json)
         PUBLIC nlohmann_json::nlohmann_json)
 
     set(JSON_VALIDATOR_INSTALL OFF)
-    set(BUILD_TESTS OFF)
-    set(BUILD_EXAMPLES OFF)
+    # set(BUILD_TESTS OFF)
+    # set(BUILD_EXAMPLES OFF)
 
 elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next to nlohmann-json's git repo
     message(STATUS "Found nlohmann_json-target - linking with it")
@@ -168,6 +178,7 @@ if (BUILD_EXAMPLES)
 endif()
 
 if (BUILD_TESTS)
+    message("Tests!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     # test-zone
     enable_testing()
     add_subdirectory(test)
