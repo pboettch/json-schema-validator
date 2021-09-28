@@ -1217,6 +1217,8 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 
 	case json::value_t::binary:
 		break;
+	default: 
+	   break;
 	}
 	return nullptr;
 }
