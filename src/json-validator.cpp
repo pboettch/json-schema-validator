@@ -800,7 +800,7 @@ class numeric : public schema
 	{
 		T value = instance; // conversion of json to value_type
 
-		if (multipleOf_.first && value != 0) // zero is multiple of everything
+		if (multipleOf_.first && ((value < 0) || (value > 0))) // zero is multiple of everything
 			if (violates_multiple_of(value))
 				e.error(ptr, instance, "instance is not a multiple of " + std::to_string(multipleOf_.second));
 
