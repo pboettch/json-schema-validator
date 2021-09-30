@@ -715,13 +715,13 @@ public:
 	{
 		auto attr = sch.find("maxLength");
 		if (attr != sch.end()) {
-			maxLength_ = {true, attr.value().get<uint64_t>()};
+			maxLength_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
 		attr = sch.find("minLength");
 		if (attr != sch.end()) {
-			minLength_ = {true, attr.value().get<uint64_t>()};
+			minLength_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
@@ -999,13 +999,13 @@ public:
 	{
 		auto attr = sch.find("maxProperties");
 		if (attr != sch.end()) {
-			maxProperties_ = {true, attr.value().get<uint64_t>()};
+			maxProperties_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
 		attr = sch.find("minProperties");
 		if (attr != sch.end()) {
-			minProperties_ = {true, attr.value().get<uint64_t>()};
+			minProperties_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
@@ -1143,13 +1143,13 @@ public:
 	{
 		auto attr = sch.find("maxItems");
 		if (attr != sch.end()) {
-			maxItems_ = {true, attr.value().get<uint64_t>()};
+			maxItems_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
 		attr = sch.find("minItems");
 		if (attr != sch.end()) {
-			minItems_ = {true, attr.value().get<uint64_t>()};
+			minItems_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
