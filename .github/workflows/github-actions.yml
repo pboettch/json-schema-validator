@@ -1,0 +1,38 @@
+name: Ubuntu
+
+on:
+  push:
+    branches:
+      - develop
+      - master
+      - release/*
+  pull_request:
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    container: ghcr.io/nlohmann/json-ci:v1.0.0
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
+      - run: echo "🔎 Branch name is ${{ github.ref }} and repository is ${{ github.repository }}."
+      - name: Clone nlohmann json
+        uses: actions/checkout@master
+        with:
+          repository: nlohmann/json
+          path: nlohmann-json
+          ref: release/3.10.2
+      - name: Build and install nlohmann json
+        run: |
+          cd nlohmann-json
+          cmake -S . -B build
+          cmake --build build --target install -j$(nproc)
+          cd ..
+      - name: Clone json-schema-validator
+        uses: actions/checkout@v2
+      - name: cmake
+        run: cmake -S . -B build
+      - name: build
+        run: cmake --build build --target all -j$(nproc)
+      - name: test
+        run: cd build && ctest
