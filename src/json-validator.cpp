@@ -657,7 +657,7 @@ class string : public schema
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		if (minLength_.first) {
-			if (utf8_length(instance) < minLength_.second) {
+			if (utf8_length(instance.get<std::string>()) < minLength_.second) {
 				std::ostringstream s;
 				s << "instance is too short as per minLength:" << minLength_.second;
 				e.error(ptr, instance, s.str());
@@ -665,7 +665,7 @@ class string : public schema
 		}
 
 		if (maxLength_.first) {
-			if (utf8_length(instance) > maxLength_.second) {
+			if (utf8_length(instance.get<std::string>()) > maxLength_.second) {
 				std::ostringstream s;
 				s << "instance is too long as per maxLength: " << maxLength_.second;
 				e.error(ptr, instance, s.str());
@@ -701,7 +701,7 @@ class string : public schema
 				e.error(ptr, instance, std::string("a format checker was not provided but a format keyword for this string is present: ") + format_.second);
 			else {
 				try {
-					root_->format_check()(format_.second, instance);
+					root_->format_check()(format_.second, instance.get<std::string>());
 				} catch (const std::exception &ex) {
 					e.error(ptr, instance, std::string("format-checking failed: ") + ex.what());
 				}
@@ -715,13 +715,13 @@ public:
 	{
 		auto attr = sch.find("maxLength");
 		if (attr != sch.end()) {
-			maxLength_ = {true, attr.value()};
+			maxLength_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
 		attr = sch.find("minLength");
 		if (attr != sch.end()) {
-			minLength_ = {true, attr.value()};
+			minLength_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
@@ -759,7 +759,7 @@ public:
 #ifndef NO_STD_REGEX
 		attr = sch.find("pattern");
 		if (attr != sch.end()) {
-			patternString_ = attr.value();
+			patternString_ = attr.value().get<std::string>();
 			pattern_ = {true, REGEX_NAMESPACE::regex(attr.value().get<std::string>(),
 			                                         REGEX_NAMESPACE::regex::ECMAScript)};
 			sch.erase(attr);
@@ -771,7 +771,7 @@ public:
 			if (root_->format_check() == nullptr)
 				throw std::invalid_argument{"a format checker was not provided but a format keyword for this string is present: " + format_.second};
 
-			format_ = {true, attr.value()};
+			format_ = {true, attr.value().get<std::string>()};
 			sch.erase(attr);
 		}
 	}
@@ -821,33 +821,33 @@ public:
 	{
 		auto attr = sch.find("maximum");
 		if (attr != sch.end()) {
-			maximum_ = {true, attr.value()};
+			maximum_ = {true, attr.value().get<T>()};
 			kw.insert("maximum");
 		}
 
 		attr = sch.find("minimum");
 		if (attr != sch.end()) {
-			minimum_ = {true, attr.value()};
+			minimum_ = {true, attr.value().get<T>()};
 			kw.insert("minimum");
 		}
 
 		attr = sch.find("exclusiveMaximum");
 		if (attr != sch.end()) {
 			exclusiveMaximum_ = true;
-			maximum_ = {true, attr.value()};
+			maximum_ = {true, attr.value().get<T>()};
 			kw.insert("exclusiveMaximum");
 		}
 
 		attr = sch.find("exclusiveMinimum");
 		if (attr != sch.end()) {
-			minimum_ = {true, attr.value()};
 			exclusiveMinimum_ = true;
+			minimum_ = {true, attr.value().get<T>()};
 			kw.insert("exclusiveMinimum");
 		}
 
 		attr = sch.find("multipleOf");
 		if (attr != sch.end()) {
-			multipleOf_ = {true, attr.value()};
+			multipleOf_ = {true, attr.value().get<json::number_float_t>()};
 			kw.insert("multipleOf");
 		}
 	}
@@ -999,13 +999,13 @@ public:
 	{
 		auto attr = sch.find("maxProperties");
 		if (attr != sch.end()) {
-			maxProperties_ = {true, attr.value()};
+			maxProperties_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
 		attr = sch.find("minProperties");
 		if (attr != sch.end()) {
-			minProperties_ = {true, attr.value()};
+			minProperties_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
@@ -1143,19 +1143,19 @@ public:
 	{
 		auto attr = sch.find("maxItems");
 		if (attr != sch.end()) {
-			maxItems_ = {true, attr.value()};
+			maxItems_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
 		attr = sch.find("minItems");
 		if (attr != sch.end()) {
-			minItems_ = {true, attr.value()};
+			minItems_ = {true, attr.value().get<size_t>()};
 			sch.erase(attr);
 		}
 
 		attr = sch.find("uniqueItems");
 		if (attr != sch.end()) {
-			uniqueItems_ = attr.value();
+			uniqueItems_ = attr.value().get<bool>();
 			sch.erase(attr);
 		}
 
@@ -1255,7 +1255,7 @@ std::shared_ptr<schema> schema::make(json &schema,
 			if (std::find(uris.begin(),
 			              uris.end(),
 			              attr.value().get<std::string>()) == uris.end())
-				uris.push_back(uris.back().derive(attr.value())); // so add it to the list if it is not there already
+				uris.push_back(uris.back().derive(attr.value().get<std::string>())); // so add it to the list if it is not there already
 			schema.erase(attr);
 		}
 
@@ -1270,7 +1270,7 @@ std::shared_ptr<schema> schema::make(json &schema,
 		if (attr != schema.end()) { // this schema is a reference
 			// the last one on the uri-stack is the last id seen before coming here,
 			// so this is the origial URI for this reference, the $ref-value has thus be resolved from it
-			auto id = uris.back().derive(attr.value());
+			auto id = uris.back().derive(attr.value().get<std::string>());
 			sch = root->get_or_create_ref(id);
 			schema.erase(attr);
 		} else {
