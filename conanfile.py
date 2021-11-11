@@ -45,8 +45,8 @@ class JsonSchemaValidatorConan(ConanFile):
     def build(self):
         cmake = CMake(self)
         cmake.definitions['nlohmann_json_DIR'] = os.path.join(self.deps_cpp_info['nlohmann_json'].rootpath, 'include')
-        cmake.definitions['BUILD_EXAMPLES'] = True
-        cmake.definitions['BUILD_TESTS'] = False
+        cmake.definitions['JSON_VALIDATOR_BUILD_EXAMPLES'] = True
+        cmake.definitions['JSON_VALIDATOR_BUILD_TESTS'] = False
         cmake.configure()
         cmake.build()
 
