@@ -45,72 +45,27 @@ set_target_properties(nlohmann_json_schema_validator
                           VERSION ${PROJECT_VERSION}
                           SOVERSION 1)
 
-# if used as a sub-directory, do not create install-rules -
-# because of the dependency to nlohmann_json.
-set(JSON_VALIDATOR_INSTALL ON)
-
-# here we decice how nlohmann::json is found and used to build this project
-
-# first, check whether a nlohmann_json::nlohmann_json target exists already
-# -> we are used as a sub-directory from within another project
-if(TARGET nlohmann_json::nlohmann_json)
-    message(STATUS "Found nlohmann_json::nlohmann_json-target - linking with it")
-    target_link_libraries(
-        nlohmann_json_schema_validator
-        PUBLIC nlohmann_json::nlohmann_json)
-
-    set(JSON_VALIDATOR_INSTALL OFF)
-    set(BUILD_TESTS OFF)
-    set(BUILD_EXAMPLES OFF)
-
-elseif(TARGET nlohmann_json) # or nlohmann_json, we are used a sub-project next to nlohmann-json's git repo
-    message(STATUS "Found nlohmann_json-target - linking with it")
-    target_link_libraries(
-        nlohmann_json_schema_validator
-        PUBLIC nlohmann_json)
-    set(JSON_VALIDATOR_INSTALL OFF)
-    set(BUILD_TESTS OFF)
-    set(BUILD_EXAMPLES OFF)
-
-else()
-    if (NOT IS_ABSOLUTE ${nlohmann_json_DIR}) # make nlohmann_json_DIR absolute
-        get_filename_component(nlohmann_json_DIR
-                               "${CMAKE_CURRENT_BINARY_DIR}/${nlohmann_json_DIR}"
-                               REALPATH)
-    endif()
-
-    set(nlohmann_json_orignal_DIR ${nlohmann_json_DIR}) # save path for later use
-
-    # find nlohmann_json-cmake-package
-    find_package(nlohmann_json QUIET)
-
-    if(TARGET nlohmann_json::nlohmann_json)
-        message(STATUS "Found nlohmann_json-cmake-package - linking with it")
-        target_link_libraries(
-            nlohmann_json_schema_validator
-            PUBLIC nlohmann_json::nlohmann_json)
-    else()
-
-        # find nlohmann/json.hpp
-
-        message(STATUS ${nlohmann_json_orignal_DIR})
-
-        find_path(JSON_HPP nlohmann/json.hpp
-                  PATHS ${nlohmann_json_orignal_DIR})
-
-        if(EXISTS ${JSON_HPP}/nlohmann/json.hpp)
-            message(STATUS "Found nlohmann/json.hpp in given path: ${JSON_HPP}")
-            target_include_directories(
-                nlohmann_json_schema_validator
-                PUBLIC $<BUILD_INTERFACE:${JSON_HPP}>)
-        else()
-            message(FATAL_ERROR "could not find nlohmann/json.hpp or any related cmake-target. Please set nlohmann_json_DIR.")
-        endif()
-
-        # nlohmann_json_DIR has to be reset (for later use in tests)
-        set(nlohmann_json_DIR ${JSON_HPP})
-    endif()
+# disable tests and examples if project is not super project
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    # I am top-level project.
+    set(JSON_VALIDATOR_IS_TOP_LEVEL TRUE)
 endif()
+
+if(JSON_VALIDATOR_IS_TOP_LEVEL)
+    set(BUILD_TESTS ON)
+    set(BUILD_EXAMPLES ON)
+else()
+    set(BUILD_TESTS OFF)
+    set(BUILD_EXAMPLES OFF)
+endif()
+
+if(NOT TARGET nlohmann_json::nlohmann_json)
+    find_package(nlohmann_json REQUIRED)
+endif()
+
+target_link_libraries(
+    nlohmann_json_schema_validator
+    PUBLIC nlohmann_json::nlohmann_json)
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
    "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -141,16 +96,14 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 endif()
 
-if(JSON_VALIDATOR_INSTALL)
-    install(TARGETS nlohmann_json_schema_validator
-            EXPORT ${PROJECT_NAME}Targets
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib
-            RUNTIME DESTINATION bin)
+install(TARGETS nlohmann_json_schema_validator
+        EXPORT ${PROJECT_NAME}Targets
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
 
-    install(FILES src/nlohmann/json-schema.hpp
-            DESTINATION include/nlohmann)
-endif()
+install(FILES src/nlohmann/json-schema.hpp
+        DESTINATION include/nlohmann)
 
 if (BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
@@ -173,40 +126,36 @@ if (BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-if(JSON_VALIDATOR_INSTALL)
-    # Set Up the Project Targets and Config Files for CMake
+# Set Up the Project Targets and Config Files for CMake
 
-    # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
-    set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-    set(INSTALL_CMAKEDIR_ROOT share/cmake)
+# Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
+set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+set(INSTALL_CMAKEDIR_ROOT share/cmake)
 
-    # Install Targets
-    install(EXPORT ${PROJECT_NAME}Targets
-            FILE ${PROJECT_NAME}Targets.cmake
-            DESTINATION "${INSTALL_CMAKE_DIR}")
-
-
-    include(CMakePackageConfigHelpers)
-    write_basic_package_version_file(
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-        VERSION ${PROJECT_VERSION}
-        COMPATIBILITY SameMajorVersion
-        )
+# Install Targets
+install(EXPORT ${PROJECT_NAME}Targets
+        FILE ${PROJECT_NAME}Targets.cmake
+        DESTINATION "${INSTALL_CMAKE_DIR}")
 
 
-    configure_package_config_file(
-        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+    )
+
+
+configure_package_config_file(
+    ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
+    )
+
+install(
+    FILES
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-        INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
-        )
-
-    install(
-        FILES
-            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-        DESTINATION
-            ${INSTALL_CMAKE_DIR}
-        )
-
-
-endif()
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+    DESTINATION
+        ${INSTALL_CMAKE_DIR}
+    )
