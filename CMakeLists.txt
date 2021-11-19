@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.2)
 
-option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
-option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
-option(JSON_VALIDATOR_INSTALL        "Install" ON)
-option(JSON_VALIDATOR_HUNTER         "Enable Hunter package manager" OFF)
+# disable tests and examples if project is not super project
+set(JSON_VALIDATOR_IS_TOP_LEVEL OFF)
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    # I am top-level project.
+    set(JSON_VALIDATOR_IS_TOP_LEVEL ON)
+endif()
+
+option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ${JSON_VALIDATOR_IS_TOP_LEVEL})
+option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ${JSON_VALIDATOR_IS_TOP_LEVEL})
+option(JSON_VALIDATOR_INSTALL "Install CMake targets during install step." ${JSON_VALIDATOR_IS_TOP_LEVEL})
+option(JSON_VALIDATOR_HUNTER "Enable Hunter package manager support" OFF)
 
 if(JSON_VALIDATOR_HUNTER)
     include("cmake/HunterGate.cmake")
@@ -44,18 +51,6 @@ set_target_properties(nlohmann_json_schema_validator
                       PROPERTIES
                           VERSION ${PROJECT_VERSION}
                           SOVERSION 1)
-
-# disable tests and examples if project is not super project
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    # I am top-level project.
-    set(JSON_VALIDATOR_IS_TOP_LEVEL TRUE)
-endif()
-
-if(NOT JSON_VALIDATOR_IS_TOP_LEVEL)
-    set(JSON_VALIDATOR_BUILD_TESTS OFF)
-    set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
-    set(JSON_VALIDATOR_INSTALL OFF)
-endif()
 
 if(NOT TARGET nlohmann_json::nlohmann_json)
     find_package(nlohmann_json REQUIRED)
@@ -104,9 +99,6 @@ if (JSON_VALIDATOR_BUILD_EXAMPLES)
 
     add_executable(format-json-schema app/format.cpp)
     target_link_libraries(format-json-schema nlohmann_json_schema_validator)
-
-    install(TARGETS json-schema-validate readme-json-schema
-            DESTINATION bin)
 endif()
 
 if (JSON_VALIDATOR_BUILD_TESTS)
@@ -115,8 +107,7 @@ if (JSON_VALIDATOR_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-if (JSON_VALIDATOR_INSTALL)
-    # add install target
+if(JSON_VALIDATOR_INSTALL)
     install(TARGETS nlohmann_json_schema_validator
             EXPORT ${PROJECT_NAME}Targets
             LIBRARY DESTINATION lib
@@ -126,7 +117,13 @@ if (JSON_VALIDATOR_INSTALL)
     install(FILES src/nlohmann/json-schema.hpp
             DESTINATION include/nlohmann)
 
+    if (JSON_VALIDATOR_BUILD_EXAMPLES)
+        install(TARGETS json-schema-validate readme-json-schema format-json-schema
+                DESTINATION bin)
+    endif()
+
     # Set Up the Project Targets and Config Files for CMake
+
     # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
     set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
     set(INSTALL_CMAKEDIR_ROOT share/cmake)
