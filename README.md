@@ -114,10 +114,10 @@ Otherwise, it calls `find_package` for nlohmann-json and requires nlohmann-json 
 
 ### Building with Hunter package manager
 
-To enable access to nlohmann json library, Hunter can be used. Just run with HUNTER_ENABLED=ON option. No further dependencies needed
+To enable access to nlohmann json library, Hunter can be used. Just run with `JSON_VALIDATOR_HUNTER=ON` option. No further dependencies needed
 
 ```bash
-cmake [..] -DHUNTER_ENABLED=ON [..]
+cmake [..] -DJSON_VALIDATOR_HUNTER=ON [..]
 ```
 
 ### Building as a CMake-subdirectory from within another project

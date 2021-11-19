@@ -1,6 +1,10 @@
-# Add Hunter support (Disabled by default)
-option(HUNTER_ENABLED "Enable Hunter package manager support" OFF)
-if(HUNTER_ENABLED)
+cmake_minimum_required(VERSION 3.2)
+
+option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
+option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
+option(JSON_VALIDATOR_HUNTER "Enable Hunter package manager support" OFF)
+
+if(JSON_VALIDATOR_HUNTER)
     include("cmake/HunterGate.cmake")
     HunterGate(
         URL "https://github.com/cpp-pm/hunter/archive/v0.23.262.tar.gz"
@@ -8,18 +12,13 @@ if(HUNTER_ENABLED)
     )
 endif()
 
+# the project
 project(nlohmann_json_schema_validator
         LANGUAGES CXX)
 
 set(PROJECT_VERSION 2.1.1)
 
-cmake_minimum_required(VERSION 3.2)
-
-option(BUILD_TESTS    "Build tests"    ON)
-option(BUILD_EXAMPLES "Build examples" ON)
-
-# Add nlohmann_json::nlohmann_json using Hunter package manager
-if(HUNTER_ENABLED)
+if(JSON_VALIDATOR_HUNTER)
     hunter_add_package(nlohmann_json)
 endif()
 
@@ -52,11 +51,11 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
 endif()
 
 if(JSON_VALIDATOR_IS_TOP_LEVEL)
-    set(BUILD_TESTS ON)
-    set(BUILD_EXAMPLES ON)
+    set(JSON_VALIDATOR_BUILD_TESTS ON)
+    set(JSON_VALIDATOR_BUILD_EXAMPLES ON)
 else()
-    set(BUILD_TESTS OFF)
-    set(BUILD_EXAMPLES OFF)
+    set(JSON_VALIDATOR_BUILD_TESTS OFF)
+    set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
 endif()
 
 if(NOT TARGET nlohmann_json::nlohmann_json)
@@ -105,7 +104,7 @@ install(TARGETS nlohmann_json_schema_validator
 install(FILES src/nlohmann/json-schema.hpp
         DESTINATION include/nlohmann)
 
-if (BUILD_EXAMPLES)
+if (JSON_VALIDATOR_BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
     add_executable(json-schema-validate app/json-schema-validate.cpp)
     target_link_libraries(json-schema-validate nlohmann_json_schema_validator)
@@ -120,7 +119,7 @@ if (BUILD_EXAMPLES)
             DESTINATION bin)
 endif()
 
-if (BUILD_TESTS)
+if (JSON_VALIDATOR_BUILD_TESTS)
     # test-zone
     enable_testing()
     add_subdirectory(test)
@@ -137,14 +136,12 @@ install(EXPORT ${PROJECT_NAME}Targets
         FILE ${PROJECT_NAME}Targets.cmake
         DESTINATION "${INSTALL_CMAKE_DIR}")
 
-
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
     ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
     VERSION ${PROJECT_VERSION}
     COMPATIBILITY SameMajorVersion
     )
-
 
 configure_package_config_file(
     ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
