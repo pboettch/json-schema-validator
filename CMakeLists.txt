@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.2)
 
 option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
 option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
-option(JSON_VALIDATOR_HUNTER "Enable Hunter package manager support" OFF)
+option(JSON_VALIDATOR_INSTALL        "Install" ON)
+option(JSON_VALIDATOR_HUNTER         "Enable Hunter package manager" OFF)
 
 if(JSON_VALIDATOR_HUNTER)
     include("cmake/HunterGate.cmake")
@@ -50,12 +51,10 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(JSON_VALIDATOR_IS_TOP_LEVEL TRUE)
 endif()
 
-if(JSON_VALIDATOR_IS_TOP_LEVEL)
-    set(JSON_VALIDATOR_BUILD_TESTS ON)
-    set(JSON_VALIDATOR_BUILD_EXAMPLES ON)
-else()
+if(NOT JSON_VALIDATOR_IS_TOP_LEVEL)
     set(JSON_VALIDATOR_BUILD_TESTS OFF)
     set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
+    set(JSON_VALIDATOR_INSTALL OFF)
 endif()
 
 if(NOT TARGET nlohmann_json::nlohmann_json)
@@ -95,15 +94,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 endif()
 
-install(TARGETS nlohmann_json_schema_validator
-        EXPORT ${PROJECT_NAME}Targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin)
-
-install(FILES src/nlohmann/json-schema.hpp
-        DESTINATION include/nlohmann)
-
 if (JSON_VALIDATOR_BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
     add_executable(json-schema-validate app/json-schema-validate.cpp)
@@ -125,34 +115,45 @@ if (JSON_VALIDATOR_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-# Set Up the Project Targets and Config Files for CMake
+if (JSON_VALIDATOR_INSTALL)
+    # add install target
+    install(TARGETS nlohmann_json_schema_validator
+            EXPORT ${PROJECT_NAME}Targets
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib
+            RUNTIME DESTINATION bin)
 
-# Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
-set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-set(INSTALL_CMAKEDIR_ROOT share/cmake)
+    install(FILES src/nlohmann/json-schema.hpp
+            DESTINATION include/nlohmann)
 
-# Install Targets
-install(EXPORT ${PROJECT_NAME}Targets
-        FILE ${PROJECT_NAME}Targets.cmake
-        DESTINATION "${INSTALL_CMAKE_DIR}")
+    # Set Up the Project Targets and Config Files for CMake
+    # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
+    set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+    set(INSTALL_CMAKEDIR_ROOT share/cmake)
 
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-    )
+    # Install Targets
+    install(EXPORT ${PROJECT_NAME}Targets
+            FILE ${PROJECT_NAME}Targets.cmake
+            DESTINATION "${INSTALL_CMAKE_DIR}")
 
-configure_package_config_file(
-    ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-    INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
-    )
-
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    DESTINATION
-        ${INSTALL_CMAKE_DIR}
-    )
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+        )
+
+    configure_package_config_file(
+        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
+        )
+
+    install(
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+        DESTINATION
+            ${INSTALL_CMAKE_DIR}
+        )
+endif()
