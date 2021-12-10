@@ -40,7 +40,7 @@ target_compile_features(nlohmann_json_schema_validator
 set_target_properties(nlohmann_json_schema_validator
                       PROPERTIES
                           VERSION ${PROJECT_VERSION}
-                          SOVERSION 1)
+                          SOVERSION 2)
 
 target_link_libraries(
     nlohmann_json_schema_validator

@@ -1,8 +1,0 @@
-@PACKAGE_INIT@
-
-find_package(nlohmann_json 3.8.0 REQUIRED)
-
-include("${CMAKE_CURRENT_LIST_DIR}/nlohmann_json_schema_validatorTargets.cmake")
-check_required_components(
-  "nlohmann_json_schema_validator"
-  )
