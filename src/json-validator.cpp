@@ -551,9 +551,9 @@ public:
 			sch.erase(attr);
 		}
 
-		const auto defaultAttr = sch.find("default");
-		if (defaultAttr != sch.end()) {
-			defaultValue_ = defaultAttr.value();
+		const auto default_attr = sch.find("default");
+		if (default_attr != sch.end()) {
+			defaultValue_ = default_attr.value();
 		}
 
 		for (auto &key : known_keywords)
@@ -629,6 +629,11 @@ public:
 			}
 			sch.erase(attr);
 		}
+	}
+
+	void set_default_value(const json &default_value)
+	{
+		defaultValue_ = default_value;
 	}
 };
 
@@ -1276,6 +1281,17 @@ std::shared_ptr<schema> schema::make(json &schema,
 			// so this is the origial URI for this reference, the $ref-value has thus be resolved from it
 			auto id = uris.back().derive(attr.value().get<std::string>());
 			sch = root->get_or_create_ref(id);
+
+			const auto default_attr = schema.find("default");
+			if (default_attr != schema.end()) {
+				if (type_schema *type_sch = dynamic_cast<type_schema *>(sch.get())) {
+					// copy the referenced schema and modify the default value
+					auto schema_copy = std::make_shared<type_schema>(*type_sch);
+					schema_copy->set_default_value(default_attr.value());
+					sch = schema_copy;
+				}
+			}
+
 			schema.erase(attr);
 		} else {
 			sch = std::make_shared<type_schema>(schema, root, uris);
