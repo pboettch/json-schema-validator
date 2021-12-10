@@ -71,8 +71,8 @@ script:
   # Remove previous build and tests
   - rm -r build
 
-  # Compile and execute with Hunter package manager instead of using local json.hpp
+  # Compile and execute with no nlohmann/json.hpp so it will fetch if
   - mkdir -p build && cd build
-  - cmake .. -DHUNTER_ENABLED=ON ${CMAKE_OPTIONS} -GNinja && cmake --build . --config Release
+  - cmake .. ${CMAKE_OPTIONS} -GNinja && cmake --build . --config Release
   - ctest -C Release -V -j
   - cd ..

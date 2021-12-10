@@ -3,9 +3,6 @@ include(FetchContent)
 
 project(stand-alone VERSION 1.0.0 LANGUAGES CXX)
 
-set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
-set(JSON_VALIDATOR_BUILD_TESTS OFF)
-
 FetchContent_Declare(json_schema_validator 
 GIT_REPOSITORY https://github.com/vrince/json-schema-validator
 GIT_TAG 379cf8c2b4ad49fe3a21e926ffdf543b9e9da8df)

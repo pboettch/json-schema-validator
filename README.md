@@ -79,8 +79,6 @@ cmake_minimum_required(VERSION 3.16)
 include(FetchContent)
 
 ...
-set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
-set(JSON_VALIDATOR_BUILD_TESTS OFF)
 FetchContent_Declare(json_schema_validator 
 GIT_REPOSITORY https://github.com/pboettch/json-schema-validator.git 
 GIT_TAG v2.1.2)
@@ -107,25 +105,21 @@ is required.
 
 Various methods using CMake can be used to build this project.
 
-### Build out-of-source
+### Build
 
 Do not run cmake inside the source-dir. Rather create a dedicated build-dir:
 
 ```Bash
 git clone https://github.com/pboettch/json-schema-validator.git
 cd json-schema-validator
-# configure
-cmake -B build
+# configure (See options)
+cmake -B build 
 
 # build
 cmake --build build
 
 # install if needed
 cmake --build build --target install
-
-# run unit, non-regression and test-suite tests
-cd build
-ctest
 ```
 
 ### Building as shared library
@@ -136,6 +130,34 @@ the `BUILD_SHARED_LIBS`-cmake variable:
 In your initial call to cmake simply add:
 ```bash
 cmake [..] -DBUILD_SHARED_LIBS=ON [..]
+```
+
+### Building examples
+
+In your initial call to cmake simply add:
+```bash
+cmake [..] -JSON_VALIDATOR_BUILD_EXAMPLES=ON [..]
+```
+
+Run examples with:
+
+```bash
+./build/format-json-schema [..]
+```
+
+### Building tests
+
+In your initial call to cmake simply add:
+```bash
+cmake [..] -JSON_VALIDATOR_BUILD_TESTS=ON [..]
+```
+
+Once build run tests with:
+
+```bash
+# run unit, non-regression and test-suite tests
+cd build
+ctest
 ```
 
 ### Note about nlohmann-json integration

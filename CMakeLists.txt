@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
-option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
+option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    OFF)
+option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" OFF)
 
 # the project
 project(nlohmann_json_schema_validator
