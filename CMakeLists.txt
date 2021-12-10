@@ -80,11 +80,11 @@ if (JSON_VALIDATOR_BUILD_EXAMPLES)
     add_executable(json-schema-validate app/json-schema-validate.cpp)
     target_link_libraries(json-schema-validate nlohmann_json_schema_validator)
 
-    add_executable(readme-json-schema app/readme.cpp)
-    target_link_libraries(readme-json-schema nlohmann_json_schema_validator)
+    add_executable(json-schema-readme app/readme.cpp)
+    target_link_libraries(json-schema-readme nlohmann_json_schema_validator)
 
-    add_executable(format-json-schema app/format.cpp)
-    target_link_libraries(format-json-schema nlohmann_json_schema_validator)
+    add_executable(json-schema-format app/format.cpp)
+    target_link_libraries(json-schema-format nlohmann_json_schema_validator)
 
     install(TARGETS json-schema-validate DESTINATION bin)
 endif()
