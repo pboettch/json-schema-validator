@@ -25,7 +25,7 @@ jobs:
       - name: Build and install nlohmann json
         run: |
           cd nlohmann-json
-          cmake -S . -DJSON_VALIDATOR_BUILD_EXAMPLES=ON -DDJSON_VALIDATOR_BUILD_TESTS=ON -B build
+          cmake -S . -DJSON_VALIDATOR_BUILD_EXAMPLES=ON -DJSON_VALIDATOR_BUILD_TESTS=ON -B build
           cmake --build build --target install -j$(nproc)
           cd ..
       - name: Clone json-schema-validator
@@ -45,9 +45,14 @@ jobs:
       - run: echo "🔎 Branch name is ${{ github.ref }} and repository is ${{ github.repository }}."
       - name: Clone json-schema-validator
         uses: actions/checkout@v2
-      - name: cmake
-        run: cmake -S . -DJSON_VALIDATOR_BUILD_EXAMPLES=ON -DDJSON_VALIDATOR_BUILD_TESTS=ON -B build
-      - name: build
+      - name: Cmake
+        run: cmake -S . -DJSON_VALIDATOR_BUILD_EXAMPLES=ON -DJSON_VALIDATOR_BUILD_TESTS=ON -B build
+      - name: Build
         run: cmake --build build --target all -j$(nproc)
-      - name: test
+      - name: Test
         run: cd build && ctest
+      - name: Publish Test
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: build/Testing/**/Test.xml
