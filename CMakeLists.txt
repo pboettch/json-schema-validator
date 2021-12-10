@@ -7,7 +7,7 @@ option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" OFF)
 project(nlohmann_json_schema_validator
         LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.1.2)
+set(PROJECT_VERSION 2.2.0)
 include(FetchContent)
 
 # find nlohmann_json if not found simply fetch it
@@ -86,8 +86,7 @@ if (JSON_VALIDATOR_BUILD_EXAMPLES)
     add_executable(format-json-schema app/format.cpp)
     target_link_libraries(format-json-schema nlohmann_json_schema_validator)
 
-    install(TARGETS json-schema-validate readme-json-schema format-json-schema
-    DESTINATION bin)
+    install(TARGETS json-schema-validate DESTINATION bin)
 endif()
 
 if (JSON_VALIDATOR_BUILD_TESTS)
