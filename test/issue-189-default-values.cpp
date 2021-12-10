@@ -18,7 +18,10 @@ static const json quad_schema = R"(
         },
         "depth": {
             "$ref": "default_schema#/definitions/defaultLength"
-        }
+        },
+		"time": {
+            "$ref": "#/properties/width"
+		}
     },
     "definitions": {
         "length": {
@@ -56,7 +59,7 @@ int main(void)
 		const auto actual = empty_rectangle.patch(default_patch);
 
 		// height must be 10 according to the default specified in the length definition while width must be 10 overridden by the width element
-		const auto expected = R"({"height":10,"width":20,"depth":5})"_json;
+		const auto expected = R"({"height":10,"width":20,"depth":5,"time":20})"_json;
 		if (actual != expected) {
 			std::cerr << "Patch with defaults contains wrong value: '" << actual << "' instead of expected '" << expected.dump() << "'" << std::endl;
 			return 1;
