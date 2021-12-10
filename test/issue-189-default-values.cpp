@@ -16,7 +16,7 @@ static const json quad_schema = R"(
         "height": {
             "$ref": "#/definitions/length"
         },
-        "depths": {
+        "depth": {
             "$ref": "default_schema#/definitions/defaultLength"
         }
     },
