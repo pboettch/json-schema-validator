@@ -25,13 +25,28 @@ jobs:
       - name: Build and install nlohmann json
         run: |
           cd nlohmann-json
-          cmake -S . -B build
+          cmake -S . -DJSON_VALIDATOR_BUILD_EXAMPLES=ON -DDJSON_VALIDATOR_BUILD_TESTS=ON -B build
           cmake --build build --target install -j$(nproc)
           cd ..
       - name: Clone json-schema-validator
         uses: actions/checkout@v2
       - name: cmake
         run: cmake -S . -B build
+      - name: build
+        run: cmake --build build --target all -j$(nproc)
+      - name: test
+        run: cd build && ctest
+  build_and_test_stand_alone:
+    runs-on: ubuntu-latest
+    container: ghcr.io/nlohmann/json-ci:v1.0.0
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
+      - run: echo "🔎 Branch name is ${{ github.ref }} and repository is ${{ github.repository }}."
+      - name: Clone json-schema-validator
+        uses: actions/checkout@v2
+      - name: cmake
+        run: cmake -S . -DJSON_VALIDATOR_BUILD_EXAMPLES=ON -DDJSON_VALIDATOR_BUILD_TESTS=ON -B build
       - name: build
         run: cmake --build build --target all -j$(nproc)
       - name: test
