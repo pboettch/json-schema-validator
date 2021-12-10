@@ -1,33 +1,22 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.16)
 
-# disable tests and examples if project is not super project
-set(JSON_VALIDATOR_IS_TOP_LEVEL OFF)
-if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-    # I am top-level project.
-    set(JSON_VALIDATOR_IS_TOP_LEVEL ON)
-endif()
-
-option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ${JSON_VALIDATOR_IS_TOP_LEVEL})
-option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ${JSON_VALIDATOR_IS_TOP_LEVEL})
-option(JSON_VALIDATOR_INSTALL "Install CMake targets during install step." ${JSON_VALIDATOR_IS_TOP_LEVEL})
-option(JSON_VALIDATOR_HUNTER "Enable Hunter package manager support" OFF)
-
-if(JSON_VALIDATOR_HUNTER)
-    include("cmake/HunterGate.cmake")
-    HunterGate(
-        URL "https://github.com/cpp-pm/hunter/archive/v0.23.262.tar.gz"
-        SHA1 "eb51e633e08cdbe2153caf255e9c23968fecb29d"
-    )
-endif()
+option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
+option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
 
 # the project
 project(nlohmann_json_schema_validator
         LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.1.1)
+set(PROJECT_VERSION 2.1.2)
+include(FetchContent)
 
-if(JSON_VALIDATOR_HUNTER)
-    hunter_add_package(nlohmann_json)
+# find nlohmann_json if not found simply fetch it
+find_package(nlohmann_json QUIET)
+if(NOT nlohmann_json_FOUND)
+    FetchContent_Declare(json
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent
+    GIT_TAG v3.10.4)
+    FetchContent_MakeAvailable(json)
 endif()
 
 # the library
@@ -51,10 +40,6 @@ set_target_properties(nlohmann_json_schema_validator
                       PROPERTIES
                           VERSION ${PROJECT_VERSION}
                           SOVERSION 1)
-
-if(NOT TARGET nlohmann_json::nlohmann_json)
-    find_package(nlohmann_json REQUIRED)
-endif()
 
 target_link_libraries(
     nlohmann_json_schema_validator
@@ -99,6 +84,9 @@ if (JSON_VALIDATOR_BUILD_EXAMPLES)
 
     add_executable(format-json-schema app/format.cpp)
     target_link_libraries(format-json-schema nlohmann_json_schema_validator)
+
+    install(TARGETS json-schema-validate readme-json-schema format-json-schema
+    DESTINATION bin)
 endif()
 
 if (JSON_VALIDATOR_BUILD_TESTS)
@@ -107,50 +95,14 @@ if (JSON_VALIDATOR_BUILD_TESTS)
     add_subdirectory(test)
 endif()
 
-if(JSON_VALIDATOR_INSTALL)
-    install(TARGETS nlohmann_json_schema_validator
-            EXPORT ${PROJECT_NAME}Targets
-            LIBRARY DESTINATION lib
-            ARCHIVE DESTINATION lib
-            RUNTIME DESTINATION bin)
+# installation
+install(TARGETS nlohmann_json_schema_validator
+        EXPORT ${PROJECT_NAME}Targets
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin)
 
-    install(FILES src/nlohmann/json-schema.hpp
-            DESTINATION include/nlohmann)
+install(FILES src/nlohmann/json-schema.hpp
+        DESTINATION include/nlohmann)
 
-    if (JSON_VALIDATOR_BUILD_EXAMPLES)
-        install(TARGETS json-schema-validate readme-json-schema format-json-schema
-                DESTINATION bin)
-    endif()
 
-    # Set Up the Project Targets and Config Files for CMake
-
-    # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
-    set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-    set(INSTALL_CMAKEDIR_ROOT share/cmake)
-
-    # Install Targets
-    install(EXPORT ${PROJECT_NAME}Targets
-            FILE ${PROJECT_NAME}Targets.cmake
-            DESTINATION "${INSTALL_CMAKE_DIR}")
-
-    include(CMakePackageConfigHelpers)
-    write_basic_package_version_file(
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-        VERSION ${PROJECT_VERSION}
-        COMPATIBILITY SameMajorVersion
-        )
-
-    configure_package_config_file(
-        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-        INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
-        )
-
-    install(
-        FILES
-            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-        DESTINATION
-            ${INSTALL_CMAKE_DIR}
-        )
-endif()
