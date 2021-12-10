@@ -34,12 +34,11 @@ using namespace nlohmann::json_schema;
 namespace
 {
 
-static const json EmptyDefault = nullptr;
-
 class schema
 {
 protected:
 	root_schema *root_;
+	json default_value_ = nullptr;
 
 public:
 	virtual ~schema() = default;
@@ -49,10 +48,12 @@ public:
 
 	virtual void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const = 0;
 
-	virtual const json &defaultValue(const json::json_pointer &, const json &, error_handler &) const
+	virtual const json &default_value(const json::json_pointer &, const json &, error_handler &) const
 	{
-		return EmptyDefault;
+		return default_value_;
 	}
+
+	void set_default_value(const json &v) { default_value_ = v; }
 
 	static std::shared_ptr<schema> make(json &schema,
 	                                    root_schema *root,
@@ -75,16 +76,18 @@ class schema_ref : public schema
 			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
 	}
 
-	const json &defaultValue(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
+	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override final
 	{
+		if (!default_value_.is_null())
+			return default_value_;
+
 		auto target = target_.lock();
-
 		if (target)
-			return target->defaultValue(ptr, instance, e);
-		else
-			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+			return target->default_value(ptr, instance, e);
 
-		return EmptyDefault;
+		e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+
+		return default_value_;
 	}
 
 public:
@@ -347,9 +350,9 @@ class logical_not : public schema
 			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
 	}
 
-	const json &defaultValue(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
+	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
 	{
-		return subschema_->defaultValue(ptr, instance, e);
+		return subschema_->default_value(ptr, instance, e);
 	}
 
 public:
@@ -443,7 +446,6 @@ bool logical_combination<oneOf>::is_validate_complete(const json &instance, cons
 
 class type_schema : public schema
 {
-	json defaultValue_ = EmptyDefault;
 	std::vector<std::shared_ptr<schema>> type_;
 	std::pair<bool, json> enum_, const_;
 	std::vector<std::shared_ptr<schema>> logic_;
@@ -455,11 +457,6 @@ class type_schema : public schema
 	                                    std::set<std::string> &);
 
 	std::shared_ptr<schema> if_, then_, else_;
-
-	const json &defaultValue(const json::json_pointer &, const json &, error_handler &) const override
-	{
-		return defaultValue_;
-	}
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override final
 	{
@@ -551,9 +548,10 @@ public:
 			sch.erase(attr);
 		}
 
-		const auto default_attr = sch.find("default");
-		if (default_attr != sch.end()) {
-			defaultValue_ = default_attr.value();
+		attr = sch.find("default");
+		if (attr != sch.end()) {
+			set_default_value(attr.value());
+			sch.erase(attr);
 		}
 
 		for (auto &key : known_keywords)
@@ -629,11 +627,6 @@ public:
 			}
 			sch.erase(attr);
 		}
-	}
-
-	void set_default_value(const json &default_value)
-	{
-		defaultValue_ = default_value;
 	}
 };
 
@@ -986,9 +979,9 @@ class object : public schema
 		for (auto const &prop : properties_) {
 			const auto finding = instance.find(prop.first);
 			if (instance.end() == finding) { // if the prop is not in the instance
-				const auto &defaultValue = prop.second->defaultValue(ptr, instance, e);
-				if (!defaultValue.is_null()) { // if default value is available
-					patch.add((ptr / prop.first), defaultValue);
+				const auto &default_value = prop.second->default_value(ptr, instance, e);
+				if (!default_value.is_null()) { // if default value is available
+					patch.add((ptr / prop.first), default_value);
 				}
 			}
 		}
@@ -1282,23 +1275,21 @@ std::shared_ptr<schema> schema::make(json &schema,
 			auto id = uris.back().derive(attr.value().get<std::string>());
 			sch = root->get_or_create_ref(id);
 
-			const auto default_attr = schema.find("default");
-			if (default_attr != schema.end()) {
-				if (type_schema *type_sch = dynamic_cast<type_schema *>(sch.get())) {
-					// copy the referenced schema and modify the default value
-					auto schema_copy = std::make_shared<type_schema>(*type_sch);
-					schema_copy->set_default_value(default_attr.value());
-					sch = schema_copy;
-				}
-			}
-
 			schema.erase(attr);
+
+			// special case where break draft-7 and allow overriding of properties when a $ref is used
+			attr = schema.find("default");
+			if (attr != schema.end()) {
+				// copy the referenced schema and modify the default value
+				sch = std::make_shared<schema_ref>(*dynamic_cast<schema_ref *>(sch.get()));
+				sch->set_default_value(attr.value());
+				schema.erase(attr);
+			}
 		} else {
 			sch = std::make_shared<type_schema>(schema, root, uris);
 		}
 
 		schema.erase("$schema");
-		schema.erase("default");
 		schema.erase("title");
 		schema.erase("description");
 	} else {
