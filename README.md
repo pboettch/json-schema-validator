@@ -79,7 +79,8 @@ cmake_minimum_required(VERSION 3.16)
 include(FetchContent)
 
 ...
-
+set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
+set(JSON_VALIDATOR_BUILD_TESTS OFF)
 FetchContent_Declare(json_schema_validator 
 GIT_REPOSITORY https://github.com/pboettch/json-schema-validator.git 
 GIT_TAG v2.1.2)
@@ -93,6 +94,8 @@ target_link_libraries(my-target PUBLIC nlohmann_json_schema_validator)
 ```
 
 That's it.
+
+See complete project example in the `example` folder.
 
 ## Building
 
@@ -112,13 +115,13 @@ Do not run cmake inside the source-dir. Rather create a dedicated build-dir:
 git clone https://github.com/pboettch/json-schema-validator.git
 cd json-schema-validator
 # configure
-cmake -B build .
+cmake -B build
 
 # build
-cmake --build build .
+cmake --build build
 
 # install if needed
-cmake --build build --target install .
+cmake --build build --target install
 
 # run unit, non-regression and test-suite tests
 cd build

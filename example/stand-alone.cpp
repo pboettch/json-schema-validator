@@ -1,54 +1,57 @@
-#include <iostream>
+/*
+ * JSON schema validator for JSON for modern C++
+ * SPDX-License-Identifier: MIT
+ */
 
 #include <nlohmann/json-schema.hpp>
 
+#include <fstream>
+#include <iostream>
+
 using nlohmann::json;
+using nlohmann::json_schema::default_string_format_check;
 using nlohmann::json_schema::json_validator;
 
-// The schema is defined based upon a string literal
-static json uri_schema = R"(
+static int usage(const char *name)
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "object",
-  "properties": {
-    "myUri": {
-      "type":"string",
-      "format": "uri"
-    }
-  }
-})"_json;
-
-// The people are defined with brace initialization
-static json good_uri = {{"myUri", "http://hostname.com/"}};
-static json bad_uri = {{"myUri", "http:/hostname.com/"}};
-
-static void uri_format_checker(const std::string &format, const std::string &value)
-{
-	if (format == "uri") {
-		if (value.find("://") == std::string::npos)
-			throw std::invalid_argument("URI does not contain :// - invalid");
-	} else
-		throw std::logic_error("Don't know how to validate " + format);
+	std::cerr << "Usage: " << name << " <schema> <document>\n";
+	return EXIT_FAILURE;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-	json_validator validator(nullptr, uri_format_checker); // create validator
+	if (argc != 3)
+		return usage(argv[0]);
+
+	std::ifstream ifs;
+	ifs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
 
 	try {
-		validator.set_root_schema(uri_schema); // insert root-schema
-	} catch (const std::exception &e) {
-		std::cerr << "Validation of schema failed, here is why: " << e.what() << "\n";
+		ifs.open(argv[1]);
+		json schema = json::parse(ifs);
+
+		json_validator validator(nullptr, default_string_format_check);
+		validator.set_root_schema(schema);
+
+		ifs.open(argv[2]);
+		json document = json::parse(ifs);
+
+		validator.validate(document);
+	}
+	catch(const std::ifstream::failure& e) {
+		std::cerr << "Exception opening/reading file" << std::endl;
+		return EXIT_FAILURE;
+	}
+	catch (const std::exception &e) {
+		std::cerr << e.what() << std::endl;
+		return EXIT_FAILURE;
+	}
+	catch (...)
+	{
+		std::cerr << "unknown error" << std::endl;
 		return EXIT_FAILURE;
 	}
 
-	validator.validate(good_uri);
-
-	try {
-		validator.validate(bad_uri);
-	} catch (const std::exception &e) {
-		std::cerr << "Validation expectedly failed, here is why: " << e.what() << "\n";
-	}
-
+	std::cout << "document is valid !" << std::endl;
 	return EXIT_SUCCESS;
 }
