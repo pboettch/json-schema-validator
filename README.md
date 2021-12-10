@@ -136,7 +136,7 @@ cmake [..] -DBUILD_SHARED_LIBS=ON [..]
 
 In your initial call to cmake simply add:
 ```bash
-cmake [..] -JSON_VALIDATOR_BUILD_EXAMPLES=ON [..]
+cmake [..] -DJSON_VALIDATOR_BUILD_EXAMPLES=ON [..]
 ```
 
 Run examples with:
@@ -149,7 +149,7 @@ Run examples with:
 
 In your initial call to cmake simply add:
 ```bash
-cmake [..] -JSON_VALIDATOR_BUILD_TESTS=ON [..]
+cmake [..] -DJSON_VALIDATOR_BUILD_TESTS=ON [..]
 ```
 
 Once build run tests with:

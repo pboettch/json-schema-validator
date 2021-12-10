@@ -13,6 +13,7 @@ include(FetchContent)
 # find nlohmann_json if not found simply fetch it
 find_package(nlohmann_json QUIET)
 if(NOT nlohmann_json_FOUND)
+    message(STATUS "nlohmann_json NOT FOUND, fetching version v3.10.4")
     FetchContent_Declare(json
     GIT_REPOSITORY https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent
     GIT_TAG v3.10.4)
