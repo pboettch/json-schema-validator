@@ -1280,9 +1280,14 @@ std::shared_ptr<schema> schema::make(json &schema,
 			// special case where break draft-7 and allow overriding of properties when a $ref is used
 			attr = schema.find("default");
 			if (attr != schema.end()) {
-				// copy the referenced schema and modify the default value
-				sch = std::make_shared<schema_ref>(*dynamic_cast<schema_ref *>(sch.get()));
-				sch->set_default_value(attr.value());
+				// copy the referenced schema depending on the underlying type and modify the default value
+				if (auto *ref_sch = dynamic_cast<schema_ref *>(sch.get())) {
+					sch = std::make_shared<schema_ref>(*ref_sch);
+					sch->set_default_value(attr.value());
+				} else if (auto *type_sch = dynamic_cast<type_schema *>(sch.get())) {
+					sch = std::make_shared<type_schema>(*type_sch);
+					sch->set_default_value(attr.value());
+				}
 				schema.erase(attr);
 			}
 		} else {
