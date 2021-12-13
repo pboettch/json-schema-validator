@@ -11,7 +11,6 @@
 #include "json-patch.hpp"
 
 #include <deque>
-#include <iostream>
 #include <memory>
 #include <set>
 #include <sstream>
