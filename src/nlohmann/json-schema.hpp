@@ -159,7 +159,7 @@ public:
 /**
  * Checks validity of JSON schema built-in string format specifiers like 'date-time', 'ipv4', ...
  */
-void default_string_format_check(const std::string &format, const std::string &value);
+void JSON_SCHEMA_VALIDATOR_API default_string_format_check(const std::string &format, const std::string &value);
 
 class root_schema;
 
