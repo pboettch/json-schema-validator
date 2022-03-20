@@ -95,10 +95,12 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 endif()
 
+include(GNUInstallDirs)
+
 install(TARGETS nlohmann_json_schema_validator
         EXPORT ${PROJECT_NAME}Targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
+        LIBRARY DESTINATION ${LIBDIR}
+        ARCHIVE DESTINATION ${LIBDIR}
         RUNTIME DESTINATION bin)
 
 install(FILES src/nlohmann/json-schema.hpp
@@ -129,6 +131,7 @@ endif()
 
 # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
 set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+set(INSTALL_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 set(INSTALL_CMAKEDIR_ROOT share/cmake)
 
 # Install Targets
