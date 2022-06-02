@@ -216,7 +216,7 @@ public:
 		//
 		// an unknown keyword can only be referenced by a json-pointer,
 		// not by a plain name fragment
-		if (uri.pointer() != "") {
+		if (uri.pointer().to_string() != "") {
 			try {
 				auto &subschema = file.unknown_keywords.at(uri.pointer()); // null is returned if not existing
 				auto s = schema::make(subschema, this, {}, {{uri}});       //  A JSON Schema MUST be an object or a boolean.
