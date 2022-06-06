@@ -7,7 +7,7 @@
  *
  */
 #include <cstdlib>
-#include <nlohmann/json-schema.hpp>
+#include "nlohmann/json-schema.hpp"
 
 #include <iostream>
 

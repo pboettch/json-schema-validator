@@ -1,7 +1,7 @@
 // bson-validate.cpp
 
 #include <iostream>
-#include <nlohmann/json-schema.hpp>
+#include "nlohmann/json-schema.hpp"
 #include <nlohmann/json.hpp>
 
 static int error_count = 0;

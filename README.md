@@ -161,7 +161,7 @@ See also `app/json-schema-validate.cpp`.
 #include <iostream>
 #include <iomanip>
 
-#include <nlohmann/json-schema.hpp>
+#include "nlohmann/json-schema.hpp"
 
 using nlohmann::json;
 using nlohmann::json_schema::json_validator;

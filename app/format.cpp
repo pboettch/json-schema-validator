@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <nlohmann/json-schema.hpp>
+#include "nlohmann/json-schema.hpp"
 
 using nlohmann::json;
 using nlohmann::json_schema::json_validator;
