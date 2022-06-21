@@ -14,6 +14,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <string>
 
 using nlohmann::json;
 using nlohmann::json_patch;
@@ -308,11 +309,31 @@ public:
 				break;
 		} while (1);
 
-		for (const auto &file : files_)
-			if (file.second.unresolved.size() != 0)
+		for (const auto &file : files_) {
+			if (file.second.unresolved.size() != 0) {
+				// Build a representation of the undefined
+				// references as a list of comma-separated strings.
+				auto n_urefs = file.second.unresolved.size();
+				std::string urefs = "[";
+
+				decltype(n_urefs) counter = 0;
+				for (const auto &p : file.second.unresolved) {
+					urefs += p.first;
+
+					if (counter != n_urefs - 1u) {
+						urefs += ", ";
+					}
+
+					++counter;
+				}
+
+				urefs += "]";
+
 				throw std::invalid_argument("after all files have been parsed, '" +
 				                            (file.first == "" ? "<root>" : file.first) +
-				                            "' has still undefined references.");
+				                            "' has still the following undefined references: " + urefs);
+			}
+		}
 	}
 
 	void validate(const json::json_pointer &ptr,
@@ -929,8 +950,8 @@ class boolean : public schema
 	{
 		if (!true_) { // false schema
 			// empty array
-			//switch (instance.type()) {
-			//case json::value_t::array:
+			// switch (instance.type()) {
+			// case json::value_t::array:
 			//	if (instance.size() != 0) // valid false-schema
 			//		e.error(ptr, instance, "false-schema required empty array");
 			//	return;
