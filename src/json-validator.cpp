@@ -65,6 +65,8 @@ class schema_ref : public schema
 {
 	const std::string id_;
 	std::weak_ptr<schema> target_;
+	std::shared_ptr<schema> target_strong_; // for references to references keep also the shared_ptr because
+	                                        // no one else might use it after resolving
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
@@ -95,7 +97,13 @@ public:
 	    : schema(root), id_(id) {}
 
 	const std::string &id() const { return id_; }
-	void set_target(const std::shared_ptr<schema> &target) { target_ = target; }
+
+	void set_target(const std::shared_ptr<schema> &target, bool strong = false)
+	{
+		target_ = target;
+		if (strong)
+			target_strong_ = target;
+	}
 };
 
 } // namespace
@@ -1277,13 +1285,17 @@ std::shared_ptr<schema> schema::make(json &schema,
 
 			schema.erase(attr);
 
-			// special case where break draft-7 and allow overriding of properties when a $ref is used
+			// special case where we break draft-7 and allow overriding of properties when a $ref is used
 			attr = schema.find("default");
 			if (attr != schema.end()) {
 				// copy the referenced schema depending on the underlying type and modify the default value
-				if (auto *ref_sch = dynamic_cast<schema_ref *>(sch.get())) {
-					sch = std::make_shared<schema_ref>(*ref_sch);
-					sch->set_default_value(attr.value());
+				if (dynamic_cast<schema_ref *>(sch.get())) {
+					// create a new reference schema use the original reference (which will be resolved later)
+					// to store this overloaed default value #209
+					auto overloaded_ref_sch = std::make_shared<schema_ref>(uris[0].to_string(), root);
+					overloaded_ref_sch->set_target(sch, true);
+					overloaded_ref_sch->set_default_value(attr.value());
+					sch = overloaded_ref_sch;
 				} else if (auto *type_sch = dynamic_cast<type_schema *>(sch.get())) {
 					sch = std::make_shared<type_schema>(*type_sch);
 					sch->set_default_value(attr.value());
