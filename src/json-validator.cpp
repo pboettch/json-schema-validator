@@ -40,6 +40,16 @@ protected:
 	root_schema *root_;
 	json default_value_ = nullptr;
 
+protected:
+	virtual std::shared_ptr<schema> make_for_default_(
+	    std::shared_ptr<::schema> & /* sch */,
+	    root_schema * /* root */,
+	    std::vector<nlohmann::json_uri> & /* uris */,
+	    nlohmann::json & /* default_value */) const
+	{
+		return nullptr;
+	};
+
 public:
 	virtual ~schema() = default;
 
@@ -91,6 +101,21 @@ class schema_ref : public schema
 
 		return default_value_;
 	}
+
+protected:
+	virtual std::shared_ptr<schema> make_for_default_(
+	    std::shared_ptr<::schema> &sch,
+	    root_schema *root,
+	    std::vector<nlohmann::json_uri> &uris,
+	    nlohmann::json &default_value) const override
+	{
+		// create a new reference schema using the original reference (which will be resolved later)
+		// to store this overloaded default value #209
+		auto result = std::make_shared<schema_ref>(uris[0].to_string(), root);
+		result->set_target(sch, true);
+		result->set_default_value(default_value);
+		return result;
+	};
 
 public:
 	schema_ref(const std::string &id, root_schema *root)
@@ -508,6 +533,18 @@ class type_schema : public schema
 			}
 		}
 	}
+
+protected:
+	virtual std::shared_ptr<schema> make_for_default_(
+	    std::shared_ptr<::schema> & /* sch */,
+	    root_schema * /* root */,
+	    std::vector<nlohmann::json_uri> & /* uris */,
+	    nlohmann::json &default_value) const override
+	{
+		auto result = std::make_shared<type_schema>(*this);
+		result->set_default_value(default_value);
+		return result;
+	};
 
 public:
 	type_schema(json &sch,
@@ -1289,16 +1326,8 @@ std::shared_ptr<schema> schema::make(json &schema,
 			attr = schema.find("default");
 			if (attr != schema.end()) {
 				// copy the referenced schema depending on the underlying type and modify the default value
-				if (dynamic_cast<schema_ref *>(sch.get())) {
-					// create a new reference schema use the original reference (which will be resolved later)
-					// to store this overloaed default value #209
-					auto overloaded_ref_sch = std::make_shared<schema_ref>(uris[0].to_string(), root);
-					overloaded_ref_sch->set_target(sch, true);
-					overloaded_ref_sch->set_default_value(attr.value());
-					sch = overloaded_ref_sch;
-				} else if (auto *type_sch = dynamic_cast<type_schema *>(sch.get())) {
-					sch = std::make_shared<type_schema>(*type_sch);
-					sch->set_default_value(attr.value());
+				if (auto new_sch = sch->make_for_default_(sch, root, uris, attr.value())) {
+					sch = new_sch;
 				}
 				schema.erase(attr);
 			}
