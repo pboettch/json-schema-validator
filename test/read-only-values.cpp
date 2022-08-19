@@ -12,14 +12,14 @@ static const json read_only_schema = R"({
 			"readOnly": true
 		}
 	}
-})";
+})"_json;
 
 int main() {
 	json_validator validator(read_only_schema);
 	try {
 		validator.validate(R"({
 			"debug": true
-		})");
+		})"_json);
 	} catch (const std::exception&e ) {
 		return EXIT_SUCCESS;
 	}
