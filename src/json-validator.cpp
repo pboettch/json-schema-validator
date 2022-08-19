@@ -457,6 +457,7 @@ class type_schema : public schema
 	std::vector<std::shared_ptr<schema>> type_;
 	std::pair<bool, json> enum_, const_;
 	std::vector<std::shared_ptr<schema>> logic_;
+	bool read_only_ = false;
 
 	static std::shared_ptr<schema> make(json &schema,
 	                                    json::value_t type,
@@ -506,6 +507,13 @@ class type_schema : public schema
 				if (else_)
 					else_->validate(ptr, instance, patch, e);
 			}
+		}
+
+    // enforce default value if any read only values
+		if(read_only_) {
+      auto rod_value = default_value(ptr, instance, e);
+      if(rod_value != nullptr && instance != rod_value)
+        e.error(ptr, instance, "key is read-only");
 		}
 	}
 
@@ -559,6 +567,12 @@ public:
 		attr = sch.find("default");
 		if (attr != sch.end()) {
 			set_default_value(attr.value());
+			sch.erase(attr);
+		}
+
+		attr = sch.find("readOnly");
+		if (attr != sch.end()) {
+			read_only_ = attr.value().get<bool>();
 			sch.erase(attr);
 		}
 
@@ -1327,7 +1341,7 @@ class throwing_error_handler : public error_handler
 {
 	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
 	{
-		throw std::invalid_argument(std::string("At ") + ptr.to_string() + " of " + instance.dump() + " - " + message + "\n");
+		throw std::invalid_argument(std::string("At \"") + ptr.to_string() + "\" with a value of " + instance.dump() + " - " + message + "\n");
 	}
 };
 
@@ -1402,3 +1416,4 @@ json json_validator::validate(const json &instance, error_handler &err, const js
 
 } // namespace json_schema
 } // namespace nlohmann
+
