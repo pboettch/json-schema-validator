@@ -16,8 +16,13 @@ static const json read_only_schema = R"({
 
 int main() {
 	json_validator validator(read_only_schema);
-	validator.validate(R"({
-		"debug": true
-	})");
-	return 0;
+	try {
+		validator.validate(R"({
+			"debug": true
+		})");
+	} catch (const std::exception&e ) {
+		return EXIT_SUCCESS;
+	}
+	
+	return EXIT_FAILURE;
 }
