@@ -75,11 +75,11 @@ static void pointer_plain_name(json_uri start,
 	a = a.derive("#foo/looks_like_json/poiner/but/isnt");
 	EXPECT_EQ(a, full + " # foo/looks_like_json/poiner/but/isnt");
 	EXPECT_EQ(a.identifier(), "foo/looks_like_json/poiner/but/isnt");
-	EXPECT_EQ(a.pointer(), "");
+	EXPECT_EQ(a.pointer().to_string(), "");
 
 	a = a.derive("#/looks_like_json/poiner/and/it/is");
 	EXPECT_EQ(a, full + " # /looks_like_json/poiner/and/it/is");
-	EXPECT_EQ(a.pointer(), "/looks_like_json/poiner/and/it/is");
+	EXPECT_EQ(a.pointer().to_string(), "/looks_like_json/poiner/and/it/is");
 	EXPECT_EQ(a.identifier(), "");
 }
 

@@ -61,7 +61,7 @@ protected:
 
 	std::tuple<std::string, std::string, std::string, std::string, std::string> as_tuple() const
 	{
-		return std::make_tuple(urn_, scheme_, authority_, path_, identifier_ != "" ? identifier_ : pointer_);
+		return std::make_tuple(urn_, scheme_, authority_, path_, identifier_ != "" ? identifier_ : pointer_.to_string());
 	}
 
 public:
@@ -80,7 +80,7 @@ public:
 	std::string fragment() const
 	{
 		if (identifier_ == "")
-			return pointer_;
+			return pointer_.to_string();
 		else
 			return identifier_;
 	}

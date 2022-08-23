@@ -179,7 +179,7 @@ public:
 		auto fragment = new_uri.pointer();
 
 		// is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
-		auto unresolved = file.unresolved.find(fragment);
+		auto unresolved = file.unresolved.find(fragment.to_string());
 		if (unresolved != file.unresolved.end())
 			schema::make(value, this, {}, {{new_uri}});
 		else { // no, nothing ref'd it, keep for later
