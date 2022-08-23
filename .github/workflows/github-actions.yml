@@ -6,6 +6,7 @@ on:
       - develop
       - master
       - release/*
+      - main
   pull_request:
 
 jobs:
@@ -21,7 +22,7 @@ jobs:
         with:
           repository: nlohmann/json
           path: nlohmann-json
-          ref: release/3.10.2
+          ref: v3.11.2
       - name: Build and install nlohmann json
         run: |
           cd nlohmann-json
