@@ -163,7 +163,7 @@ int main()
 	val.set_root_schema(array_of_types_without_binary);
 	val.validate({{"something", binary}}, err);
 	EXPECT_EQ(err.failed_pointers.size(), 1);
-	EXPECT_EQ(err.failed_pointers[0], "/something");
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "/something");
 	err.reset();
 
 	// check that without content callback you get exception with schema with contentEncoding or contentMeditType
