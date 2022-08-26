@@ -12,7 +12,7 @@ on:
 jobs:
   build_and_test:
     runs-on: ubuntu-latest
-    container: ghcr.io/nlohmann/json-ci:v1.0.0
+    container: ghcr.io/nlohmann/json-ci:v2.4.0
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
@@ -39,7 +39,7 @@ jobs:
         run: cd build && ctest
   build_and_test_min_version:
     runs-on: ubuntu-latest
-    container: ghcr.io/nlohmann/json-ci:v1.0.0
+    container: ghcr.io/nlohmann/json-ci:v2.4.0
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
