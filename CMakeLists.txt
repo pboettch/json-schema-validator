@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.2)
 
 option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
 option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
+option(JSON_VALIDATOR_INSTALL "Install target" ON)
 option(JSON_VALIDATOR_HUNTER "Enable Hunter package manager support" OFF)
 
 if(JSON_VALIDATOR_HUNTER)
@@ -95,14 +96,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 endif()
 
-install(TARGETS nlohmann_json_schema_validator
-        EXPORT ${PROJECT_NAME}Targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin)
+if(JSON_VALIDATOR_INSTALL)
+    install(TARGETS nlohmann_json_schema_validator
+            EXPORT ${PROJECT_NAME}Targets
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib
+            RUNTIME DESTINATION bin)
 
-install(FILES src/nlohmann/json-schema.hpp
-        DESTINATION include/nlohmann)
+    install(FILES src/nlohmann/json-schema.hpp
+            DESTINATION include/nlohmann)
+endif()
 
 if (JSON_VALIDATOR_BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
@@ -127,32 +130,34 @@ endif()
 
 # Set Up the Project Targets and Config Files for CMake
 
-# Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
-set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-set(INSTALL_CMAKEDIR_ROOT share/cmake)
+if(JSON_VALIDATOR_INSTALL)
+    # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
+    set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+    set(INSTALL_CMAKEDIR_ROOT share/cmake)
 
-# Install Targets
-install(EXPORT ${PROJECT_NAME}Targets
-        FILE ${PROJECT_NAME}Targets.cmake
-        DESTINATION "${INSTALL_CMAKE_DIR}")
+    # Install Targets
+    install(EXPORT ${PROJECT_NAME}Targets
+            FILE ${PROJECT_NAME}Targets.cmake
+            DESTINATION "${INSTALL_CMAKE_DIR}")
 
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-    )
-
-configure_package_config_file(
-    ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-    INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
-    )
-
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    DESTINATION
-        ${INSTALL_CMAKE_DIR}
-    )
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+        )
+
+    configure_package_config_file(
+        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
+        )
+
+    install(
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+        DESTINATION
+            ${INSTALL_CMAKE_DIR}
+        )
+endif()
