@@ -15,7 +15,6 @@ def get_version():
     except:
         return None
 
-
 class JsonSchemaValidatorConan(ConanFile):
     name = 'JsonSchemaValidator'
     version = get_version()
@@ -24,34 +23,49 @@ class JsonSchemaValidatorConan(ConanFile):
     settings = 'os', 'compiler', 'build_type', 'arch'
     options = {
         'shared': [True, False],
-        'fPIC': [True, False]
+        'fPIC': [True, False],
+        'build_examples': [True, False],
+        'build_tests': [True, False]
     }
     default_options = {
         'shared': False,
-        'fPIC': True
+        'fPIC': True,
+        'build_examples': True,
+        'build_tests': False
     }
-    generators = "cmake"
+    generators = "CMakeDeps"
     exports_sources = [
         'CMakeLists.txt',
         'nlohmann_json_schema_validatorConfig.cmake.in',
         'src/*',
         'app/*',
+        'test/*',
     ]
-
     requires = (
-        'nlohmann_json/3.7.3'
+        'nlohmann_json/3.11.2'
     )
+    _cmake = None
+
+    def _configure_cmake(self):
+        if self._cmake:
+            return self._cmake
+        self._cmake = CMake(self)
+        self._cmake.definitions['JSON_VALIDATOR_BUILD_EXAMPLES'] = self.options.build_examples
+        self._cmake.definitions['JSON_VALIDATOR_BUILD_TESTS'] = self.options.build_tests
+        self._cmake.configure()
+        return self._cmake
+
+    def layout(self):
+        build_type = str(self.settings.build_type).lower()
+        self.folders.build = "build-{}".format(build_type)
 
     def build(self):
-        cmake = CMake(self)
-        cmake.definitions['nlohmann_json_DIR'] = os.path.join(self.deps_cpp_info['nlohmann_json'].rootpath, 'include')
-        cmake.definitions['JSON_VALIDATOR_BUILD_EXAMPLES'] = True
-        cmake.definitions['JSON_VALIDATOR_BUILD_TESTS'] = False
+        cmake = self._configure_cmake()
         cmake.configure()
         cmake.build()
 
     def package(self):
-        cmake = CMake(self)
+        cmake = self._configure_cmake()
         cmake.install()
 
     def package_info(self):
