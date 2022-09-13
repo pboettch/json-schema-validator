@@ -436,9 +436,12 @@ class logical_combination : public schema
 
 		for (auto &s : subschemata_) {
 			first_error_handler esub;
+			json_patch old_patch(patch);
 			s->validate(ptr, instance, patch, esub);
 			if (!esub)
 				count++;
+			else
+				patch = old_patch;
 
 			if (is_validate_complete(instance, ptr, e, esub, count))
 				return;
