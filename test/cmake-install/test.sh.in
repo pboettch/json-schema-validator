@@ -30,7 +30,11 @@ cmake \
     ${EXTRA_ARGS} \
     ${SRC_DIR}
 
-CPU_COUNT=$(nproc)
+CPU_COUNT=$( \
+    which nproc &>/dev/null && nproc \
+    || which getconf &>/dev/null && getconf _NPROCESSORS_ONLN 2>/dev/null \
+    || echo 1 \
+)
 
 # Build and install json-schema-validator
 cmake --build . -- -j${CPU_COUNT}
