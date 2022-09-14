@@ -974,6 +974,20 @@ public:
 	    : schema(root), required_(r) {}
 };
 
+json find_patch_add(const json::json_pointer &ptr, const json_patch &patch)
+{
+	if (!patch.operator json().is_array()) {
+		return nullptr;
+	}
+	std::string path = ptr.to_string();
+	for (const auto &op : patch.operator json()) {
+		if (op.at("path") == path && op.at("op") == "add") {
+			return op.at("value");
+		}
+	}
+	return nullptr;
+}
+
 class object : public schema
 {
 	std::pair<bool, size_t> maxProperties_{false, 0};
@@ -1037,6 +1051,12 @@ class object : public schema
 		for (auto const &prop : properties_) {
 			const auto finding = instance.find(prop.first);
 			if (instance.end() == finding) { // if the prop is not in the instance
+				{
+					json default_value = find_patch_add((ptr / prop.first), patch);
+					if (!default_value.is_null()) {
+						continue;
+					}
+				}
 				const auto &default_value = prop.second->default_value(ptr, instance, e);
 				if (!default_value.is_null()) { // if default value is available
 					patch.add((ptr / prop.first), default_value);
