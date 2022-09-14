@@ -949,14 +949,6 @@ class boolean : public schema
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		if (!true_) { // false schema
-			// empty array
-			// switch (instance.type()) {
-			// case json::value_t::array:
-			//	if (instance.size() != 0) // valid false-schema
-			//		e.error(ptr, instance, "false-schema required empty array");
-			//	return;
-			//}
-
 			e.error(ptr, instance, "instance invalid as per false-schema");
 		}
 	}
