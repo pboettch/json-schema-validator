@@ -78,19 +78,19 @@ int main(void)
 		}
 
 		if (default_patch.size() != 1) {
-			std::cerr << "Patch with defaults is expected to contain one opperation" << std::endl;
+			std::cerr << "Patch with defaults is expected to contain one operation" << std::endl;
 			return 1;
 		}
 
 		const auto &single_op = default_patch[0];
 
 		if (!single_op.contains("op")) {
-			std::cerr << "Patch with defaults is expected to contain opperation entry" << std::endl;
+			std::cerr << "Patch with defaults is expected to contain operation entry" << std::endl;
 			return 1;
 		}
 
 		if (single_op["op"].get<std::string>() != "add") {
-			std::cerr << "Patch with defaults is expected to contain add opperation" << std::endl;
+			std::cerr << "Patch with defaults is expected to contain add operation" << std::endl;
 			return 1;
 		}
 
@@ -132,19 +132,19 @@ int main(void)
 		}
 
 		if (default_patch.size() != 1) {
-			std::cerr << "Patch with defaults is expected to contain one opperation" << std::endl;
+			std::cerr << "Patch with defaults is expected to contain one operation" << std::endl;
 			return 1;
 		}
 
 		const auto &single_op = default_patch[0];
 
 		if (!single_op.contains("op")) {
-			std::cerr << "Patch with defaults is expected to contain opperation entry" << std::endl;
+			std::cerr << "Patch with defaults is expected to contain operation entry" << std::endl;
 			return 1;
 		}
 
 		if (single_op["op"].get<std::string>() != "add") {
-			std::cerr << "Patch with defaults is expected to contain add opperation" << std::endl;
+			std::cerr << "Patch with defaults is expected to contain add operation" << std::endl;
 			return 1;
 		}
 
