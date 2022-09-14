@@ -1012,10 +1012,6 @@ class object : public schema
 		if (minProperties_.first && instance.size() < minProperties_.second)
 			e.error(ptr, instance, "too few properties");
 
-		for (auto &r : required_)
-			if (instance.find(r) == instance.end())
-				e.error(ptr, instance, "required property '" + r + "' not found in object");
-
 		// for each property in instance
 		for (auto &p : instance.items()) {
 			if (propertyNames_)
@@ -1062,6 +1058,14 @@ class object : public schema
 					patch.add((ptr / prop.first), default_value);
 				}
 			}
+		}
+
+		for (const auto &r : required_) {
+			if (instance.find(r) != instance.end())
+				continue;
+			if (!find_patch_add((ptr / r), patch).is_null())
+				continue;
+			e.error(ptr, instance, "required property '" + r + "' not found in object");
 		}
 
 		for (auto &dep : dependencies_) {
