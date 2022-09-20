@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.2)
 
-option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
-option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
 option(JSON_VALIDATOR_INSTALL "Install target" ON)
 option(JSON_VALIDATOR_HUNTER "Enable Hunter package manager support" OFF)
 
@@ -48,16 +46,11 @@ set_target_properties(nlohmann_json_schema_validator
 # disable tests and examples if project is not super project
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     # I am top-level project.
-    set(JSON_VALIDATOR_IS_TOP_LEVEL TRUE)
+    set(JSON_VALIDATOR_IS_TOP_LEVEL ON)
 endif()
 
-if(JSON_VALIDATOR_IS_TOP_LEVEL)
-    set(JSON_VALIDATOR_BUILD_TESTS ON)
-    set(JSON_VALIDATOR_BUILD_EXAMPLES ON)
-else()
-    set(JSON_VALIDATOR_BUILD_TESTS OFF)
-    set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
-endif()
+option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ${JSON_VALIDATOR_IS_TOP_LEVEL})
+option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ${JSON_VALIDATOR_IS_TOP_LEVEL})
 
 if(NOT TARGET nlohmann_json::nlohmann_json)
     find_package(nlohmann_json REQUIRED)
