@@ -84,10 +84,10 @@ void rfc3339_time_check(const std::string &value)
 	}
 
 	/**
-     * @todo Could be made more exact by querying a leap second database and choosing the
-     *       correct maximum in {58,59,60}. This current solution might match some invalid dates
-     *       but it won't lead to false negatives. This only works if we know the full date, however
-     */
+	 * @todo Could be made more exact by querying a leap second database and choosing the
+	 *       correct maximum in {58,59,60}. This current solution might match some invalid dates
+	 *       but it won't lead to false negatives. This only works if we know the full date, however
+	 */
 
 	auto day_minutes = hour * 60 + minute - (offsetHour * 60 + offsetMinute);
 	if (day_minutes < 0)
@@ -126,7 +126,7 @@ void rfc3339_time_check(const std::string &value)
  * @endverbatim
  * NOTE: Per [ABNF] and ISO8601, the "T" and "Z" characters in this
  *       syntax may alternatively be lower case "t" or "z" respectively.
-*/
+ */
 void rfc3339_date_time_check(const std::string &value)
 {
 	const static std::regex dateTimeRegex{R"(^([0-9]{4}\-[0-9]{2}\-[0-9]{2})[Tt]([0-9]{2}\:[0-9]{2}\:[0-9]{2}(?:\.[0-9]+)?(?:[Zz]|(?:\+|\-)[0-9]{2}\:[0-9]{2}))$)"};
@@ -265,6 +265,112 @@ const std::string dotAtom{"(?:" + atext + R"(+(?:\.)" + atext + "+)*)"};
 const std::string stackoverflowMagicPart{R"((?:[[:alnum:]](?:[[:alnum:]-]*[[:alnum:]])?\.)+)"
                                          R"([[:alnum:]](?:[[:alnum:]-]*[[:alnum:]])?)"};
 const std::string email{"(?:" + dotAtom + "|" + quotedString + ")@(?:" + stackoverflowMagicPart + "|" + domainLiteral + ")"};
+
+/**
+ * @see
+ *
+ * @verbatim
+ * URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
+ *
+ *  hier-part     = "//" authority path-abempty
+ *               / path-absolute
+ *               / path-rootless
+ *               / path-empty
+ *
+ * URI-reference = URI / relative-ref
+ *
+ * absolute-URI  = scheme ":" hier-part [ "?" query ]
+ *
+ * relative-ref  = relative-part [ "?" query ] [ "#" fragment ]
+ *
+ * relative-part = "//" authority path-abempty
+ *               / path-absolute
+ *               / path-noscheme
+ *               / path-empty
+ *
+ * scheme        = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+ *
+ * authority     = [ userinfo "@" ] host [ ":" port ]
+ * userinfo      = *( unreserved / pct-encoded / sub-delims / ":" )
+ * host          = IP-literal / IPv4address / reg-name
+ * port          = *DIGIT
+ *
+ * IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
+ *
+ * IPvFuture     = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
+ *
+ * IPv6address   =                            6( h16 ":" ) ls32
+ *               /                       "::" 5( h16 ":" ) ls32
+ *               / [               h16 ] "::" 4( h16 ":" ) ls32
+ *               / [ *1( h16 ":" ) h16 ] "::" 3( h16 ":" ) ls32
+ *               / [ *2( h16 ":" ) h16 ] "::" 2( h16 ":" ) ls32
+ *               / [ *3( h16 ":" ) h16 ] "::"    h16 ":"   ls32
+ *               / [ *4( h16 ":" ) h16 ] "::"              ls32
+ *               / [ *5( h16 ":" ) h16 ] "::"              h16
+ *               / [ *6( h16 ":" ) h16 ] "::"
+ *
+ * h16           = 1*4HEXDIG
+ * ls32          = ( h16 ":" h16 ) / IPv4address
+ * IPv4address   = dec-octet "." dec-octet "." dec-octet "." dec-octet
+ *    dec-octet     = DIGIT                 ; 0-9
+ *               / %x31-39 DIGIT         ; 10-99
+ *               / "1" 2DIGIT            ; 100-199
+ *               / "2" %x30-34 DIGIT     ; 200-249
+ *               / "25" %x30-35          ; 250-255
+ *
+ * reg-name      = *( unreserved / pct-encoded / sub-delims )
+ *
+ * path          = path-abempty    ; begins with "/" or is empty
+ *               / path-absolute   ; begins with "/" but not "//"
+ *               / path-noscheme   ; begins with a non-colon segment
+ *               / path-rootless   ; begins with a segment
+ *               / path-empty      ; zero characters
+ *
+ * path-abempty  = *( "/" segment )
+ * path-absolute = "/" [ segment-nz *( "/" segment ) ]
+ * path-noscheme = segment-nz-nc *( "/" segment )
+ * path-rootless = segment-nz *( "/" segment )
+ * path-empty    = 0<pchar>
+ *
+ * segment       = *pchar
+ * segment-nz    = 1*pchar
+ * segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
+ *               ; non-zero-length segment without any colon ":"
+ *
+ * pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
+ *
+ * query         = *( pchar / "/" / "?" )
+ *
+ * fragment      = *( pchar / "/" / "?" )
+ *
+ * pct-encoded   = "%" HEXDIG HEXDIG
+ *
+ * unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+ * reserved      = gen-delims / sub-delims
+ * gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+ * sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+ *               / "*" / "+" / "," / ";" / "="
+ *
+ * @endverbatim
+ * @see adapted from: https://github.com/jhermsmeier/uri.regex/blob/master/uri.regex
+ *
+ */
+const std::string scheme{R"(([A-Za-z][A-Za-z0-9+\-.]*):)"};
+const std::string hierPart{R"((?:(\/\/)(?:((?:[A-Za-z0-9\-._~!$&'()*+,;=:]|%[0-9A-Fa-f]{2})*)@)?((?:\[(?:(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}|::(?:[0-9A-Fa-f]{1,4}:){5}|(?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}|(?:(?:[0-9A-Fa-f]{1,4}:){0,1}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){3}|(?:(?:[0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){2}|(?:(?:[0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}:|(?:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})?::)(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))|(?:(?:[0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}|(?:(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})?::)|[Vv][0-9A-Fa-f]+\.[A-Za-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)|(?:[A-Za-z0-9\-._~!$&'()*+,;=]|%[0-9A-Fa-f]{2})*))(?::([0-9]*))?((?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})*)*)|\/((?:(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})*)*)?)|((?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|%[0-9A-Fa-f]{2})*)*)|))"};
+const std::string query{R"((?:\?((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
+const std::string fragment{
+    R"((?:\#((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
+
+void rfc3986_uri_check(const std::string &value)
+{
+	const std::string uriFormat{scheme + hierPart + query + fragment};
+	static const std::regex uriRegex{uriFormat};
+
+	if (!std::regex_match(value, uriRegex)) {
+		throw std::invalid_argument(value + " is not a URI string according to RFC 3986.");
+	}
+}
+
 } // namespace
 
 namespace nlohmann
@@ -286,6 +392,8 @@ void default_string_format_check(const std::string &format, const std::string &v
 		rfc3339_date_check(value);
 	} else if (format == "time") {
 		rfc3339_time_check(value);
+	} else if (format == "uri") {
+		rfc3986_uri_check(value);
 	} else if (format == "email") {
 		static const std::regex emailRegex{email};
 		if (!std::regex_match(value, emailRegex)) {
