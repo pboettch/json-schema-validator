@@ -59,6 +59,12 @@ public:
 
 	virtual void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const = 0;
 
+	virtual void validate_inplace(const json::json_pointer &ptr, json &instance, error_handler &e) const
+	{
+		json_patch patch;
+		validate(ptr, instance, patch, e);
+	}
+
 	virtual const json &default_value(const json::json_pointer &, const json &, error_handler &) const
 	{
 		return default_value_;
@@ -85,6 +91,16 @@ class schema_ref : public schema
 
 		if (target)
 			target->validate(ptr, instance, patch, e);
+		else
+			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+	}
+
+	void validate_inplace(const json::json_pointer &ptr, json &instance, error_handler &e) const final
+	{
+		auto target = target_.lock();
+
+		if (target)
+			target->validate_inplace(ptr, instance, e);
 		else
 			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
 	}
@@ -362,6 +378,32 @@ public:
 
 		sch->second->validate(ptr, instance, patch, e);
 	}
+
+	void validate_inplace(const json::json_pointer &ptr,
+	                      json &instance,
+	                      error_handler &e,
+	                      const json_uri &initial) const
+	{
+		if (!root_) {
+			e.error(ptr, "", "no root schema has yet been set for validating an instance");
+			return;
+		}
+
+		auto file_entry = files_.find(initial.location());
+		if (file_entry == files_.end()) {
+			e.error(ptr, "", "no file found serving requested root-URI. " + initial.location());
+			return;
+		}
+
+		auto &file = file_entry->second;
+		auto sch = file.schemas.find(initial.fragment());
+		if (sch == file.schemas.end()) {
+			e.error(ptr, "", "no schema find for request initial URI: " + initial.to_string());
+			return;
+		}
+
+		sch->second->validate_inplace(ptr, instance, e);
+	}
 };
 
 } // namespace json_schema
@@ -404,6 +446,15 @@ class logical_not : public schema
 			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
 	}
 
+	void validate_inplace(const json::json_pointer &ptr, json &instance, error_handler &e) const final
+	{
+		first_error_handler esub;
+		subschema_->validate_inplace(ptr, instance, esub);
+
+		if (!esub)
+			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
+	}
+
 	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
 	{
 		return subschema_->default_value(ptr, instance, e);
@@ -439,6 +490,29 @@ class logical_combination : public schema
 			s->validate(ptr, instance, patch, esub);
 			if (!esub)
 				count++;
+
+			if (is_validate_complete(instance, ptr, e, esub, count))
+				return;
+		}
+
+		// could accumulate esub details for anyOf and oneOf, but not clear how to select which subschema failure to report
+		// or how to report multiple such failures
+		if (count == 0)
+			e.error(ptr, instance, "no subschema has succeeded, but one of them is required to validate");
+	}
+
+	void validate_inplace(const json::json_pointer &ptr, json &instance, error_handler &e) const final
+	{
+		size_t count = 0;
+
+		for (auto &s : subschemata_) {
+			first_error_handler esub;
+			json new_instance(instance);
+			s->validate_inplace(ptr, new_instance, esub);
+			if (!esub) {
+				count++;
+				instance = new_instance;
+			}
 
 			if (is_validate_complete(instance, ptr, e, esub, count))
 				return;
@@ -551,6 +625,48 @@ class type_schema : public schema
 			} else {
 				if (else_)
 					else_->validate(ptr, instance, patch, e);
+			}
+		}
+	}
+
+	void validate_inplace(const json::json_pointer &ptr, json &instance, error_handler &e) const override final
+	{
+		// depending on the type of instance run the type specific validator - if present
+		auto type = type_[static_cast<uint8_t>(instance.type())];
+
+		if (type)
+			type->validate_inplace(ptr, instance, e);
+		else
+			e.error(ptr, instance, "unexpected instance type");
+
+		if (enum_.first) {
+			bool seen_in_enum = false;
+			for (auto &v : enum_.second)
+				if (instance == v) {
+					seen_in_enum = true;
+					break;
+				}
+
+			if (!seen_in_enum)
+				e.error(ptr, instance, "instance not found in required enum");
+		}
+
+		if (const_.first &&
+		    const_.second != instance)
+			e.error(ptr, instance, "instance not const");
+
+		for (auto l : logic_)
+			l->validate_inplace(ptr, instance, e);
+
+		if (if_) {
+			first_error_handler err;
+			if_->validate_inplace(ptr, instance, err);
+			if (!err) {
+				if (then_)
+					then_->validate_inplace(ptr, instance, e);
+			} else {
+				if (else_)
+					else_->validate_inplace(ptr, instance, e);
 			}
 		}
 	}
@@ -1075,6 +1191,70 @@ class object : public schema
 		}
 	}
 
+	void validate_inplace(const json::json_pointer &ptr, json &instance, error_handler &e) const override
+	{
+		if (maxProperties_.first && instance.size() > maxProperties_.second)
+			e.error(ptr, instance, "too many properties");
+
+		if (minProperties_.first && instance.size() < minProperties_.second)
+			e.error(ptr, instance, "too few properties");
+
+		// reverse search
+		for (auto const &prop : properties_) {
+			const auto finding = instance.find(prop.first);
+			if (instance.end() == finding) { // if the prop is not in the instance
+				const auto &default_value = prop.second->default_value(ptr, instance, e);
+				if (!default_value.is_null()) { // if default value is available
+					instance[prop.first] = default_value;
+				}
+			}
+		}
+
+		// for each property in instance
+		json_patch patch;
+		for (auto &p : instance.items()) {
+			if (propertyNames_)
+				propertyNames_->validate(ptr, p.key(), patch, e);
+
+			bool a_prop_or_pattern_matched = false;
+			auto schema_p = properties_.find(p.key());
+			// check if it is in "properties"
+			if (schema_p != properties_.end()) {
+				a_prop_or_pattern_matched = true;
+				schema_p->second->validate_inplace(ptr / p.key(), p.value(), e);
+			}
+
+#ifndef NO_STD_REGEX
+			// check all matching patternProperties
+			for (auto &schema_pp : patternProperties_)
+				if (REGEX_NAMESPACE::regex_search(p.key(), schema_pp.first)) {
+					a_prop_or_pattern_matched = true;
+					schema_pp.second->validate_inplace(ptr / p.key(), p.value(), e);
+				}
+#endif
+
+			// check additionalProperties as a last resort
+			if (!a_prop_or_pattern_matched && additionalProperties_) {
+				first_error_handler additional_prop_err;
+				additionalProperties_->validate_inplace(ptr / p.key(), p.value(), additional_prop_err);
+				if (additional_prop_err)
+					e.error(ptr, instance, "validation failed for additional property '" + p.key() + "': " + additional_prop_err.message_);
+			}
+		}
+
+		for (const auto &r : required_) {
+			if (instance.find(r) != instance.end())
+				continue;
+			e.error(ptr, instance, "required property '" + r + "' not found in object");
+		}
+
+		for (auto &dep : dependencies_) {
+			auto prop = instance.find(dep.first);
+			if (prop != instance.end())                                     // if dependency-property is present in instance
+				dep.second->validate_inplace(ptr / dep.first, instance, e); // validate
+		}
+	}
+
 public:
 	object(json &sch,
 	       root_schema *root,
@@ -1211,6 +1391,61 @@ class array : public schema
 			for (auto &item : instance) {
 				first_error_handler local_e;
 				contains_->validate(ptr, item, patch, local_e);
+				if (!local_e) {
+					contained = true;
+					break;
+				}
+			}
+			if (!contained)
+				e.error(ptr, instance, "array does not contain required element as per 'contains'");
+		}
+	}
+
+	void validate_inplace(const json::json_pointer &ptr, json &instance, error_handler &e) const override
+	{
+		if (maxItems_.first && instance.size() > maxItems_.second)
+			e.error(ptr, instance, "array has too many items");
+
+		if (minItems_.first && instance.size() < minItems_.second)
+			e.error(ptr, instance, "array has too few items");
+
+		if (uniqueItems_) {
+			for (auto it = instance.begin(); it != instance.end(); ++it) {
+				auto v = std::find(it + 1, instance.end(), *it);
+				if (v != instance.end())
+					e.error(ptr, instance, "items have to be unique for this array");
+			}
+		}
+
+		size_t index = 0;
+		if (items_schema_)
+			for (auto &i : instance) {
+				items_schema_->validate_inplace(ptr / index, i, e);
+				index++;
+			}
+		else {
+			auto item = items_.cbegin();
+			for (auto &i : instance) {
+				std::shared_ptr<schema> item_validator;
+				if (item == items_.cend())
+					item_validator = additionalItems_;
+				else {
+					item_validator = *item;
+					item++;
+				}
+
+				if (!item_validator)
+					break;
+
+				item_validator->validate_inplace(ptr / index, i, e);
+			}
+		}
+
+		if (contains_) {
+			bool contained = false;
+			for (auto &item : instance) {
+				first_error_handler local_e;
+				contains_->validate_inplace(ptr, item, local_e);
 				if (!local_e) {
 					contained = true;
 					break;
@@ -1464,6 +1699,18 @@ json json_validator::validate(const json &instance, error_handler &err, const js
 	json_patch patch;
 	root_->validate(ptr, instance, patch, err, initial_uri);
 	return patch;
+}
+
+void json_validator::validate_inplace(json &instance) const
+{
+	throwing_error_handler err;
+	validate_inplace(instance, err);
+}
+
+void json_validator::validate_inplace(json &instance, error_handler &err, const json_uri &initial_uri) const
+{
+	json::json_pointer ptr;
+	root_->validate_inplace(ptr, instance, err, initial_uri);
 }
 
 } // namespace json_schema

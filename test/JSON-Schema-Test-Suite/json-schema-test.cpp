@@ -111,34 +111,49 @@ int main(void)
 
 		validator.set_root_schema(schema);
 
-		for (auto &test_case : test_group["tests"]) {
-			std::cout << "  Testing Case " << test_case["description"] << "\n";
+		for (bool inplace : {false, true}) {
+			for (auto &test_case : test_group["tests"]) {
+				std::cout << "  Testing Case " << test_case["description"] << "\n";
 
-			bool valid = true;
+				bool valid = true;
 
-			try {
-				validator.validate(test_case["data"]);
-			} catch (const std::out_of_range &e) {
-				valid = false;
-				std::cout << "    Test Case Exception (out of range): " << e.what() << "\n";
+				try {
+					json data(test_case["data"]);
+					if (inplace)
+						validator.validate_inplace(data);
+					else
+						validator.validate(data);
 
-			} catch (const std::invalid_argument &e) {
-				valid = false;
-				std::cout << "    Test Case Exception (invalid argument): " << e.what() << "\n";
+				} catch (const std::out_of_range &e) {
+					valid = false;
+					std::cout << "    Test Case Exception (out of range): " << e.what() << "\n";
 
-			} catch (const std::logic_error &e) {
-				valid = !test_case["valid"]; /* force test-case failure */
-				std::cout << "    Not yet implemented: " << e.what() << "\n";
+				} catch (const std::invalid_argument &e) {
+					valid = false;
+					std::cout << "    Test Case Exception (invalid argument): " << e.what() << "\n";
+
+				} catch (const std::logic_error &e) {
+					valid = !test_case["valid"]; /* force test-case failure */
+					std::cout << "    Not yet implemented: " << e.what() << "\n";
+				}
+
+				bool expected =                                                              //
+				    test_case.at("valid").is_boolean()                                       //
+				        ? test_case.at("valid").get<bool>()                                  //
+				        : inplace                                                            //
+				              ? test_case.at("/valid/inplace"_json_pointer).get<bool>()      //
+				              : test_case.at("/valid/not_inplace"_json_pointer).get<bool>(); //
+				std::string inplace_prefix = inplace ? "valid_inplace" : "valid";
+				if (valid == expected)
+					std::cout
+					    << "      --> [" << inplace_prefix << "] Test Case exited with " << valid << " as expected.\n";
+				else {
+					group_failed++;
+					std::cout << "      --> [" << inplace_prefix << "] Test Case exited with " << valid << " NOT expected.\n";
+				}
+				group_total++;
+				std::cout << "\n";
 			}
-
-			if (valid == test_case["valid"])
-				std::cout << "      --> Test Case exited with " << valid << " as expected.\n";
-			else {
-				group_failed++;
-				std::cout << "      --> Test Case exited with " << valid << " NOT expected.\n";
-			}
-			group_total++;
-			std::cout << "\n";
 		}
 		total_failed += group_failed;
 		total += group_total;

@@ -190,6 +190,14 @@ public:
 
 	// validate a json-document based on the root-schema with a custom error-handler
 	json validate(const json &, error_handler &, const json_uri &initial_uri = json_uri("#")) const;
+
+	// validate a json-document in place based on the root-schema.
+	// Default values of schema are inserted in-place with the given json-document
+	void validate_inplace(json &) const;
+
+	// validate a json-document based on the root-schema with a custom error-handler.
+	// Default values of schema are inserted in-place with the given json-document
+	void validate_inplace(json &, error_handler &, const json_uri &initial_uri = json_uri("#")) const;
 };
 
 } // namespace json_schema
