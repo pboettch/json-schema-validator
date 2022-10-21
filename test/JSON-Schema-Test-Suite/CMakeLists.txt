@@ -54,7 +54,6 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
             JSON-Suite::Optional::float-overflow
 
             JSON-Suite::Optional::ecmascript-regex
-            JSON-Suite::Optional::Format::idn-email
             JSON-Suite::Optional::Format::idn-hostname
             JSON-Suite::Optional::Format::iri-reference
             JSON-Suite::Optional::Format::iri
