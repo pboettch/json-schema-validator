@@ -215,7 +215,7 @@ void default_string_format_check(const std::string &format, const std::string &v
 		rfc3339_time_check(value);
 	} else if (format == "email") {
 		if (!is_ascii(value)) {
-			throw std::invalid_argument(value + " is contains non-ASCII values, not RFC 5321 compliant.");
+			throw std::invalid_argument(value + " contains non-ASCII values, not RFC 5321 compliant.");
 		}
 		if (!is_address(value)) {
 			throw std::invalid_argument(value + " is not a valid email according to RFC 5321.");
