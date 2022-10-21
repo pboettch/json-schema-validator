@@ -1,5 +1,7 @@
 #include <nlohmann/json-schema.hpp>
 
+#include <smtp-address-validator.hpp>
+
 #include <algorithm>
 #include <exception>
 #include <iostream>
@@ -180,91 +182,15 @@ const std::string uuid{R"([0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-
 // from http://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
 const std::string hostname{R"(^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$)"};
 
-/**
- * @see https://tools.ietf.org/html/rfc5322#section-4.1
- *
- * @verbatim
- * atom            =   [CFWS] 1*atext [CFWS]
- * word            =   atom / quoted-string
- * phrase          =   1*word / obs-phrase
- * obs-FWS         =   1*WSP *(CRLF 1*WSP)
- * FWS             =   ([*WSP CRLF] 1*WSP) /  obs-FWS
- *                                       ; Folding white space
- * ctext           =   %d33-39 /          ; Printable US-ASCII
- *                     %d42-91 /          ;  characters not including
- *                     %d93-126 /         ;  "(", ")", or "\"
- *                     obs-ctext
- * ccontent        =   ctext / quoted-pair / comment
- * comment         =   "(" *([FWS] ccontent) [FWS] ")"
- * CFWS            =   (1*([FWS] comment) [FWS]) / FWS
- * obs-local-part  =   word *("." word)
- * obs-domain      =   atom *("." atom)
- * obs-dtext       =   obs-NO-WS-CTL / quoted-pair
- * quoted-pair     =   ("\" (VCHAR / WSP)) / obs-qp
- * obs-NO-WS-CTL   =   %d1-8 /            ; US-ASCII control
- *                     %d11 /             ;  characters that do not
- *                     %d12 /             ;  include the carriage
- *                     %d14-31 /          ;  return, line feed, and
- *                     %d127              ;  white space characters
- * obs-ctext       =   obs-NO-WS-CTL
- * obs-qtext       =   obs-NO-WS-CTL
- * obs-utext       =   %d0 / obs-NO-WS-CTL / VCHAR
- * obs-qp          =   "\" (%d0 / obs-NO-WS-CTL / LF / CR)
- * obs-body        =   *((*LF *CR *((%d0 / text) *LF *CR)) / CRLF)
- * obs-unstruct    =   *((*LF *CR *(obs-utext *LF *CR)) / FWS)
- * obs-phrase      =   word *(word / "." / CFWS)
- * obs-phrase-list =   [phrase / CFWS] *("," [phrase / CFWS])
- * qtext           =   %d33 /             ; Printable US-ASCII
- *                     %d35-91 /          ;  characters not including
- *                     %d93-126 /         ;  "\" or the quote character
- *                     obs-qtext
- * qcontent        =   qtext / quoted-pair
- * quoted-string   =   [CFWS]
- *                     DQUOTE *([FWS] qcontent) [FWS] DQUOTE
- *                     [CFWS]
- * atext           =   ALPHA / DIGIT /    ; Printable US-ASCII
- *                     "!" / "#" /        ;  characters not including
- *                     "$" / "%" /        ;  specials.  Used for atoms.
- *                     "&" / "'" /
- *                     "*" / "+" /
- *                     "-" / "/" /
- *                     "=" / "?" /
- *                     "^" / "_" /
- *                     "`" / "{" /
- *                     "|" / "}" /
- *                     "~"
- * dot-atom-text   =   1*atext *("." 1*atext)
- * dot-atom        =   [CFWS] dot-atom-text [CFWS]
- * addr-spec       =   local-part "@" domain
- * local-part      =   dot-atom / quoted-string / obs-local-part
- * domain          =   dot-atom / domain-literal / obs-domain
- * domain-literal  =   [CFWS] "[" *([FWS] dtext) [FWS] "]" [CFWS]
- * dtext           =   %d33-90 /          ; Printable US-ASCII
- *                     %d94-126 /         ;  characters not including
- *                     obs-dtext          ;  "[", "]", or "\"
- * @endverbatim
- * @todo Currently don't have a working tool for this larger ABNF to generate a regex.
- *       Other options:
- *         - https://github.com/ldthomas/apg-6.3
- *         - https://github.com/akr/abnf
- *
- * The problematic thing are the allowed whitespaces (even newlines) in the email.
- * Ignoring those and starting with
- * @see https://stackoverflow.com/questions/13992403/regex-validation-of-email-addresses-according-to-rfc5321-rfc5322
- * and trying to divide up the complicated regex into understandable ABNF definitions from rfc5322 yields:
- */
-const std::string obsnowsctl{R"([\x01-\x08\x0b\x0c\x0e-\x1f\x7f])"};
-const std::string obsqp{R"(\\[\x01-\x09\x0b\x0c\x0e-\x7f])"};
-const std::string qtext{R"((?:[\x21\x23-\x5b\x5d-\x7e]|)" + obsnowsctl + ")"};
-const std::string dtext{R"([\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f])"};
-const std::string quotedString{R"("(?:)" + qtext + "|" + obsqp + R"()*")"};
-const std::string atext{R"([A-Za-z0-9!#$%&'*+/=?^_`{|}~-])"};
-const std::string domainLiteral{R"(\[(?:(?:)" + decOctet + R"()\.){3}(?:)" + decOctet + R"(|[A-Za-z0-9-]*[A-Za-z0-9]:(?:)" + dtext + "|" + obsqp + R"()+)\])"};
-
-const std::string dotAtom{"(?:" + atext + R"(+(?:\.)" + atext + "+)*)"};
-const std::string stackoverflowMagicPart{R"((?:[[:alnum:]](?:[[:alnum:]-]*[[:alnum:]])?\.)+)"
-                                         R"([[:alnum:]](?:[[:alnum:]-]*[[:alnum:]])?)"};
-const std::string email{"(?:" + dotAtom + "|" + quotedString + ")@(?:" + stackoverflowMagicPart + "|" + domainLiteral + ")"};
+bool is_ascii(std::string const& value)
+{
+	for (auto ch : value) {
+		if (ch & 0x80) {
+			return false;
+		}
+	}
+	return true;
+}
 
 /**
  * @see
@@ -425,9 +351,15 @@ void default_string_format_check(const std::string &format, const std::string &v
 	} else if (format == "uri") {
 		rfc3986_uri_check(value);
 	} else if (format == "email") {
-		static const std::regex emailRegex{email};
-		if (!std::regex_match(value, emailRegex)) {
-			throw std::invalid_argument(value + " is not a valid email according to RFC 5322.");
+		if (!is_ascii(value)) {
+			throw std::invalid_argument(value + " contains non-ASCII values, not RFC 5321 compliant.");
+		}
+		if (!is_address(&*value.begin(), &*value.end())) {
+			throw std::invalid_argument(value + " is not a valid email according to RFC 5321.");
+		}
+	} else if (format == "idn-email") {
+		if (!is_address(&*value.begin(), &*value.end())) {
+			throw std::invalid_argument(value + " is not a valid idn-email according to RFC 6531.");
 		}
 	} else if (format == "hostname") {
 		static const std::regex hostRegex{hostname};

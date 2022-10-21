@@ -23,6 +23,7 @@ endif()
 
 # the library
 add_library(nlohmann_json_schema_validator
+    src/smtp-address-validator.cpp
     src/json-schema-draft7.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp
