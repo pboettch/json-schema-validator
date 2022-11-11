@@ -61,7 +61,6 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
             JSON-Suite::Optional::Format::relative-json-pointer
             JSON-Suite::Optional::Format::uri-reference
             JSON-Suite::Optional::Format::uri-template
-            JSON-Suite::Optional::Format::uri
             JSON-Suite::Optional::unicode
 
             PROPERTIES

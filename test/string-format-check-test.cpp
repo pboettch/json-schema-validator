@@ -82,5 +82,21 @@ int main()
 
 	numberOfErrors += testStringFormat("ipv4", ipv4Checks);
 
+	const std::vector<std::pair<std::string, bool>> uriChecks{
+	    {"http://www.google.com/search?q=regular%20expression", true},
+	    {"http://www.google.com/", true},
+	    {"http://www.google.com/search?q=regular%20expression", true},
+	    {"www.google.com", false},
+	    {"http://www.google.comj", true},
+	    {"ldap://[2001:db8::7]/c=GB?objectClass?one", true},
+	    {"mailto:John.Doe@example.com", true},
+	    {"news:comp.infosystems.www.servers.unix", true},
+	    {"https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top", true},
+	    {"tel:+1-816-555-1212", true},
+	    {"telnet://192.0.2.16:80/", true},
+	    {"urn:oasis:names:specification:docbook:dtd:xml:4.1.2", true}};
+
+	numberOfErrors += testStringFormat("uri", uriChecks);
+
 	return numberOfErrors;
 }
