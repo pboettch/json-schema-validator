@@ -690,12 +690,10 @@ static const int address_en_main = 1;
 #line 112 "smtp-address-validator.rl"
 
 
-bool is_address(std::string_view s)
+bool is_address(const char* p, const char* pe)
 {
 	int cs = 0;
 	
-	const char* p = s.begin();
-	const char* pe = s.end();
 	const char* eof = pe;
 	
 	bool result = false;

@@ -182,7 +182,7 @@ const std::string uuid{R"([0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-
 // from http://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
 const std::string hostname{R"(^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$)"};
 
-bool is_ascii(std::string_view value)
+bool is_ascii(std::string const& value)
 {
 	for (auto ch : value) {
 		if (ch & 0x80) {
@@ -190,6 +190,141 @@ bool is_ascii(std::string_view value)
 		}
 	}
 	return true;
+}
+
+/**
+ * @see
+ *
+ * @verbatim
+ * URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
+ *
+ *  hier-part     = "//" authority path-abempty
+ *               / path-absolute
+ *               / path-rootless
+ *               / path-empty
+ *
+ * URI-reference = URI / relative-ref
+ *
+ * absolute-URI  = scheme ":" hier-part [ "?" query ]
+ *
+ * relative-ref  = relative-part [ "?" query ] [ "#" fragment ]
+ *
+ * relative-part = "//" authority path-abempty
+ *               / path-absolute
+ *               / path-noscheme
+ *               / path-empty
+ *
+ * scheme        = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+ *
+ * authority     = [ userinfo "@" ] host [ ":" port ]
+ * userinfo      = *( unreserved / pct-encoded / sub-delims / ":" )
+ * host          = IP-literal / IPv4address / reg-name
+ * port          = *DIGIT
+ *
+ * IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
+ *
+ * IPvFuture     = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
+ *
+ * IPv6address   =                            6( h16 ":" ) ls32
+ *               /                       "::" 5( h16 ":" ) ls32
+ *               / [               h16 ] "::" 4( h16 ":" ) ls32
+ *               / [ *1( h16 ":" ) h16 ] "::" 3( h16 ":" ) ls32
+ *               / [ *2( h16 ":" ) h16 ] "::" 2( h16 ":" ) ls32
+ *               / [ *3( h16 ":" ) h16 ] "::"    h16 ":"   ls32
+ *               / [ *4( h16 ":" ) h16 ] "::"              ls32
+ *               / [ *5( h16 ":" ) h16 ] "::"              h16
+ *               / [ *6( h16 ":" ) h16 ] "::"
+ *
+ * h16           = 1*4HEXDIG
+ * ls32          = ( h16 ":" h16 ) / IPv4address
+ * IPv4address   = dec-octet "." dec-octet "." dec-octet "." dec-octet
+ *    dec-octet     = DIGIT                 ; 0-9
+ *               / %x31-39 DIGIT         ; 10-99
+ *               / "1" 2DIGIT            ; 100-199
+ *               / "2" %x30-34 DIGIT     ; 200-249
+ *               / "25" %x30-35          ; 250-255
+ *
+ * reg-name      = *( unreserved / pct-encoded / sub-delims )
+ *
+ * path          = path-abempty    ; begins with "/" or is empty
+ *               / path-absolute   ; begins with "/" but not "//"
+ *               / path-noscheme   ; begins with a non-colon segment
+ *               / path-rootless   ; begins with a segment
+ *               / path-empty      ; zero characters
+ *
+ * path-abempty  = *( "/" segment )
+ * path-absolute = "/" [ segment-nz *( "/" segment ) ]
+ * path-noscheme = segment-nz-nc *( "/" segment )
+ * path-rootless = segment-nz *( "/" segment )
+ * path-empty    = 0<pchar>
+ *
+ * segment       = *pchar
+ * segment-nz    = 1*pchar
+ * segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
+ *               ; non-zero-length segment without any colon ":"
+ *
+ * pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
+ *
+ * query         = *( pchar / "/" / "?" )
+ *
+ * fragment      = *( pchar / "/" / "?" )
+ *
+ * pct-encoded   = "%" HEXDIG HEXDIG
+ *
+ * unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+ * reserved      = gen-delims / sub-delims
+ * gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+ * sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+ *               / "*" / "+" / "," / ";" / "="
+ *
+ * @endverbatim
+ * @see adapted from: https://github.com/jhermsmeier/uri.regex/blob/master/uri.regex
+ *
+ */
+void rfc3986_uri_check(const std::string &value)
+{
+	const static std::string scheme{R"(([A-Za-z][A-Za-z0-9+\-.]*):)"};
+	const static std::string hierPart{
+	    R"((?:(\/\/)(?:((?:[A-Za-z0-9\-._~!$&'()*+,;=:]|)"
+	    R"(%[0-9A-Fa-f]{2})*)@)?((?:\[(?:(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}|)"
+	    R"(::(?:[0-9A-Fa-f]{1,4}:){5}|)"
+	    R"((?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,1}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){3}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){2}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}:|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})?::)(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|)"
+	    R"((?:(?:25[0-5]|2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?)\.){3}(?:25[0-5]|)"
+	    R"(2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?))|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})?::)|)"
+	    R"([Vv][0-9A-Fa-f]+\.[A-Za-z0-9\-._~!$&'()*+,;=:]+)\]|)"
+	    R"((?:(?:25[0-5]|)"
+	    R"(2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?)\.){3}(?:25[0-5]|)"
+	    R"(2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?)|)"
+	    R"((?:[A-Za-z0-9\-._~!$&'()*+,;=]|)"
+	    R"(%[0-9A-Fa-f]{2})*))(?::([0-9]*))?((?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})*)*)|)"
+	    R"(\/((?:(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})*)*)?)|)"
+	    R"(((?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})*)*)|))"};
+
+	const static std::string query{R"((?:\?((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
+	const static std::string fragment{
+	    R"((?:\#((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
+	const static std::string uriFormat{scheme + hierPart + query + fragment};
+
+	const static std::regex uriRegex{uriFormat};
+
+	if (!std::regex_match(value, uriRegex)) {
+		throw std::invalid_argument(value + " is not a URI string according to RFC 3986.");
+	}
 }
 
 } // namespace
@@ -219,11 +354,11 @@ void default_string_format_check(const std::string &format, const std::string &v
 		if (!is_ascii(value)) {
 			throw std::invalid_argument(value + " contains non-ASCII values, not RFC 5321 compliant.");
 		}
-		if (!is_address(value)) {
+		if (!is_address(&*value.begin(), &*value.end())) {
 			throw std::invalid_argument(value + " is not a valid email according to RFC 5321.");
 		}
 	} else if (format == "idn-email") {
-		if (!is_address(value)) {
+		if (!is_address(&*value.begin(), &*value.end())) {
 			throw std::invalid_argument(value + " is not a valid idn-email according to RFC 6531.");
 		}
 	} else if (format == "hostname") {

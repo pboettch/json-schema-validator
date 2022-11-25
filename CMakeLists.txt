@@ -37,7 +37,7 @@ target_include_directories(nlohmann_json_schema_validator
 
 target_compile_features(nlohmann_json_schema_validator
     PUBLIC
-        cxx_std+17) # for C++17 - flags, "Modern" C++
+        cxx_range_for) # for C++11 - flags
 
 set_target_properties(nlohmann_json_schema_validator
                       PROPERTIES
