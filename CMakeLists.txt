@@ -15,7 +15,7 @@ endif()
 project(nlohmann_json_schema_validator
         LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.1.1)
+set(PROJECT_VERSION 2.2.0)
 
 if(JSON_VALIDATOR_HUNTER)
     hunter_add_package(nlohmann_json)
