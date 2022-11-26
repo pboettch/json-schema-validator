@@ -42,7 +42,7 @@ target_compile_features(nlohmann_json_schema_validator
 set_target_properties(nlohmann_json_schema_validator
                       PROPERTIES
                           VERSION ${PROJECT_VERSION}
-                          SOVERSION 1)
+                          SOVERSION 2)
 
 # disable tests and examples if project is not super project
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
