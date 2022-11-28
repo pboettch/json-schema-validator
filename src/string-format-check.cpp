@@ -1,6 +1,6 @@
 #include <nlohmann/json-schema.hpp>
 
-#include <smtp-address-validator.hpp>
+#include "smtp-address-validator.hpp"
 
 #include <algorithm>
 #include <exception>
