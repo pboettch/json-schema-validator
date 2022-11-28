@@ -255,7 +255,7 @@ public:
 		// not by a plain name fragment
 		if (uri.pointer().to_string() != "") {
 			try {
-				auto &subschema = file.unknown_keywords.at(uri.pointer()); // null is returned if not existing
+				auto &subschema = file.unknown_keywords.at(uri.pointer().to_string()); // null is returned if not existing
 				auto s = schema::make(subschema, this, {}, {{uri}});       //  A JSON Schema MUST be an object or a boolean.
 				if (s) {                                                   // nullptr if invalid schema, e.g. null
 					file.unknown_keywords.erase(uri.fragment());
