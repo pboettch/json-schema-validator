@@ -498,6 +498,37 @@ bool logical_combination<oneOf>::is_validate_complete(const json &instance, cons
 	return count > 1;
 }
 
+json apply_patch_from(const json &instance, const json_patch &patch, const json::json_pointer &ptr)
+{
+	if (patch.operator json().empty()) {
+		return instance;
+	}
+
+	json patched_instance = json::parse(instance.dump());
+
+	json array = patch.operator json();
+	std::string ptr_string = ptr.to_string();
+	size_t ptr_string_length = ptr_string.length();
+	for (auto item = array.begin(); item != array.end(); ++item) {
+		std::string path = item->at("path");
+		if (path.find(ptr_string) != 0)
+			continue;
+		try {
+			json single_patch = {
+			    {
+			        {"path", path.substr(ptr_string_length)}, //
+			        {"op", item->at("op")},                   //
+			        {"value", item->at("value")}              //
+			    }                                             //
+			};
+			patched_instance = patched_instance.patch(single_patch);
+		} catch (...) {
+		}
+	}
+
+	return patched_instance;
+}
+
 class type_schema : public schema
 {
 	std::vector<std::shared_ptr<schema>> type_;
@@ -543,14 +574,14 @@ class type_schema : public schema
 
 		if (if_) {
 			first_error_handler err;
-
-			if_->validate(ptr, instance, patch, err);
+			json patched_instance = apply_patch_from(instance, patch, ptr);
+			if_->validate(ptr, patched_instance, patch, err);
 			if (!err) {
 				if (then_)
-					then_->validate(ptr, instance, patch, e);
+					then_->validate(ptr, patched_instance, patch, e);
 			} else {
 				if (else_)
-					else_->validate(ptr, instance, patch, e);
+					else_->validate(ptr, patched_instance, patch, e);
 			}
 		}
 	}

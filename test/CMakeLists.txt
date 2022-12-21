@@ -73,3 +73,7 @@ add_test(NAME issue-149-entry-selection COMMAND issue-149-entry-selection)
 add_executable(issue-189-default-values issue-189-default-values.cpp)
 target_link_libraries(issue-189-default-values nlohmann_json_schema_validator)
 add_test(NAME issue-189-default-values COMMAND issue-189-default-values)
+
+add_executable(issue-228-if-default-values issue-228-if-default-values.cpp)
+target_link_libraries(issue-228-if-default-values nlohmann_json_schema_validator)
+add_test(NAME issue-228-if-default-values COMMAND issue-228-if-default-values)
