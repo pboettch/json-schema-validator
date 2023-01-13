@@ -171,7 +171,7 @@ public:
 		auto fragment = new_uri.pointer();
 
 		// is there a reference looking for this unknown-keyword, which is thus no longer a unknown keyword but a schema
-		auto unresolved = file.unresolved.find(fragment);
+		auto unresolved = file.unresolved.find(fragment.to_string());
 		if (unresolved != file.unresolved.end())
 			schema::make(value, this, {}, {{new_uri}});
 		else { // no, nothing ref'd it, keep for later
@@ -884,8 +884,8 @@ class boolean : public schema
 	{
 		if (!true_) { // false schema
 			// empty array
-			//switch (instance.type()) {
-			//case json::value_t::array:
+			// switch (instance.type()) {
+			// case json::value_t::array:
 			//	if (instance.size() != 0) // valid false-schema
 			//		e.error(ptr, instance, "false-schema required empty array");
 			//	return;
