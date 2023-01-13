@@ -499,6 +499,9 @@ class type_schema : public schema
 					else_->validate(ptr, instance, patch, e);
 			}
 		}
+		if (instance.is_null()) {
+			patch.add(nlohmann::json::json_pointer{}, default_value_);
+		}
 	}
 
 public:
@@ -884,8 +887,8 @@ class boolean : public schema
 	{
 		if (!true_) { // false schema
 			// empty array
-			//switch (instance.type()) {
-			//case json::value_t::array:
+			// switch (instance.type()) {
+			// case json::value_t::array:
 			//	if (instance.size() != 0) // valid false-schema
 			//		e.error(ptr, instance, "false-schema required empty array");
 			//	return;
@@ -1067,6 +1070,11 @@ public:
 		if (attr != sch.end()) {
 			propertyNames_ = schema::make(attr.value(), root, {"propertyNames"}, uris);
 			sch.erase(attr);
+		}
+
+		attr = sch.find("default");
+		if (attr != sch.end()) {
+			set_default_value(*attr);
 		}
 	}
 };
