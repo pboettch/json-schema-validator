@@ -553,6 +553,9 @@ class type_schema : public schema
 					else_->validate(ptr, instance, patch, e);
 			}
 		}
+		if (instance.is_null()) {
+			patch.add(nlohmann::json::json_pointer{}, default_value_);
+		}
 	}
 
 protected:
@@ -1133,6 +1136,11 @@ public:
 		if (attr != sch.end()) {
 			propertyNames_ = schema::make(attr.value(), root, {"propertyNames"}, uris);
 			sch.erase(attr);
+		}
+
+		attr = sch.find("default");
+		if (attr != sch.end()) {
+			set_default_value(*attr);
 		}
 	}
 };
