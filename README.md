@@ -10,7 +10,7 @@ This is a C++ library for validating JSON documents based on a
 [draft-7 of JSON Schema Validation](http://json-schema.org/schema).
 
 First a disclaimer: *It is work in progress and
-contributions or hints or discussions are welcome.* Even though a 2.0.0 release is imminent.
+contributions or hints or discussions are welcome.*
 
 Niels Lohmann et al develop a great JSON parser for C++ called [JSON for Modern
 C++](https://github.com/nlohmann/json). This validator is based on this

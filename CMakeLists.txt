@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
-option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ON)
-option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ON)
+option(JSON_VALIDATOR_INSTALL "Install target" ON)
 option(JSON_VALIDATOR_HUNTER "Enable Hunter package manager support" OFF)
 
 if(JSON_VALIDATOR_HUNTER)
@@ -16,7 +15,7 @@ endif()
 project(nlohmann_json_schema_validator
         LANGUAGES CXX)
 
-set(PROJECT_VERSION 2.1.1)
+set(PROJECT_VERSION 2.2.0)
 
 if(JSON_VALIDATOR_HUNTER)
     hunter_add_package(nlohmann_json)
@@ -24,6 +23,7 @@ endif()
 
 # the library
 add_library(nlohmann_json_schema_validator
+    src/smtp-address-validator.cpp
     src/json-schema-draft7.json.cpp
     src/json-uri.cpp
     src/json-validator.cpp
@@ -42,21 +42,16 @@ target_compile_features(nlohmann_json_schema_validator
 set_target_properties(nlohmann_json_schema_validator
                       PROPERTIES
                           VERSION ${PROJECT_VERSION}
-                          SOVERSION 1)
+                          SOVERSION 2)
 
 # disable tests and examples if project is not super project
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     # I am top-level project.
-    set(JSON_VALIDATOR_IS_TOP_LEVEL TRUE)
+    set(JSON_VALIDATOR_IS_TOP_LEVEL ON)
 endif()
 
-if(JSON_VALIDATOR_IS_TOP_LEVEL)
-    set(JSON_VALIDATOR_BUILD_TESTS ON)
-    set(JSON_VALIDATOR_BUILD_EXAMPLES ON)
-else()
-    set(JSON_VALIDATOR_BUILD_TESTS OFF)
-    set(JSON_VALIDATOR_BUILD_EXAMPLES OFF)
-endif()
+option(JSON_VALIDATOR_BUILD_TESTS    "Build tests"    ${JSON_VALIDATOR_IS_TOP_LEVEL})
+option(JSON_VALIDATOR_BUILD_EXAMPLES "Build examples" ${JSON_VALIDATOR_IS_TOP_LEVEL})
 
 if(NOT TARGET nlohmann_json::nlohmann_json)
     find_package(nlohmann_json REQUIRED)
@@ -95,14 +90,16 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif()
 endif()
 
-install(TARGETS nlohmann_json_schema_validator
-        EXPORT ${PROJECT_NAME}Targets
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib
-        RUNTIME DESTINATION bin)
+if(JSON_VALIDATOR_INSTALL)
+    install(TARGETS nlohmann_json_schema_validator
+            EXPORT ${PROJECT_NAME}Targets
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib
+            RUNTIME DESTINATION bin)
 
-install(FILES src/nlohmann/json-schema.hpp
-        DESTINATION include/nlohmann)
+    install(FILES src/nlohmann/json-schema.hpp
+            DESTINATION include/nlohmann)
+endif()
 
 if (JSON_VALIDATOR_BUILD_EXAMPLES)
     # simple nlohmann_json_schema_validator-executable
@@ -127,32 +124,34 @@ endif()
 
 # Set Up the Project Targets and Config Files for CMake
 
-# Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
-set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-set(INSTALL_CMAKEDIR_ROOT share/cmake)
+if(JSON_VALIDATOR_INSTALL)
+    # Set the install path to the cmake config files (Relative, so install works correctly under Hunter as well)
+    set(INSTALL_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+    set(INSTALL_CMAKEDIR_ROOT share/cmake)
 
-# Install Targets
-install(EXPORT ${PROJECT_NAME}Targets
-        FILE ${PROJECT_NAME}Targets.cmake
-        DESTINATION "${INSTALL_CMAKE_DIR}")
+    # Install Targets
+    install(EXPORT ${PROJECT_NAME}Targets
+            FILE ${PROJECT_NAME}Targets.cmake
+            DESTINATION "${INSTALL_CMAKE_DIR}")
 
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-    )
-
-configure_package_config_file(
-    ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-    INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
-    )
-
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-    DESTINATION
-        ${INSTALL_CMAKE_DIR}
-    )
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+        )
+
+    configure_package_config_file(
+        ${PROJECT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+        INSTALL_DESTINATION ${INSTALL_CMAKEDIR_ROOT}/${PROJECT_NAME}
+        )
+
+    install(
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
+        DESTINATION
+            ${INSTALL_CMAKE_DIR}
+        )
+endif()

@@ -1,5 +1,7 @@
 #include <nlohmann/json-schema.hpp>
 
+#include "smtp-address-validator.hpp"
+
 #include <algorithm>
 #include <exception>
 #include <iostream>
@@ -84,10 +86,10 @@ void rfc3339_time_check(const std::string &value)
 	}
 
 	/**
-     * @todo Could be made more exact by querying a leap second database and choosing the
-     *       correct maximum in {58,59,60}. This current solution might match some invalid dates
-     *       but it won't lead to false negatives. This only works if we know the full date, however
-     */
+	 * @todo Could be made more exact by querying a leap second database and choosing the
+	 *       correct maximum in {58,59,60}. This current solution might match some invalid dates
+	 *       but it won't lead to false negatives. This only works if we know the full date, however
+	 */
 
 	auto day_minutes = hour * 60 + minute - (offsetHour * 60 + offsetMinute);
 	if (day_minutes < 0)
@@ -126,7 +128,7 @@ void rfc3339_time_check(const std::string &value)
  * @endverbatim
  * NOTE: Per [ABNF] and ISO8601, the "T" and "Z" characters in this
  *       syntax may alternatively be lower case "t" or "z" respectively.
-*/
+ */
 void rfc3339_date_time_check(const std::string &value)
 {
 	const static std::regex dateTimeRegex{R"(^([0-9]{4}\-[0-9]{2}\-[0-9]{2})[Tt]([0-9]{2}\:[0-9]{2}\:[0-9]{2}(?:\.[0-9]+)?(?:[Zz]|(?:\+|\-)[0-9]{2}\:[0-9]{2}))$)"};
@@ -180,91 +182,151 @@ const std::string uuid{R"([0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-
 // from http://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
 const std::string hostname{R"(^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$)"};
 
+bool is_ascii(std::string const& value)
+{
+	for (auto ch : value) {
+		if (ch & 0x80) {
+			return false;
+		}
+	}
+	return true;
+}
+
 /**
- * @see https://tools.ietf.org/html/rfc5322#section-4.1
+ * @see
  *
  * @verbatim
- * atom            =   [CFWS] 1*atext [CFWS]
- * word            =   atom / quoted-string
- * phrase          =   1*word / obs-phrase
- * obs-FWS         =   1*WSP *(CRLF 1*WSP)
- * FWS             =   ([*WSP CRLF] 1*WSP) /  obs-FWS
- *                                       ; Folding white space
- * ctext           =   %d33-39 /          ; Printable US-ASCII
- *                     %d42-91 /          ;  characters not including
- *                     %d93-126 /         ;  "(", ")", or "\"
- *                     obs-ctext
- * ccontent        =   ctext / quoted-pair / comment
- * comment         =   "(" *([FWS] ccontent) [FWS] ")"
- * CFWS            =   (1*([FWS] comment) [FWS]) / FWS
- * obs-local-part  =   word *("." word)
- * obs-domain      =   atom *("." atom)
- * obs-dtext       =   obs-NO-WS-CTL / quoted-pair
- * quoted-pair     =   ("\" (VCHAR / WSP)) / obs-qp
- * obs-NO-WS-CTL   =   %d1-8 /            ; US-ASCII control
- *                     %d11 /             ;  characters that do not
- *                     %d12 /             ;  include the carriage
- *                     %d14-31 /          ;  return, line feed, and
- *                     %d127              ;  white space characters
- * obs-ctext       =   obs-NO-WS-CTL
- * obs-qtext       =   obs-NO-WS-CTL
- * obs-utext       =   %d0 / obs-NO-WS-CTL / VCHAR
- * obs-qp          =   "\" (%d0 / obs-NO-WS-CTL / LF / CR)
- * obs-body        =   *((*LF *CR *((%d0 / text) *LF *CR)) / CRLF)
- * obs-unstruct    =   *((*LF *CR *(obs-utext *LF *CR)) / FWS)
- * obs-phrase      =   word *(word / "." / CFWS)
- * obs-phrase-list =   [phrase / CFWS] *("," [phrase / CFWS])
- * qtext           =   %d33 /             ; Printable US-ASCII
- *                     %d35-91 /          ;  characters not including
- *                     %d93-126 /         ;  "\" or the quote character
- *                     obs-qtext
- * qcontent        =   qtext / quoted-pair
- * quoted-string   =   [CFWS]
- *                     DQUOTE *([FWS] qcontent) [FWS] DQUOTE
- *                     [CFWS]
- * atext           =   ALPHA / DIGIT /    ; Printable US-ASCII
- *                     "!" / "#" /        ;  characters not including
- *                     "$" / "%" /        ;  specials.  Used for atoms.
- *                     "&" / "'" /
- *                     "*" / "+" /
- *                     "-" / "/" /
- *                     "=" / "?" /
- *                     "^" / "_" /
- *                     "`" / "{" /
- *                     "|" / "}" /
- *                     "~"
- * dot-atom-text   =   1*atext *("." 1*atext)
- * dot-atom        =   [CFWS] dot-atom-text [CFWS]
- * addr-spec       =   local-part "@" domain
- * local-part      =   dot-atom / quoted-string / obs-local-part
- * domain          =   dot-atom / domain-literal / obs-domain
- * domain-literal  =   [CFWS] "[" *([FWS] dtext) [FWS] "]" [CFWS]
- * dtext           =   %d33-90 /          ; Printable US-ASCII
- *                     %d94-126 /         ;  characters not including
- *                     obs-dtext          ;  "[", "]", or "\"
- * @endverbatim
- * @todo Currently don't have a working tool for this larger ABNF to generate a regex.
- *       Other options:
- *         - https://github.com/ldthomas/apg-6.3
- *         - https://github.com/akr/abnf
+ * URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
  *
- * The problematic thing are the allowed whitespaces (even newlines) in the email.
- * Ignoring those and starting with
- * @see https://stackoverflow.com/questions/13992403/regex-validation-of-email-addresses-according-to-rfc5321-rfc5322
- * and trying to divide up the complicated regex into understandable ABNF definitions from rfc5322 yields:
+ *  hier-part     = "//" authority path-abempty
+ *               / path-absolute
+ *               / path-rootless
+ *               / path-empty
+ *
+ * URI-reference = URI / relative-ref
+ *
+ * absolute-URI  = scheme ":" hier-part [ "?" query ]
+ *
+ * relative-ref  = relative-part [ "?" query ] [ "#" fragment ]
+ *
+ * relative-part = "//" authority path-abempty
+ *               / path-absolute
+ *               / path-noscheme
+ *               / path-empty
+ *
+ * scheme        = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+ *
+ * authority     = [ userinfo "@" ] host [ ":" port ]
+ * userinfo      = *( unreserved / pct-encoded / sub-delims / ":" )
+ * host          = IP-literal / IPv4address / reg-name
+ * port          = *DIGIT
+ *
+ * IP-literal    = "[" ( IPv6address / IPvFuture  ) "]"
+ *
+ * IPvFuture     = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
+ *
+ * IPv6address   =                            6( h16 ":" ) ls32
+ *               /                       "::" 5( h16 ":" ) ls32
+ *               / [               h16 ] "::" 4( h16 ":" ) ls32
+ *               / [ *1( h16 ":" ) h16 ] "::" 3( h16 ":" ) ls32
+ *               / [ *2( h16 ":" ) h16 ] "::" 2( h16 ":" ) ls32
+ *               / [ *3( h16 ":" ) h16 ] "::"    h16 ":"   ls32
+ *               / [ *4( h16 ":" ) h16 ] "::"              ls32
+ *               / [ *5( h16 ":" ) h16 ] "::"              h16
+ *               / [ *6( h16 ":" ) h16 ] "::"
+ *
+ * h16           = 1*4HEXDIG
+ * ls32          = ( h16 ":" h16 ) / IPv4address
+ * IPv4address   = dec-octet "." dec-octet "." dec-octet "." dec-octet
+ *    dec-octet     = DIGIT                 ; 0-9
+ *               / %x31-39 DIGIT         ; 10-99
+ *               / "1" 2DIGIT            ; 100-199
+ *               / "2" %x30-34 DIGIT     ; 200-249
+ *               / "25" %x30-35          ; 250-255
+ *
+ * reg-name      = *( unreserved / pct-encoded / sub-delims )
+ *
+ * path          = path-abempty    ; begins with "/" or is empty
+ *               / path-absolute   ; begins with "/" but not "//"
+ *               / path-noscheme   ; begins with a non-colon segment
+ *               / path-rootless   ; begins with a segment
+ *               / path-empty      ; zero characters
+ *
+ * path-abempty  = *( "/" segment )
+ * path-absolute = "/" [ segment-nz *( "/" segment ) ]
+ * path-noscheme = segment-nz-nc *( "/" segment )
+ * path-rootless = segment-nz *( "/" segment )
+ * path-empty    = 0<pchar>
+ *
+ * segment       = *pchar
+ * segment-nz    = 1*pchar
+ * segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
+ *               ; non-zero-length segment without any colon ":"
+ *
+ * pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
+ *
+ * query         = *( pchar / "/" / "?" )
+ *
+ * fragment      = *( pchar / "/" / "?" )
+ *
+ * pct-encoded   = "%" HEXDIG HEXDIG
+ *
+ * unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+ * reserved      = gen-delims / sub-delims
+ * gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+ * sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+ *               / "*" / "+" / "," / ";" / "="
+ *
+ * @endverbatim
+ * @see adapted from: https://github.com/jhermsmeier/uri.regex/blob/master/uri.regex
+ *
  */
-const std::string obsnowsctl{R"([\x01-\x08\x0b\x0c\x0e-\x1f\x7f])"};
-const std::string obsqp{R"(\\[\x01-\x09\x0b\x0c\x0e-\x7f])"};
-const std::string qtext{R"((?:[\x21\x23-\x5b\x5d-\x7e]|)" + obsnowsctl + ")"};
-const std::string dtext{R"([\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f])"};
-const std::string quotedString{R"("(?:)" + qtext + "|" + obsqp + R"()*")"};
-const std::string atext{R"([A-Za-z0-9!#$%&'*+/=?^_`{|}~-])"};
-const std::string domainLiteral{R"(\[(?:(?:)" + decOctet + R"()\.){3}(?:)" + decOctet + R"(|[A-Za-z0-9-]*[A-Za-z0-9]:(?:)" + dtext + "|" + obsqp + R"()+)\])"};
+void rfc3986_uri_check(const std::string &value)
+{
+	const static std::string scheme{R"(([A-Za-z][A-Za-z0-9+\-.]*):)"};
+	const static std::string hierPart{
+	    R"((?:(\/\/)(?:((?:[A-Za-z0-9\-._~!$&'()*+,;=:]|)"
+	    R"(%[0-9A-Fa-f]{2})*)@)?((?:\[(?:(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}|)"
+	    R"(::(?:[0-9A-Fa-f]{1,4}:){5}|)"
+	    R"((?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,1}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){3}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){2}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}:|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})?::)(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|)"
+	    R"((?:(?:25[0-5]|2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?)\.){3}(?:25[0-5]|)"
+	    R"(2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?))|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}|)"
+	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})?::)|)"
+	    R"([Vv][0-9A-Fa-f]+\.[A-Za-z0-9\-._~!$&'()*+,;=:]+)\]|)"
+	    R"((?:(?:25[0-5]|)"
+	    R"(2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?)\.){3}(?:25[0-5]|)"
+	    R"(2[0-4][0-9]|)"
+	    R"([01]?[0-9][0-9]?)|)"
+	    R"((?:[A-Za-z0-9\-._~!$&'()*+,;=]|)"
+	    R"(%[0-9A-Fa-f]{2})*))(?::([0-9]*))?((?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})*)*)|)"
+	    R"(\/((?:(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})*)*)?)|)"
+	    R"(((?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
+	    R"(%[0-9A-Fa-f]{2})*)*)|))"};
 
-const std::string dotAtom{"(?:" + atext + R"(+(?:\.)" + atext + "+)*)"};
-const std::string stackoverflowMagicPart{R"((?:[[:alnum:]](?:[[:alnum:]-]*[[:alnum:]])?\.)+)"
-                                         R"([[:alnum:]](?:[[:alnum:]-]*[[:alnum:]])?)"};
-const std::string email{"(?:" + dotAtom + "|" + quotedString + ")@(?:" + stackoverflowMagicPart + "|" + domainLiteral + ")"};
+	const static std::string query{R"((?:\?((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
+	const static std::string fragment{
+	    R"((?:\#((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
+	const static std::string uriFormat{scheme + hierPart + query + fragment};
+
+	const static std::regex uriRegex{uriFormat};
+
+	if (!std::regex_match(value, uriRegex)) {
+		throw std::invalid_argument(value + " is not a URI string according to RFC 3986.");
+	}
+}
+
 } // namespace
 
 namespace nlohmann
@@ -286,10 +348,18 @@ void default_string_format_check(const std::string &format, const std::string &v
 		rfc3339_date_check(value);
 	} else if (format == "time") {
 		rfc3339_time_check(value);
+	} else if (format == "uri") {
+		rfc3986_uri_check(value);
 	} else if (format == "email") {
-		static const std::regex emailRegex{email};
-		if (!std::regex_match(value, emailRegex)) {
-			throw std::invalid_argument(value + " is not a valid email according to RFC 5322.");
+		if (!is_ascii(value)) {
+			throw std::invalid_argument(value + " contains non-ASCII values, not RFC 5321 compliant.");
+		}
+		if (!is_address(&*value.begin(), &*value.end())) {
+			throw std::invalid_argument(value + " is not a valid email according to RFC 5321.");
+		}
+	} else if (format == "idn-email") {
+		if (!is_address(&*value.begin(), &*value.end())) {
+			throw std::invalid_argument(value + " is not a valid idn-email according to RFC 6531.");
 		}
 	} else if (format == "hostname") {
 		static const std::regex hostRegex{hostname};

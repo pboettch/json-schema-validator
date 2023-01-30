@@ -8,7 +8,8 @@ int main(void)
 	try {
 		validator.set_root_schema(nlBase); // this line will log the caught exception
 	} catch (const std::exception &e) {
-		if (std::string("after all files have been parsed, '<root>' has still undefined references.") == e.what())
+
+		if (std::string("after all files have been parsed, '<root>' has still the following undefined references: [/unknown/keywords]") == e.what())
 			return EXIT_SUCCESS;
 	}
 	return EXIT_FAILURE;
