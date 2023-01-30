@@ -1327,7 +1327,7 @@ class throwing_error_handler : public error_handler
 {
 	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
 	{
-		throw std::invalid_argument(std::string("At ") + ptr.to_string() + " of " + instance.dump() + " - " + message + "\n");
+		throw std::invalid_argument(std::string("at ") + ptr.to_string() + " of " + instance.dump() + " - " + message);
 	}
 };
 
