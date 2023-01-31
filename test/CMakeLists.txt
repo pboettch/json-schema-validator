@@ -77,3 +77,7 @@ add_test(NAME issue-189-default-values COMMAND issue-189-default-values)
 add_executable(issue-243-root-default-values issue-243-root-default-values.cpp)
 target_link_libraries(issue-243-root-default-values nlohmann_json_schema_validator)
 add_test(NAME issue-243-root-default-values COMMAND issue-243-root-default-values)
+
+add_executable(issue-212-read-only-values read-only-values.cpp)
+target_link_libraries(issue-212-read-only-values nlohmann_json_schema_validator)
+add_test(NAME issue-212-read-only-values COMMAND issue-212-read-only-values)
