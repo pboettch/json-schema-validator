@@ -20,29 +20,29 @@ using nlohmann::json_patch;
 			code;                                               \
 			std::cerr << "UNEXPECTED SUCCESS.\n";               \
 			return 1;                                           \
-		} catch (const std::exception &e) {                         \
+		} catch (const std::exception &e) {                     \
 			std::cerr << "EXPECTED FAIL: " << e.what() << "\n"; \
 		}                                                       \
 	} while (0)
 
 int main(void)
 {
-	OK( json_patch p1( R"([{"op":"add","path":"/0/renderable/bg","value":"Black"}])"_json));
-	OK( json_patch p1( R"([{"op":"replace","path":"/0/renderable/bg","value":"Black"}])"_json));
-	OK( json_patch p1( R"([{"op":"remove","path":"/0/renderable/bg"}])"_json));
+	OK(json_patch p1(R"([{"op":"add","path":"/0/renderable/bg","value":"Black"}])"_json));
+	OK(json_patch p1(R"([{"op":"replace","path":"/0/renderable/bg","value":"Black"}])"_json));
+	OK(json_patch p1(R"([{"op":"remove","path":"/0/renderable/bg"}])"_json));
 
 	// value not needed
-	KO( json_patch p1( R"([{"op":"remove","path":"/0/renderable/bg", "value":"Black"}])"_json));
+	KO(json_patch p1(R"([{"op":"remove","path":"/0/renderable/bg", "value":"Black"}])"_json));
 	// value missing
-	KO( json_patch p1( R"([{"op":"add","path":"/0/renderable/bg"}])"_json));
+	KO(json_patch p1(R"([{"op":"add","path":"/0/renderable/bg"}])"_json));
 	// value missing
-	KO( json_patch p1( R"([{"op":"replace","path":"/0/renderable/bg"}])"_json));
+	KO(json_patch p1(R"([{"op":"replace","path":"/0/renderable/bg"}])"_json));
 
 	// wrong op
-	KO( json_patch p1( R"([{"op":"ad","path":"/0/renderable/bg","value":"Black"}])"_json));
+	KO(json_patch p1(R"([{"op":"ad","path":"/0/renderable/bg","value":"Black"}])"_json));
 
 	// invalid json-pointer
-	KO( json_patch p1( R"([{"op":"add","path":"0/renderable/bg","value":"Black"}])"_json));
+	KO(json_patch p1(R"([{"op":"add","path":"0/renderable/bg","value":"Black"}])"_json));
 
 	return 0;
 }
