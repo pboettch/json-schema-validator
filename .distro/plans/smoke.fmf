@@ -1,0 +1,7 @@
+summary:
+  Basic smoke tests
+discover+:
+  how: fmf
+  filter: "tag: smoke"
+execute:
+    how: tmt

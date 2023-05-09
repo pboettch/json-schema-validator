@@ -1,0 +1,13 @@
+# Common test variables
+tag:
+  - rpmlint
+tier: 0
+path: /
+
+# Define tests
+/rpmlint:
+  summary: Rpmlint spec and rpmfiles
+  test: rpmlint -c packit.toml -r json-schema-validator.rpmlintrc ./*.spec /tmp/*.rpm
+/rpminspect-rpms:
+  summary: Rpminspect the rpms
+  test: ls /tmp/*.rpm | xargs -L1 rpminspect-fedora -E metadata,disttag
