@@ -1,18 +1,28 @@
-name: Ubuntu
+name: test
+run-name: Tests
 
 on:
   push:
-    branches:
-      - develop
-      - master
-      - release/*
-      - main
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
+  # Make it able to be used in other workflows
+  workflow_call:
 
 jobs:
+  pre-commit:
+    name: Check pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+      - uses: pre-commit/action@v3.0.0
+
   build_and_test:
+    name: Check pre-commit
     runs-on: ubuntu-latest
     container: ghcr.io/nlohmann/json-ci:v2.4.0
+    needs: [ pre-commit ]
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
@@ -30,7 +40,7 @@ jobs:
           cmake --build build --target install -j$(nproc)
           cd ..
       - name: Clone json-schema-validator
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: cmake
         run: cmake -S . -B build
       - name: build
@@ -38,8 +48,10 @@ jobs:
       - name: test
         run: cd build && ctest
   build_and_test_min_version:
+    name: Check pre-commit
     runs-on: ubuntu-latest
     container: ghcr.io/nlohmann/json-ci:v2.4.0
+    needs: [ pre-commit ]
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
@@ -57,27 +69,10 @@ jobs:
           cmake --build build --target install -j$(nproc)
           cd ..
       - name: Clone json-schema-validator
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: cmake
         run: cmake -S . -B build
       - name: build
         run: cmake --build build --target all -j$(nproc)
       - name: test
         run: cd build && ctest
-  build_conan:
-    runs-on: ubuntu-latest
-    container: ghcr.io/nlohmann/json-ci:v2.4.0
-    steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
-      - run: echo "🔎 Branch name is ${{ github.ref }} and repository is ${{ github.repository }}."
-      - name: Clone json-schema-validator
-        uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - run: python -m pip install --upgrade conan
-      - run: conan config init
-      - run: conan profile update settings.compiler.libcxx=libstdc++11 default
-      - name: conan create package
-        run: conan create .
