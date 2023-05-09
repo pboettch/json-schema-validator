@@ -1,0 +1,12 @@
+summary:
+  Basic importing tests
+prepare+:
+  - name: Include minimum fetching packages
+    how: install
+    package:
+      - git
+discover+:
+  how: fmf
+  filter: "tag: import"
+execute:
+    how: tmt
