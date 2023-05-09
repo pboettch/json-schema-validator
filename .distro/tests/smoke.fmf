@@ -1,0 +1,9 @@
+# Common test variables
+tag:
+  - smoke
+tier: 0
+path: /
+
+# Define tests
+/version:
+  test: echo "TODO: Write a minimum working example"
