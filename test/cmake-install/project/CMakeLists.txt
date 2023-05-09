@@ -11,7 +11,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(nlohmann_json_schema_validator REQUIRED)
 
 # Add simple json-schema-validator-executable
-add_executable(json-schema-validate ${CMAKE_CURRENT_SOURCE_DIR}/../../../app/json-schema-validate.cpp)
+add_executable(json-schema-validate ${CMAKE_CURRENT_SOURCE_DIR}/../../../example/json-schema-validate.cpp)
 target_link_libraries(json-schema-validate nlohmann_json_schema_validator)
 
 enable_testing()
