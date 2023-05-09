@@ -112,7 +112,7 @@ int main(void)
 	                       {"age", 42},
 	                       {"name", "John"},
 	                       {"phones", {0}},
-						   {"post-code", 12345},
+	                       {"post-code", 12345},
 	                   },
 	                   err); // name must be a string
 	EXPECT_EQ(err.failed_pointers.size(), 1);

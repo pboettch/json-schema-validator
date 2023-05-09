@@ -64,7 +64,7 @@ auto schema_draft = R"(
          urn:uuid:ee564b8a-7a87-4125-8c96-e9f123d6766f
          urn:uuid:ee564b8a-7a87-4125-8c96-e9f123d6766f#
          http://example.com/root.json#/definitions/C
-		 */
+         */
 
 auto schema = R"(
 {
