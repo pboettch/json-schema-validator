@@ -1,0 +1,11 @@
+# Common test variables
+tag:
+  - import
+tier: 0
+path: /tests/import
+
+# Define tests
+/find_package:
+  test: ./test_find_package.sh
+/FetchContent:
+  test: ./test_FetchContent.sh
