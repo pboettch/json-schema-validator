@@ -87,8 +87,22 @@ else ()
     endif ()
 endif ()
 
+# Handle configure flags
+if (JSON_VALIDATOR_INSTALL)
+	# TODO: This is not ideal, this package should not be installing nlohmann::json
+	# Currently required in order to satisfy cmake exporter
+	set(JSON_Install ON CACHE BOOL "")
+endif ()
+
 # Get all dependencies
 FetchContent_MakeAvailable(${fetch_packages})
+if (JSON_VALIDATOR_INSTALL AND NOT nlohmann_json_FOUND AND JSON_Install)
+	# TODO: This is not ideal
+	message(WARNING
+			"JsonValidator: No nlohmann::json found on the system and nlohmann_json_schema_validator will be installed\n"
+			"This will also install nlohmann::json in its typical installation path\n"
+			"This is not ideal because it might overwrite system installed")
+endif ()
 
 #[==============================================================================================[
 #                                        Main definition                                        #
