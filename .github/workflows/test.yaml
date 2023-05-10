@@ -81,3 +81,29 @@ jobs:
         uses: lukka/run-cmake@v10.5
         with:
           workflowPreset: "${{ matrix.toolchain }}-ci"
+  coverage:
+    name: Run coverage tests
+    needs: [ test ]
+    runs-on: ubuntu-latest
+    container: ghcr.io/nlohmann/json-ci:v2.4.0
+    # TODO: Temporarily disabled because not implemented
+    if: ${{ false && (github.event_name == 'push' || github.event_name == 'pull_request') }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get latest cmake version
+        uses: lukka/get-cmake@latest
+      - name: Get test coverage
+        uses: lukka/run-cmake@v10.5
+        with:
+          workflowPreset: ci-coverage
+      - name: Get lcov data
+        uses: danielealbano/lcov-action@v3
+        with:
+          # Note lcov-action prepends and appends wild-cards *. Account for those
+          # https://github.com/danielealbano/lcov-action/issues/11
+          remove_patterns: /test/,/cmake-build*/
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage.info
+          verbose: true
