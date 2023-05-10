@@ -9,6 +9,10 @@ on:
   # Make it able to be used in other workflows
   workflow_call:
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   pre-commit:
     name: Check pre-commit
@@ -18,21 +22,50 @@ jobs:
       - uses: actions/setup-python@v4
       - uses: pre-commit/action@v3.0.0
 
-  build_and_test:
-    name: Check pre-commit
+  test:
+    name: Run ctests
+    needs: [ pre-commit ]
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ gcc, llvm, intel ]
+        json_version: [ v3.11.2, v3.8.0 ]
+        experimental: [ false ]
+        include:
+          - toolchain: llvm
+            compiler_version: 15
+          - toolchain: gcc
+            compiler_version: latest
+    env:
+      NLOHMANN_JSON_VERSION: ${{ matrix.json_version }}
     runs-on: ubuntu-latest
     container: ghcr.io/nlohmann/json-ci:v2.4.0
-    needs: [ pre-commit ]
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
-      - run: echo "🔎 Branch name is ${{ github.ref }} and repository is ${{ github.repository }}."
-      - name: Clone nlohmann json
-        uses: actions/checkout@master
+      - name: Activate Intel compilers
+        # Not elegant, it will propagate all environment variable.
+        # Intel does not provide a way to output the environment variables to a file
+        # Note: PATH needs to be exported to GITHUB_PATH otherwise it can be overwritten
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          printenv >> $GITHUB_ENV
+          echo $PATH >> $GITHUB_PATH
+        if: matrix.toolchain == 'intel'
+      - name: Setup gcc toolchain
+        run: |
+          update-alternatives --install /usr/bin/g++ g++ $(which g++-${{ matrix.compiler_version }}) 999
+        if: matrix.compiler_version && matrix.toolchain == 'gcc'
+      - name: Setup llvm toolchain
+        run: |
+          update-alternatives --install /usr/bin/clang++ clang++ $(which clang++-${{ matrix.compiler_version }}) 999
+        if: matrix.compiler_version && matrix.toolchain == 'llvm'
+      - name: Clone nlohmann json version ${{ matrix.json_version }}
+        uses: actions/checkout@v3
         with:
           repository: nlohmann/json
           path: nlohmann-json
-          ref: v3.11.2
+          ref: ${{ matrix.json_version }}
+      # TODO: Move to FetchContent managed
       - name: Build and install nlohmann json
         run: |
           cd nlohmann-json
@@ -41,38 +74,10 @@ jobs:
           cd ..
       - name: Clone json-schema-validator
         uses: actions/checkout@v3
-      - name: cmake
-        run: cmake -S . -B build
-      - name: build
-        run: cmake --build build --target all -j$(nproc)
-      - name: test
-        run: cd build && ctest
-  build_and_test_min_version:
-    name: Check pre-commit
-    runs-on: ubuntu-latest
-    container: ghcr.io/nlohmann/json-ci:v2.4.0
-    needs: [ pre-commit ]
-    steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub."
-      - run: echo "🔎 Branch name is ${{ github.ref }} and repository is ${{ github.repository }}."
-      - name: Clone nlohmann json
-        uses: actions/checkout@master
+        # container version is < 3.25 which does not have workflows
+      - name: Get latest cmake version
+        uses: lukka/get-cmake@latest
+      - name: Run CMake ${{ matrix.toolchain }}-ci workflow with nlohmann/json version ${{ matrix.json_version }}
+        uses: lukka/run-cmake@v10.5
         with:
-          repository: nlohmann/json
-          path: nlohmann-json
-          ref: v3.8.0
-      - name: Build and install nlohmann json
-        run: |
-          cd nlohmann-json
-          cmake -S . -B build
-          cmake --build build --target install -j$(nproc)
-          cd ..
-      - name: Clone json-schema-validator
-        uses: actions/checkout@v3
-      - name: cmake
-        run: cmake -S . -B build
-      - name: build
-        run: cmake --build build --target all -j$(nproc)
-      - name: test
-        run: cd build && ctest
+          workflowPreset: "${{ matrix.toolchain }}-ci"
