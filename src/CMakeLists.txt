@@ -6,13 +6,17 @@ target_sources(nlohmann_json_schema_validator PRIVATE
         json-patch.cpp
         string-format-check.cpp
         )
+target_sources(nlohmann_json_schema_validator_cli PRIVATE
+        cli.cpp)
+
 target_include_directories(nlohmann_json_schema_validator PUBLIC
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         )
-
 set_target_properties(nlohmann_json_schema_validator PROPERTIES
         PUBLIC_HEADER nlohmann/json-schema.hpp)
+target_link_libraries(nlohmann_json_schema_validator_cli PRIVATE
+        nlohmann_json_schema_validator CLI11::CLI11)
 
 # TODO: Why would this need to be if guarded?
 if (JSON_VALIDATOR_SHARED_LIBS)
