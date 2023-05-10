@@ -88,7 +88,12 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
             GIT_TAG ${JSON_FETCH_VERSION}
             FIND_PACKAGE_ARGS
             )
-    list(APPEND fetch_packages nlohmann_json)
+    FetchContent_Declare(CLI11
+            GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+            GIT_TAG v2.3.2
+            FIND_PACKAGE_ARGS
+            )
+    list(APPEND fetch_packages nlohmann_json CLI11)
 else ()
     # Try to get system installed version
     find_package(nlohmann_json QUIET)
@@ -99,6 +104,15 @@ else ()
                 GIT_TAG ${JSON_FETCH_VERSION}
                 )
         list(APPEND fetch_packages nlohmann_json)
+    endif ()
+    find_package(CLI11 QUIET)
+    if (NOT CLI11_FOUND)
+        # If failed fetch the desired version
+        FetchContent_Declare(CLI11
+                GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+                GIT_TAG v2.3.2
+                )
+        list(APPEND fetch_packages nlohmann_json CLI11)
     endif ()
 endif ()
 
@@ -138,6 +152,12 @@ set_target_properties(nlohmann_json_schema_validator PROPERTIES
         SOVERSION ${PROJECT_VERSION_MAJOR}
         EXPORT_NAME validator
         OUTPUT_NAME nlohmann_json_validator
+        )
+
+add_executable(nlohmann_json_schema_validator_cli)
+set_target_properties(nlohmann_json_schema_validator_cli PROPERTIES
+        EXPORT_NAME cli
+        OUTPUT_NAME json-validator
         )
 
 # Main definitions in here
