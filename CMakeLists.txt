@@ -94,6 +94,13 @@ FetchContent_MakeAvailable(${fetch_packages})
 #                                        Main definition                                        #
 ]==============================================================================================]
 
+message(STATUS "JsonValidator: Configured for ${CMAKE_BUILD_TYPE}")
+if (DEFINED nlohmann_json_VERSION)
+    message(STATUS "JsonValidator: Using nlohmann/json version: ${nlohmann_json_VERSION}")
+else ()
+    message(STATUS "JsonValidator: nlohmann_json_VERSION is not set. Possible value: ${JSON_FETCH_VERSION}")
+endif ()
+
 ## Main targets
 add_library(nlohmann_json_schema_validator)
 add_library(nlohmann_json_schema_validator::validator ALIAS nlohmann_json_schema_validator)
