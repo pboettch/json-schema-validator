@@ -33,6 +33,8 @@ option(JSON_VALIDATOR_INSTALL "JsonValidator: Install targets" ${PROJECT_IS_TOP_
 option(JSON_VALIDATOR_BUILD_TESTS "JsonValidator: Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_SHARED_LIBS "JsonValidator: Build as shared library" ${PROJECT_IS_TOP_LEVEL})
+option(JSON_VALIDATOR_TEST_COVERAGE "JsonValidator: Build with test coverage" OFF)
+mark_as_advanced(JSON_VALIDATOR_TEST_COVERAGE)
 # Get a default JSON_FETCH_VERSION from environment variables to workaround the CI
 if (DEFINED ENV{NLOHMANN_JSON_VERSION})
     set(JSON_FETCH_VERSION_DEFAULT $ENV{NLOHMANN_JSON_VERSION})
@@ -59,6 +61,19 @@ endif ()
 
 # Enable cmake's BUILD_SHARED_LIBS
 set(BUILD_SHARED_LIBS ${nlohmann_json_schema_validator_SHARED_LIBS})
+
+if (JSON_VALIDATOR_TEST_COVERAGE)
+	if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+	elseif (CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+	else ()
+		message(WARNING
+				"JsonValidator: Other toolchain coverage flags unknown.\n"
+				"Using --coverage as default")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+	endif ()
+endif ()
 
 #[==============================================================================================[
 #                                       External packages                                       #
