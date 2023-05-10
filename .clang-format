@@ -12,3 +12,7 @@ SpaceAfterCStyleCast: true
 TabWidth: 4
 AccessModifierOffset: -4
 UseTab: ForIndentation
+NamespaceIndentation: All
+BraceWrapping:
+  AfterNamespace: false
+CompactNamespaces: false
