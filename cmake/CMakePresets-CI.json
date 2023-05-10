@@ -80,6 +80,12 @@
       "binaryDir": "cmake-build-coverage",
       "errors": {
         "deprecated": false
+      },
+      "cacheVariables": {
+        "JSON_VALIDATOR_TEST_COVERAGE": {
+          "type": "BOOL",
+          "value": true
+        }
       }
     },
     {
