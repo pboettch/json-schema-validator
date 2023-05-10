@@ -11,16 +11,16 @@ using namespace nlohmann::json_schema;
 class main_cli : public CLI::App
 {
 	std::ifstream schema_input;
-	std::ifstream object_input;
+	std::filesystem::path object_path;
 	// TODO: Export this as a built-in loader
-	static void loader(const json_uri &uri, json &schema)
+	void loader(const json_uri &uri, json &sch)
 	{
-		std::string filename = "./" + uri.path();
+		std::string filename = object_path.parent_path().append(uri.path());
 		std::ifstream lf(filename);
 		if (!lf.good())
 			throw std::invalid_argument("could not open " + uri.url() + " tried with " + filename);
 		try {
-			lf >> schema;
+			lf >> sch;
 		} catch (const std::exception &e) {
 			throw e;
 		}
@@ -32,13 +32,15 @@ public:
 	json_validator validator;
 	main_cli()
 	    : CLI::App{"Json schema validator", "json-validator"},
-	      validator{loader, default_string_format_check}
+	      validator{
+	          [this](const json_uri &u, json &s) { this->loader(u, s); },
+	          default_string_format_check}
 	{
 		// TODO: Move to a generated header file
 		set_version_flag("--version", "2.2.0");
 		add_option("schema", schema_input, "JSON schema of the object")
 		    ->check(CLI::ExistingFile);
-		add_option("object", object_input, "JSON object to validate")
+		add_option("object", object_path, "JSON object to validate")
 		    ->check(CLI::ExistingFile);
 	}
 	void validate()
