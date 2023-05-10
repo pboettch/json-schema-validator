@@ -1,0 +1,32 @@
+repos:
+  - repo: https://github.com/Takishima/cmake-pre-commit-hooks
+    rev: v1.8.1
+    hooks:
+      - id: clang-format
+        args:
+          - '-i'
+      - id: clang-tidy
+        args:
+          # TODO: Remove when upstream issue is fixed
+          # https://gitlab.kitware.com/cmake/cmake/-/issues/24827
+          # https://github.com/Takishima/cmake-pre-commit-hooks/issues/63
+          - '-Bcmake-build-pre-commit'
+          - '--preset'
+          - 'pre-commit'
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+  - repo: https://github.com/executablebooks/mdformat
+    rev: 0.7.16
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-gfm
+          - mdformat-tables
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.23.0
+    hooks:
+      - id: check-github-workflows

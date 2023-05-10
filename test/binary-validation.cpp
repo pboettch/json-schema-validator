@@ -149,7 +149,7 @@ int main()
 	// TODO when we set `string` in array and set `contentEncoding` = "binary" - what it means? We expected string or binary?
 	// Or we expect only binary? Now if you set `contentEncoding` = "binary", then it means that you expect only binary data,
 	// not string
-	//val.validate({{"something", "string"}}, err); -> produce error about type
+	// val.validate({{"something", "string"}}, err); -> produce error about type
 	EXPECT_EQ(err.failed_pointers.size(), 0);
 	err.reset();
 

@@ -4,5 +4,3 @@ add_test_simple_schema(Issue::27
 set_tests_properties(Issue::27
                      PROPERTIES
                          WILL_FAIL 1)
-
-

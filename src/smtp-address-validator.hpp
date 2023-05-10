@@ -29,6 +29,6 @@ SOFTWARE.
 
 */
 
-bool is_address(const char* p, const char* pe);
+bool is_address(const char *p, const char *pe);
 
 #endif // SMTP_ADDRESS_PARSER_HPP_INCLUDED
