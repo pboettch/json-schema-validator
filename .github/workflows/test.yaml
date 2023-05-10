@@ -59,21 +59,7 @@ jobs:
         run: |
           update-alternatives --install /usr/bin/clang++ clang++ $(which clang++-${{ matrix.compiler_version }}) 999
         if: matrix.compiler_version && matrix.toolchain == 'llvm'
-      - name: Clone nlohmann json version ${{ matrix.json_version }}
-        uses: actions/checkout@v3
-        with:
-          repository: nlohmann/json
-          path: nlohmann-json
-          ref: ${{ matrix.json_version }}
-      # TODO: Move to FetchContent managed
-      - name: Build and install nlohmann json
-        run: |
-          cd nlohmann-json
-          cmake -S . -B build
-          cmake --build build --target install -j$(nproc)
-          cd ..
-      - name: Clone json-schema-validator
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         # container version is < 3.25 which does not have workflows
       - name: Get latest cmake version
         uses: lukka/get-cmake@latest

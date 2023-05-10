@@ -33,7 +33,13 @@ option(JSON_VALIDATOR_INSTALL "JsonValidator: Install targets" ${PROJECT_IS_TOP_
 option(JSON_VALIDATOR_BUILD_TESTS "JsonValidator: Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_SHARED_LIBS "JsonValidator: Build as shared library" ${PROJECT_IS_TOP_LEVEL})
-set(JSON_FETCH_VERSION v3.11.2 CACHE STRING "Fetch nlohmann::json version")
+# Get a default JSON_FETCH_VERSION from environment variables to workaround the CI
+if (DEFINED ENV{NLOHMANN_JSON_VERSION})
+    set(JSON_FETCH_VERSION_DEFAULT $ENV{NLOHMANN_JSON_VERSION})
+else ()
+    set(JSON_FETCH_VERSION_DEFAULT v3.11.2)
+endif ()
+set(JSON_FETCH_VERSION ${JSON_FETCH_VERSION_DEFAULT} CACHE STRING "Fetch nlohmann::json version")
 
 #[==============================================================================================[
 #                                     Project configuration                                     #
