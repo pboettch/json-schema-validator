@@ -8,13 +8,15 @@ target_sources(nlohmann_json_schema_validator PRIVATE
         )
 target_sources(nlohmann_json_schema_validator_cli PRIVATE
         cli.cpp)
+configure_file(nlohmann/json-schema.hpp.in nlohmann/json-schema.hpp)
 
 target_include_directories(nlohmann_json_schema_validator PUBLIC
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         )
 set_target_properties(nlohmann_json_schema_validator PROPERTIES
-        PUBLIC_HEADER nlohmann/json-schema.hpp)
+        PUBLIC_HEADER ${CMAKE_CURRENT_BINARY_DIR}/nlohmann/json-schema.hpp)
 target_link_libraries(nlohmann_json_schema_validator_cli PRIVATE
         nlohmann_json_schema_validator CLI11::CLI11)
 

@@ -10,6 +10,7 @@ using namespace nlohmann::json_schema;
 
 class main_cli : public CLI::App
 {
+	std::string version;
 	std::ifstream schema_input;
 	std::filesystem::path object_path;
 	// TODO: Export this as a built-in loader
@@ -34,10 +35,10 @@ public:
 	    : CLI::App{"Json schema validator", "json-validator"},
 	      validator{
 	          [this](const json_uri &u, json &s) { this->loader(u, s); },
-	          default_string_format_check}
+	          default_string_format_check},
+	      version{nlohmann::json_schema::version}
 	{
-		// TODO: Move to a generated header file
-		set_version_flag("--version", "2.2.0");
+		set_version_flag("--version", version);
 		add_option("schema", schema_input, "JSON schema of the object")
 		    ->check(CLI::ExistingFile);
 		add_option("object", object_path, "JSON object to validate")
