@@ -12,9 +12,21 @@
         "default"
       ],
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": {
+          "type": "STRING",
+          "value": "Debug"
+        },
         "JSON_VALIDATOR_BUILD_TESTS": {
           "type": "BOOL",
           "value": true
+        },
+        "JSON_VALIDATOR_INSTALL": {
+          "type": "BOOL",
+          "value": false
+        },
+        "JSON_BuildTests": {
+          "type": "BOOL",
+          "value": false
         }
       },
       "errors": {
@@ -27,7 +39,7 @@
       "inherits": [
         "ci-base"
       ],
-      "binaryDir": "cmake-build-release-gcc",
+      "binaryDir": "cmake-build-ci-gcc",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": {
           "type": "FILEPATH",
@@ -45,7 +57,7 @@
       "inherits": [
         "ci-base"
       ],
-      "binaryDir": "cmake-build-release-intel",
+      "binaryDir": "cmake-build-ci-intel",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": {
           "type": "FILEPATH",
@@ -59,7 +71,7 @@
       "inherits": [
         "ci-base"
       ],
-      "binaryDir": "cmake-build-release-llvm",
+      "binaryDir": "cmake-build-ci-llvm",
       "cacheVariables": {
         "CMAKE_CXX_COMPILER": {
           "type": "FILEPATH",
@@ -77,9 +89,15 @@
       "inherits": [
         "gcc-ci"
       ],
-      "binaryDir": "cmake-build-coverage",
+      "binaryDir": "cmake-build-ci-coverage",
       "errors": {
         "deprecated": false
+      },
+      "cacheVariables": {
+        "JSON_VALIDATOR_TEST_COVERAGE": {
+          "type": "BOOL",
+          "value": true
+        }
       }
     },
     {
@@ -88,7 +106,17 @@
       "inherits": [
         "default"
       ],
-      "binaryDir": "cmake-build-pre-commit"
+      "binaryDir": "cmake-build-pre-commit",
+      "cacheVariables": {
+        "JSON_VALIDATOR_TEST_COVERAGE": {
+          "type": "BOOL",
+          "value": true
+        },
+        "JSON_VALIDATOR_INSTALL": {
+          "type": "BOOL",
+          "value": false
+        }
+      }
     }
   ],
   "buildPresets": [

@@ -102,7 +102,7 @@ int main(void)
 		const auto &readPath = single_op["path"].get<std::string>();
 		if (readPath != "/address/street") {
 			std::cerr << "Patch with defaults contains wrong path. It is " << readPath << " and should be "
-				<< "/address/street" << std::endl;
+			          << "/address/street" << std::endl;
 			return 1;
 		}
 
@@ -156,7 +156,7 @@ int main(void)
 		const auto &readPath = single_op["path"].get<std::string>();
 		if (readPath != "/address") {
 			std::cerr << "Patch with defaults contains wrong path. It is " << readPath << " and should be "
-				<< "/address" << std::endl;
+			          << "/address" << std::endl;
 			return 1;
 		}
 
@@ -165,7 +165,7 @@ int main(void)
 			return 1;
 		}
 
-		if ( !single_op["value"].is_object() || !single_op["value"].empty()) {
+		if (!single_op["value"].is_object() || !single_op["value"].empty()) {
 			std::cerr << "Patch with defaults contains wrong value" << std::endl;
 			return 1;
 		}

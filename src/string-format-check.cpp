@@ -182,7 +182,7 @@ const std::string uuid{R"([0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-
 // from http://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
 const std::string hostname{R"(^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$)"};
 
-bool is_ascii(std::string const& value)
+bool is_ascii(std::string const &value)
 {
 	for (auto ch : value) {
 		if (ch & 0x80) {
