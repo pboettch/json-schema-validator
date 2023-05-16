@@ -137,7 +137,8 @@ set_target_properties(nlohmann_json_schema_validator PROPERTIES
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
         EXPORT_NAME validator
-        OUTPUT_NAME nlohmann_json_validator
+        # TODO: Version 3, simplify the library name
+#        OUTPUT_NAME nlohmann_json_validator
         )
 
 # Main definitions in here
