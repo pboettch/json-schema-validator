@@ -604,10 +604,12 @@ public:
 			} break;
 
 			case json::value_t::array: // "type": ["type1", "type2"]
-				for (auto &schema_type : attr.value())
+				for (auto &array_value : attr.value()) {
+					auto schema_type = array_value.get<std::string>();
 					for (auto &t : schema_types)
 						if (t.first == schema_type)
 							type_[static_cast<uint8_t>(t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
+				}
 				break;
 
 			default:
