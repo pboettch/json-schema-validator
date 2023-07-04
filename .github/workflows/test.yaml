@@ -1,0 +1,94 @@
+name: test
+run-name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Make it able to be used in other workflows
+  workflow_call:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  pre-commit:
+    name: Check pre-commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+      - uses: pre-commit/action@v3.0.0
+
+  test:
+    name: Run ctests
+    needs: [ pre-commit ]
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ gcc, llvm, intel ]
+        json_version: [ v3.11.2, v3.8.0 ]
+        experimental: [ false ]
+        include:
+          - toolchain: llvm
+            compiler_version: 15
+          - toolchain: gcc
+            compiler_version: latest
+    env:
+      NLOHMANN_JSON_VERSION: ${{ matrix.json_version }}
+    runs-on: ubuntu-latest
+    container: ghcr.io/nlohmann/json-ci:v2.4.0
+    steps:
+      - name: Activate Intel compilers
+        # Not elegant, it will propagate all environment variable.
+        # Intel does not provide a way to output the environment variables to a file
+        # Note: PATH needs to be exported to GITHUB_PATH otherwise it can be overwritten
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          printenv >> $GITHUB_ENV
+          echo $PATH >> $GITHUB_PATH
+        if: matrix.toolchain == 'intel'
+      - name: Setup gcc toolchain
+        run: |
+          update-alternatives --install /usr/bin/g++ g++ $(which g++-${{ matrix.compiler_version }}) 999
+        if: matrix.compiler_version && matrix.toolchain == 'gcc'
+      - name: Setup llvm toolchain
+        run: |
+          update-alternatives --install /usr/bin/clang++ clang++ $(which clang++-${{ matrix.compiler_version }}) 999
+        if: matrix.compiler_version && matrix.toolchain == 'llvm'
+      - uses: actions/checkout@v3
+        # container version is < 3.25 which does not have workflows
+      - name: Get latest cmake version
+        uses: lukka/get-cmake@latest
+      - name: Run CMake ${{ matrix.toolchain }}-ci workflow with nlohmann/json version ${{ matrix.json_version }}
+        uses: lukka/run-cmake@v10.5
+        with:
+          workflowPreset: "${{ matrix.toolchain }}-ci"
+  coverage:
+    name: Run coverage tests
+    needs: [ test ]
+    runs-on: ubuntu-latest
+    container: ghcr.io/nlohmann/json-ci:v2.4.0
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get latest cmake version
+        uses: lukka/get-cmake@latest
+      - name: Get test coverage
+        uses: lukka/run-cmake@v10.5
+        with:
+          workflowPreset: ci-coverage
+      - name: Get lcov data
+        uses: danielealbano/lcov-action@v3
+        with:
+          # Note lcov-action prepends and appends wild-cards *. Account for those
+          # https://github.com/danielealbano/lcov-action/issues/11
+          remove_patterns: /test/,/cmake-build*/
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage.info
+          verbose: true

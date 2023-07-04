@@ -334,7 +334,7 @@
         "tests": [
             {
                 "description": "valid tree",
-                "data": { 
+                "data": {
                     "meta": "root",
                     "nodes": [
                         {
@@ -363,7 +363,7 @@
             },
             {
                 "description": "invalid tree",
-                "data": { 
+                "data": {
                     "meta": "root",
                     "nodes": [
                         {

@@ -1,3 +1,6 @@
 build*/
 *.sw?
-
+cmake-build-*
+venv
+env
+compile_commands.json
