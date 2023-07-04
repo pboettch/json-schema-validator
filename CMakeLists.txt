@@ -84,7 +84,7 @@ set(fetch_packages "")
 # TODO: Remove when bumping cmake >= 3.24
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
     FetchContent_Declare(nlohmann_json
-            GIT_REPOSITORY https://github.com/nlohmann/json
+            GIT_REPOSITORY https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent
             GIT_TAG ${JSON_FETCH_VERSION}
             FIND_PACKAGE_ARGS
             )
@@ -95,7 +95,7 @@ else ()
     if (NOT nlohmann_json_FOUND)
         # If failed fetch the desired version
         FetchContent_Declare(nlohmann_json
-                GIT_REPOSITORY https://github.com/nlohmann/json
+                GIT_REPOSITORY https://github.com/ArthurSonzogni/nlohmann_json_cmake_fetchcontent
                 GIT_TAG ${JSON_FETCH_VERSION}
                 )
         list(APPEND fetch_packages nlohmann_json)
