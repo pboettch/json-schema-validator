@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "json-schema-validator-dev"
+version = "0.0.0"
+description = "Development environment json-schenma-validator"
+readme = "README.md"
+license = { file = "LICENSE" }
+
+
+[project.optional-dependencies]
+docs = [
+    "sphinx >= 6.0",
+    "sphinx-rtd-theme",
+    "myst-parser",
+]
+dev = [
+    "pre-commit",
+]
+
+[tool.setuptools]
+packages = []
