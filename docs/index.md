@@ -10,6 +10,7 @@ hidden: true
 ---
 CONTRIBUTING
 changelog
+roadmap
 :::
 
 :::{include} ../README.md
