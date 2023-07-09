@@ -355,14 +355,4 @@ The example above will output the specified default values `{"height":10,"width"
 
 > Note that the default value specified in a `$ref` may be overridden by the current instance location. Also note that this behavior will break draft-7, but it is compliant to newer drafts (e.g. `2019-09` or `2020-12`).
 
-## Contributing
-
-This project uses [`pre-commit`](https://pre-commit.com/) to enforce style-checks. Please install and run it before
-creating commits and making pull requests.
-
-```console
-$ pip install pre-commit
-$ pre-commit install
-```
-
 <!-- SHINX-END -->
