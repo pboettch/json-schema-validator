@@ -3,14 +3,13 @@
 :::{toctree}
 ---
 maxdepth: 2
-titlesonly: true
-caption: Contents
 glob: true
 hidden: true
 ---
 CONTRIBUTING
 changelog
 roadmap
+cmake/index.md
 :::
 
 :::{include} ../README.md
