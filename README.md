@@ -1,7 +1,5 @@
 # JSON schema validator for JSON for Modern C++
 
-## What is it?
-
 <!-- SHINX-START -->
 
 This is a C++ library for validating JSON documents based on a
@@ -14,9 +12,6 @@ contributions or hints or discussions are welcome.*
 Niels Lohmann et al develop a great JSON parser for C++ called [JSON for Modern
 C++](https://github.com/nlohmann/json). This validator is based on this
 library, hence the name.
-
-External documentation is missing as well. However the API of the validator
-is rather simple.
 
 ## New in version 2
 
