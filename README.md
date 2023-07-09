@@ -2,6 +2,8 @@
 
 ## What is it?
 
+<!-- SHINX-START -->
+
 This is a C++ library for validating JSON documents based on a
 [JSON Schema](http://json-schema.org/) which itself should validate with
 [draft-7 of JSON Schema Validation](http://json-schema.org/schema).
@@ -362,3 +364,5 @@ creating commits and making pull requests.
 $ pip install pre-commit
 $ pre-commit install
 ```
+
+<!-- SHINX-END -->
