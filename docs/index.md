@@ -9,6 +9,7 @@ glob: true
 hidden: true
 ---
 CONTRIBUTING
+changelog
 :::
 
 :::{include} ../README.md
