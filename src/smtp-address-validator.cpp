@@ -26,12 +26,8 @@ SOFTWARE.
 
 */
 
-#line 1 "smtp-address-validator.rl"
 #include "smtp-address-validator.hpp"
 
-#line 110 "smtp-address-validator.rl"
-
-#line 7 "smtp-address-validator.cpp"
 static const signed char _address_actions[] = {
     0, 1, 0, 1, 1, 0};
 
@@ -678,8 +674,6 @@ static const int address_error = 0;
 
 static const int address_en_main = 1;
 
-#line 112 "smtp-address-validator.rl"
-
 bool is_address(const char *p, const char *pe)
 {
 	int cs = 0;
@@ -688,14 +682,9 @@ bool is_address(const char *p, const char *pe)
 
 	bool result = false;
 
-#line 675 "smtp-address-validator.cpp"
 	{
 		cs = (int) address_start;
 	}
-
-#line 124 "smtp-address-validator.rl"
-
-#line 680 "smtp-address-validator.cpp"
 	{
 		int _klen;
 		unsigned int _trans = 0;
@@ -775,22 +764,14 @@ bool is_address(const char *p, const char *pe)
 				switch ((*(_acts))) {
 				case 0: {
 					{
-#line 108 "smtp-address-validator.rl"
 						result = true;
 					}
-
-#line 762 "smtp-address-validator.cpp"
-
 					break;
 				}
 				case 1: {
 					{
-#line 108 "smtp-address-validator.rl"
 						result = false;
 					}
-
-#line 770 "smtp-address-validator.cpp"
-
 					break;
 				}
 				}
@@ -811,8 +792,5 @@ bool is_address(const char *p, const char *pe)
 	_out : {
 	}
 	}
-
-#line 125 "smtp-address-validator.rl"
-
 	return result;
 }
