@@ -10,9 +10,12 @@ endif ()
 #                                    Basic project definition                                   #
 ]==============================================================================================]
 
+# TODO: CMake >= 3.19 can use string(JSON VERSION GET "${METADATA}" "version") to load from JSON
+set(PROJECT_VERSION 2.2.0)
+
 # TODO: Version 3, rename the project and namespace to something more compact
 project(nlohmann_json_schema_validator
-        VERSION 2.2.0
+        VERSION ${PROJECT_VERSION}
         DESCRIPTION "Json validator for nlohmann::json library"
         HOMEPAGE_URL "https://github.com/pboettch/json-schema-validator"
         LANGUAGES CXX)
