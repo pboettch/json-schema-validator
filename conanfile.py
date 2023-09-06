@@ -1,7 +1,10 @@
 import os
 import re
-from conans import load, tools, ConanFile, CMake
 
+from conan import ConanFile
+from conan.tools.cmake import cmake_layout, CMake, CMakeToolchain
+from conans.tools import load
+from conans import tools as ctools
 
 def get_version():
     try:
@@ -20,52 +23,59 @@ class JsonSchemaValidatorConan(ConanFile):
     version = get_version()
     url = 'https://github.com/pboettch/json-schema-validator'
     license = 'MIT'
+
     settings = 'os', 'compiler', 'build_type', 'arch'
+
     options = {
         'shared': [True, False],
         'fPIC': [True, False],
         'build_examples': [True, False],
-        'build_tests': [True, False]
+        'build_tests': [True, False],
+        'test_coverage': [True, False],
     }
+
     default_options = {
         'shared': False,
         'fPIC': True,
         'build_examples': True,
-        'build_tests': False
+        'build_tests': False,
+        'test_coverage': False,
     }
-    generators = "CMakeDeps"
+
+    generators = 'CMakeDeps', 'CMakeToolchain', 'VirtualBuildEnv', 'VirtualRunEnv'
+
     exports_sources = [
         'CMakeLists.txt',
-        'nlohmann_json_schema_validatorConfig.cmake.in',
+        'conanfile.py',
+        'cmake/*',
         'src/*',
-        'app/*',
+        'example/*',
         'test/*',
     ]
-    requires = (
-        'nlohmann_json/3.11.2'
-    )
-    _cmake = None
 
-    def _configure_cmake(self):
-        if self._cmake:
-            return self._cmake
-        self._cmake = CMake(self)
-        self._cmake.definitions['JSON_VALIDATOR_BUILD_EXAMPLES'] = self.options.build_examples
-        self._cmake.definitions['JSON_VALIDATOR_BUILD_TESTS'] = self.options.build_tests
-        self._cmake.configure()
-        return self._cmake
+    requires = [
+        'nlohmann_json/3.11.2'
+    ]
+
+    def generate(self):
+        tc = CMakeToolchain(self)
+        tc.variables['JSON_VALIDATOR_BUILD_EXAMPLES'] = self.options.build_examples
+        tc.variables['JSON_VALIDATOR_BUILD_TESTS'] = self.options.build_tests
+        tc.variables['JSON_VALIDATOR_SHARED_LIBS '] = self.options.shared
+        tc.variables['JSON_VALIDATOR_TEST_COVERAGE '] = self.options.test_coverage
+        tc.generate()
 
     def layout(self):
-        build_type = str(self.settings.build_type).lower()
-        self.folders.build = "build-{}".format(build_type)
+        cmake_layout(self)
 
     def build(self):
-        cmake = self._configure_cmake()
+        cmake = CMake(self)
         cmake.configure()
+        cmake.verbose = True
         cmake.build()
 
     def package(self):
-        cmake = self._configure_cmake()
+        cmake = CMake(self)
         cmake.install()
 
     def package_info(self):
@@ -74,7 +84,7 @@ class JsonSchemaValidatorConan(ConanFile):
 
         libdir = os.path.join(self.package_folder, "lib")
         self.cpp_info.libdirs = [libdir]
-        self.cpp_info.libs += tools.collect_libs(self, libdir)
+        self.cpp_info.libs += ctools.collect_libs(self, libdir)
 
         bindir = os.path.join(self.package_folder, "bin")
         self.output.info("Appending PATH environment variable: {}".format(bindir))
