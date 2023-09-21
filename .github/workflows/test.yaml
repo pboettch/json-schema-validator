@@ -61,8 +61,8 @@ jobs:
         if: matrix.compiler_version && matrix.toolchain == 'llvm'
       - uses: actions/checkout@v3
         # container version is < 3.25 which does not have workflows
-      - name: Get latest cmake version
-        uses: lukka/get-cmake@latest
+      - name: Get a working cmake version
+        uses: lukka/get-cmake@v3.25.2
       - name: Run CMake ${{ matrix.toolchain }}-ci workflow with nlohmann/json version ${{ matrix.json_version }}
         uses: lukka/run-cmake@v10.5
         with:
