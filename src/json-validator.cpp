@@ -863,13 +863,9 @@ class numeric : public schema
 	// multipleOf - if the remainder of the division is 0 -> OK
 	bool violates_multiple_of(T x) const
 	{
-		if constexpr (std::is_floating_point<T>::value) {
-			auto multiple = x / multipleOf_.second;
-			auto error = std::abs((multiple - std::round(multiple)) * multipleOf_.second);
-			return error > std::numeric_limits<T>::epsilon();
-		} else {
-			return x % static_cast<T>(multipleOf_.second) != 0;
-		}
+		auto multiple = x / multipleOf_.second;
+		auto error = std::abs((multiple - std::round(multiple)) * multipleOf_.second);
+		return error > std::numeric_limits<T>::epsilon();
 	}
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
