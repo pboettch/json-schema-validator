@@ -669,10 +669,6 @@ static const short _address_eof_trans[] = {
     1278, 1279, 1280, 1281, 1282, 1283, 0};
 
 static const int address_start = 1;
-static const int address_first_final = 196;
-static const int address_error = 0;
-
-static const int address_en_main = 1;
 
 bool is_address(const char *p, const char *pe)
 {
