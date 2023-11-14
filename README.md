@@ -74,7 +74,7 @@ types, depending on if the schema type is "integer" or "number". Bignum
 This library is based on Niels Lohmann's JSON-library and thus has
 a build-dependency to it.
 
-Currently at least version **3.6.0** of NLohmann's JSON library
+Currently at least version **3.8.0** of NLohmann's JSON library
 is required.
 
 Various methods using CMake can be used to build this project.

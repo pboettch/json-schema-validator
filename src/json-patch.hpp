@@ -28,10 +28,13 @@ public:
 	json_patch &replace(const json::json_pointer &, json value);
 	json_patch &remove(const json::json_pointer &);
 
+	json &get_json() { return j_; }
+	const json &get_json() const { return j_; }
+
 	operator json() const { return j_; }
 
 private:
-	json j_;
+	json j_ = nlohmann::json::array();
 
 	static void validateJsonPatch(json const &patch);
 };

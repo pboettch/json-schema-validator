@@ -80,26 +80,28 @@ endif ()
 ]==============================================================================================]
 
 set(fetch_packages "")
-# Fetch/Find nlohmann_json
-# TODO: Remove when bumping cmake >= 3.24
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
-    FetchContent_Declare(nlohmann_json
-            GIT_REPOSITORY https://github.com/nlohmann/json
-            GIT_TAG ${JSON_FETCH_VERSION}
-            FIND_PACKAGE_ARGS
-            )
-    list(APPEND fetch_packages nlohmann_json)
-else ()
-    # Try to get system installed version
-    find_package(nlohmann_json QUIET)
-    if (NOT nlohmann_json_FOUND)
-        # If failed fetch the desired version
-        FetchContent_Declare(nlohmann_json
-                GIT_REPOSITORY https://github.com/nlohmann/json
-                GIT_TAG ${JSON_FETCH_VERSION}
-                )
-        list(APPEND fetch_packages nlohmann_json)
-    endif ()
+if (NOT TARGET nlohmann_json)
+  # Fetch/Find nlohmann_json
+  # TODO: Remove when bumping cmake >= 3.24
+  if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+      FetchContent_Declare(nlohmann_json
+              GIT_REPOSITORY https://github.com/nlohmann/json
+              GIT_TAG ${JSON_FETCH_VERSION}
+              FIND_PACKAGE_ARGS
+              )
+      list(APPEND fetch_packages nlohmann_json)
+  else ()
+      # Try to get system installed version
+      find_package(nlohmann_json QUIET)
+      if (NOT nlohmann_json_FOUND)
+          # If failed fetch the desired version
+          FetchContent_Declare(nlohmann_json
+                  GIT_REPOSITORY https://github.com/nlohmann/json
+                  GIT_TAG ${JSON_FETCH_VERSION}
+                  )
+          list(APPEND fetch_packages nlohmann_json)
+      endif ()
+  endif ()
 endif ()
 
 # Handle configure flags
