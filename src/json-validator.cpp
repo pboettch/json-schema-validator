@@ -864,7 +864,12 @@ class numeric : public schema
 	bool violates_multiple_of(T x) const
 	{
 		double res = std::remainder(x, multipleOf_.second);
+		double multiple = std::fabs(x / multipleOf_.second);
+		if (multiple > 1) {
+			res = res / multiple;
+		}
 		double eps = std::nextafter(x, 0) - static_cast<double>(x);
+
 		return std::fabs(res) > std::fabs(eps);
 	}
 
