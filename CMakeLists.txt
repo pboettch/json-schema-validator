@@ -69,19 +69,6 @@ endif ()
 # Enable cmake's BUILD_SHARED_LIBS
 set(BUILD_SHARED_LIBS ${nlohmann_json_schema_validator_SHARED_LIBS})
 
-if (JSON_VALIDATOR_TEST_COVERAGE)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-    else ()
-        message(WARNING
-                "JsonValidator: Other toolchain coverage flags unknown.\n"
-                "Using --coverage as default")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-    endif ()
-endif ()
-
 #[==============================================================================================[
 #                                       External packages                                       #
 ]==============================================================================================]
