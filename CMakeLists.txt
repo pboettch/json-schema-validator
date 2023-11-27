@@ -12,7 +12,7 @@ endif ()
 
 # TODO: Version 3, rename the project and namespace to something more compact
 project(nlohmann_json_schema_validator
-        VERSION 2.2.0
+        VERSION 2.3.0
         DESCRIPTION "Json validator for nlohmann::json library"
         HOMEPAGE_URL "https://github.com/pboettch/json-schema-validator"
         LANGUAGES CXX)
@@ -63,16 +63,16 @@ endif ()
 set(BUILD_SHARED_LIBS ${nlohmann_json_schema_validator_SHARED_LIBS})
 
 if (JSON_VALIDATOR_TEST_COVERAGE)
-	if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
-	elseif (CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-	else ()
-		message(WARNING
-				"JsonValidator: Other toolchain coverage flags unknown.\n"
-				"Using --coverage as default")
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-	endif ()
+    if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+    else ()
+        message(WARNING
+                "JsonValidator: Other toolchain coverage flags unknown.\n"
+                "Using --coverage as default")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+    endif ()
 endif ()
 
 #[==============================================================================================[
@@ -106,19 +106,19 @@ endif ()
 
 # Handle configure flags
 if (JSON_VALIDATOR_INSTALL)
-	# TODO: This is not ideal, this package should not be installing nlohmann::json
-	# Currently required in order to satisfy cmake exporter
-	set(JSON_Install ON CACHE BOOL "")
+    # TODO: This is not ideal, this package should not be installing nlohmann::json
+    # Currently required in order to satisfy cmake exporter
+    set(JSON_Install ON CACHE BOOL "")
 endif ()
 
 # Get all dependencies
 FetchContent_MakeAvailable(${fetch_packages})
 if (JSON_VALIDATOR_INSTALL AND NOT nlohmann_json_FOUND AND JSON_Install)
-	# TODO: This is not ideal
-	message(WARNING
-			"JsonValidator: No nlohmann::json found on the system and nlohmann_json_schema_validator will be installed\n"
-			"This will also install nlohmann::json in its typical installation path\n"
-			"This is not ideal because it might overwrite system installed")
+    # TODO: This is not ideal
+    message(WARNING
+            "JsonValidator: No nlohmann::json found on the system and nlohmann_json_schema_validator will be installed\n"
+            "This will also install nlohmann::json in its typical installation path\n"
+            "This is not ideal because it might overwrite system installed")
 endif ()
 
 #[==============================================================================================[
