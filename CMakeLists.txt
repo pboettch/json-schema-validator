@@ -10,6 +10,8 @@ endif ()
 #                                    Basic project definition                                   #
 ]==============================================================================================]
 
+list(APPEND CMAKE_MESSAGE_CONTEXT schema_validator)
+
 # TODO: CMake >= 3.19 can use string(JSON VERSION GET "${METADATA}" "version") to load from JSON
 set(PROJECT_VERSION 2.4.0)
 
@@ -119,7 +121,7 @@ FetchContent_MakeAvailable(${fetch_packages})
 if (JSON_VALIDATOR_INSTALL AND NOT nlohmann_json_FOUND AND JSON_Install)
     # TODO: This is not ideal
     message(WARNING
-            "JsonValidator: No nlohmann::json found on the system and nlohmann_json_schema_validator will be installed\n"
+            "No nlohmann::json found on the system and nlohmann_json_schema_validator will be installed\n"
             "This will also install nlohmann::json in its typical installation path\n"
             "This is not ideal because it might overwrite system installed")
 endif ()
@@ -128,11 +130,11 @@ endif ()
 #                                        Main definition                                        #
 ]==============================================================================================]
 
-message(STATUS "JsonValidator: Configured for ${CMAKE_BUILD_TYPE}")
+message(STATUS "Configured for ${CMAKE_BUILD_TYPE}")
 if (DEFINED nlohmann_json_VERSION)
-    message(STATUS "JsonValidator: Using nlohmann/json version: ${nlohmann_json_VERSION}")
+    message(STATUS "Using nlohmann/json version: ${nlohmann_json_VERSION}")
 else ()
-    message(STATUS "JsonValidator: nlohmann_json_VERSION is not set. Possible value: ${JSON_FETCH_VERSION}")
+    message(STATUS "nlohmann_json_VERSION is not set. Possible value: ${JSON_FETCH_VERSION}")
 endif ()
 
 ## Main targets
