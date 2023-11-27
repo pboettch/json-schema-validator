@@ -5,6 +5,11 @@ if (POLICY CMP0140)
     # Enables: return(PROPAGATE)
     cmake_policy(SET CMP0140 NEW)
 endif ()
+# TODO: Remove when bumping cmake >= 3.22
+if (POLICY CMP0127)
+    # Enables: cmake_dependent_option: Full Condition Syntax
+    cmake_policy(SET CMP0127 NEW)
+endif ()
 
 #[==============================================================================================[
 #                                    Basic project definition                                   #
@@ -38,7 +43,12 @@ include(CMakeDependentOption)
 
 option(JSON_VALIDATOR_INSTALL "JsonValidator: Install targets" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_BUILD_TESTS "JsonValidator: Build tests" ${PROJECT_IS_TOP_LEVEL})
-option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
+    # Only enable BUILD_EXAMPLES if we are building tests or installing the targets
+    cmake_dependent_option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL} "JSON_VALIDATOR_BUILD_TESTS OR JSON_VALIDATOR_INSTALL" OFF)
+else ()
+    option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
+endif ()
 option(JSON_VALIDATOR_SHARED_LIBS "JsonValidator: Build as shared library" ${PROJECT_IS_TOP_LEVEL})
 cmake_dependent_option(JSON_VALIDATOR_TEST_COVERAGE "JsonValidator: Build with test coverage" OFF "JSON_VALIDATOR_BUILD_TESTS" OFF)
 mark_as_advanced(JSON_VALIDATOR_TEST_COVERAGE)
