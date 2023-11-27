@@ -900,7 +900,7 @@ class numeric : public schema
 		oss.seekp(0, std::ios::end);
 		auto size = oss.tellp();
 		if (size != 0) {
-		    oss.seekp(0, std::ios::beg);
+			oss.seekp(0, std::ios::beg);
 			e.error(ptr, instance, oss.str());
 		}
 	}
