@@ -877,22 +877,31 @@ class numeric : public schema
 	{
 		T value = instance; // conversion of json to value_type
 
+		std::ostringstream oss;
+
 		if (multipleOf_.first && value != 0) // zero is multiple of everything
 			if (violates_multiple_of(value))
-				e.error(ptr, instance, "instance is not a multiple of " + std::to_string(multipleOf_.second));
+				oss << "instance is not a multiple of " << json(multipleOf_.second);
 
 		if (maximum_.first) {
 			if (exclusiveMaximum_ && value >= maximum_.second)
-				e.error(ptr, instance, "instance exceeds or equals maximum of " + std::to_string(maximum_.second));
+				oss << "instance exceeds or equals maximum of " << json(maximum_.second);
 			else if (value > maximum_.second)
-				e.error(ptr, instance, "instance exceeds maximum of " + std::to_string(maximum_.second));
+				oss << "instance exceeds maximum of " << json(maximum_.second);
 		}
 
 		if (minimum_.first) {
 			if (exclusiveMinimum_ && value <= minimum_.second)
-				e.error(ptr, instance, "instance is below or equals minimum of " + std::to_string(minimum_.second));
+				oss << "instance is below or equals minimum of " << json(minimum_.second);
 			else if (value < minimum_.second)
-				e.error(ptr, instance, "instance is below minimum of " + std::to_string(minimum_.second));
+				oss << "instance is below minimum of " << json(minimum_.second);
+		}
+
+		oss.seekp(0, std::ios::end);
+		auto size = oss.tellp();
+		if (size != 0) {
+		    oss.seekp(0, std::ios::beg);
+			e.error(ptr, instance, oss.str());
 		}
 	}
 

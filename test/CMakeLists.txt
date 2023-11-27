@@ -85,3 +85,7 @@ add_test(NAME issue-229-oneof-default-values COMMAND issue-229-oneof-default-val
 add_executable(issue-243-root-default-values issue-243-root-default-values.cpp)
 target_link_libraries(issue-243-root-default-values nlohmann_json_schema_validator)
 add_test(NAME issue-243-root-default-values COMMAND issue-243-root-default-values)
+
+add_executable(issue-255-error-message-limit-precision issue-255-error-message-limit-precision.cpp)
+target_link_libraries(issue-255-error-message-limit-precision nlohmann_json_schema_validator)
+add_test(NAME issue-255-error-message-limit-precision COMMAND issue-255-error-message-limit-precision)
