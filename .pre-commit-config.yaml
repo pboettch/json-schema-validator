@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/Takishima/cmake-pre-commit-hooks
-    rev: v1.8.1
+    rev: v1.9.4
     hooks:
       - id: clang-format
         args:
@@ -14,19 +14,19 @@ repos:
           - '--preset'
           - 'pre-commit'
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: v4.5.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
   - repo: https://github.com/executablebooks/mdformat
-    rev: 0.7.16
+    rev: 0.7.17
     hooks:
       - id: mdformat
         additional_dependencies:
           - mdformat-gfm
           - mdformat-tables
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.23.0
+    rev: 0.27.2
     hooks:
       - id: check-github-workflows
