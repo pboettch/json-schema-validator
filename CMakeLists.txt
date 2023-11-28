@@ -30,8 +30,10 @@ project(nlohmann_json_schema_validator
 if (NOT DEFINED nlohmann_json_schema_validator_IS_TOP_LEVEL)
     if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         set(PROJECT_IS_TOP_LEVEL ON)
+        set(nlohmann_json_schema_validator_IS_TOP_LEVEL ON)
     else ()
         set(PROJECT_IS_TOP_LEVEL OFF)
+        set(nlohmann_json_schema_validator_IS_TOP_LEVEL OFF)
     endif ()
 endif ()
 
