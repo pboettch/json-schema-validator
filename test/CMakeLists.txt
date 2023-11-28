@@ -61,6 +61,26 @@ if (NOT TARGET nlohmann_json_schema_validator::validator)
         endif ()
     endif ()
 endif ()
+# Fetch/Find Catch2
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+    FetchContent_Declare(Catch2
+            GIT_REPOSITORY https://github.com/catchorg/Catch2
+            GIT_TAG v3.4.0
+            FIND_PACKAGE_ARGS CONFIG
+    )
+    list(APPEND fetch_packages Catch2)
+else ()
+    # Try to get system installed version
+    find_package(Catch2 QUIET)
+    if (NOT Catch2_FOUND)
+        # If failed fetch the desired version
+        FetchContent_Declare(Catch2
+                GIT_REPOSITORY https://github.com/catchorg/Catch2
+                GIT_TAG v3.4.0
+        )
+        list(APPEND fetch_packages Catch2)
+    endif ()
+endif ()
 
 # Get all dependencies
 FetchContent_MakeAvailable(${fetch_packages})
@@ -70,6 +90,14 @@ FetchContent_MakeAvailable(${fetch_packages})
 ]==============================================================================================]
 
 enable_testing()
+include(Catch)
+
+add_executable(json-schema-test-suite)
+set_target_properties(json-schema-test-suite PROPERTIES
+        OUTPUT_NAME test-suite
+)
+target_link_libraries(json-schema-test-suite PRIVATE Catch2::Catch2WithMain nlohmann_json_schema_validator::validator)
+catch_discover_tests(json-schema-test-suite)
 
 set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
 
