@@ -191,3 +191,5 @@ add_test(NAME issue-243-root-default-values COMMAND issue-243-root-default-value
 add_executable(issue-255-error-message-limit-precision issue-255-error-message-limit-precision.cpp)
 target_link_libraries(issue-255-error-message-limit-precision nlohmann_json_schema_validator)
 add_test(NAME issue-255-error-message-limit-precision COMMAND issue-255-error-message-limit-precision)
+
+add_subdirectory(JSON-Schema-Test-Suite)
