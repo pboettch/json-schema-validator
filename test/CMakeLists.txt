@@ -9,6 +9,10 @@ project(nlohmann_json_schema_validator_test
         LANGUAGES CXX
 )
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 #[==============================================================================================[
 #                                            Options                                            #
 ]==============================================================================================]
@@ -66,12 +70,12 @@ if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
     FetchContent_Declare(Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2
             GIT_TAG v3.4.0
-            FIND_PACKAGE_ARGS CONFIG
+            FIND_PACKAGE_ARGS 3.4.0 CONFIG
     )
     list(APPEND fetch_packages Catch2)
 else ()
     # Try to get system installed version
-    find_package(Catch2 QUIET)
+    find_package(Catch2 3.4.0 QUIET)
     if (NOT Catch2_FOUND)
         # If failed fetch the desired version
         FetchContent_Declare(Catch2
@@ -99,30 +103,27 @@ set_target_properties(json-schema-test-suite PROPERTIES
 target_link_libraries(json-schema-test-suite PRIVATE Catch2::Catch2WithMain nlohmann_json_schema_validator::validator)
 catch_discover_tests(json-schema-test-suite)
 
-set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
-
-# built-in tests
-function(add_test_simple_schema name schema instance)
-    add_test(
-        NAME ${name}
-        COMMAND ${PIPE_IN_TEST_SCRIPT}
-            $<TARGET_FILE:json-schema-validate>
-            ${schema}
-            ${instance}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endfunction()
-
-file(GLOB TEST_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/*)
-
-foreach(DIR ${TEST_DIRS})
-    if(IS_DIRECTORY ${DIR})
-        add_subdirectory(${DIR})
-    endif()
-endforeach()
-
-add_executable(uri uri.cpp)
-target_link_libraries(uri nlohmann_json_schema_validator)
-add_test(NAME uri COMMAND uri)
+target_sources(json-schema-test-suite PRIVATE
+        test_uri.cpp
+        utils.cpp
+)
+target_include_directories(json-schema-test-suite PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+foreach (issue IN ITEMS
+        issue-9
+        issue-12
+        issue-27
+        issue-48
+        issue-54
+        issue-75
+        issue-93
+        issue-96
+        issue-100
+        issue-101
+        issue-143
+        issue-209
+)
+    target_sources(json-schema-test-suite PRIVATE ${issue}/test_issue.cpp)
+endforeach ()
 
 add_executable(errors errors.cpp)
 target_link_libraries(errors nlohmann_json_schema_validator)
