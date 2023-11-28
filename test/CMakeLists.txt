@@ -1,3 +1,62 @@
+cmake_minimum_required(VERSION 3.14)
+
+#[==============================================================================================[
+#                                   Basic project definition                                   #
+]==============================================================================================]
+
+list(APPEND CMAKE_MESSAGE_CONTEXT Test)
+project(nlohmann_json_schema_validator_test
+        LANGUAGES CXX
+)
+
+#[==============================================================================================[
+#                                            Options                                            #
+]==============================================================================================]
+
+#[==============================================================================================[
+#                                     Project configuration                                     #
+]==============================================================================================]
+
+include(FetchContent)
+
+#[==============================================================================================[
+#                                       External packages                                       #
+]==============================================================================================]
+
+set(fetch_packages)
+if (NOT TARGET nlohmann_json_schema_validator::validator)
+    # Fetch/Find nlohmann_json_schema_validator
+    # TODO: Remove when bumping cmake >= 3.24
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+        FetchContent_Declare(nlohmann_json_schema_validator
+                GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
+                GIT_TAG main
+                FIND_PACKAGE_ARGS CONFIG
+        )
+        list(APPEND fetch_packages nlohmann_json_schema_validator)
+    else ()
+        # Try to get system installed version
+        find_package(nlohmann_json_schema_validator QUIET)
+        if (NOT nlohmann_json_schema_validator_FOUND)
+            # If failed fetch the desired version
+            FetchContent_Declare(nlohmann_json_schema_validator
+                    GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
+                    GIT_TAG main
+            )
+            list(APPEND fetch_packages nlohmann_json_schema_validator)
+        endif ()
+    endif ()
+endif ()
+
+# Get all dependencies
+FetchContent_MakeAvailable(${fetch_packages})
+
+#[==============================================================================================[
+#                                        Main definition                                        #
+]==============================================================================================]
+
+enable_testing()
+
 set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
 
 # built-in tests
