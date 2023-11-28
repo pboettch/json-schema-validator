@@ -32,16 +32,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
             -Wall -Wextra -Wshadow)
 endif ()
 
-if (JSON_VALIDATOR_TEST_COVERAGE)
-    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "(Clang|GNU)")
-        message(WARNING
-                "Coverage flags not known for: ${CMAKE_CXX_COMPILER_ID}.\n"
-                "Using --coverage as default")
-    endif ()
-    target_compile_options(nlohmann_json_schema_validator PRIVATE --coverage)
-    target_link_options(nlohmann_json_schema_validator PUBLIC --coverage)
-endif ()
-
 # TODO: gcc support for <4.9 should be removed
 # regex with boost if gcc < 4.9 - default is std::regex
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

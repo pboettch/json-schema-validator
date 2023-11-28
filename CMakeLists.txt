@@ -52,8 +52,6 @@ else ()
     option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
 endif ()
 option(JSON_VALIDATOR_SHARED_LIBS "JsonValidator: Build as shared library" ${PROJECT_IS_TOP_LEVEL})
-cmake_dependent_option(JSON_VALIDATOR_TEST_COVERAGE "JsonValidator: Build with test coverage" OFF "JSON_VALIDATOR_BUILD_TESTS" OFF)
-mark_as_advanced(JSON_VALIDATOR_TEST_COVERAGE)
 # Get a default JSON_FETCH_VERSION from environment variables to workaround the CI
 if (DEFINED ENV{NLOHMANN_JSON_VERSION})
     set(JSON_FETCH_VERSION_DEFAULT $ENV{NLOHMANN_JSON_VERSION})

@@ -13,11 +13,25 @@ project(nlohmann_json_schema_validator_test
 #                                            Options                                            #
 ]==============================================================================================]
 
+include(CMakeDependentOption)
+cmake_dependent_option(JSON_VALIDATOR_TEST_COVERAGE "JsonValidator: Build with test coverage" OFF "nlohmann_json_schema_validator_IS_TOP_LEVEL" OFF)
+mark_as_advanced(JSON_VALIDATOR_TEST_COVERAGE)
+
 #[==============================================================================================[
 #                                     Project configuration                                     #
 ]==============================================================================================]
 
 include(FetchContent)
+
+if (JSON_VALIDATOR_TEST_COVERAGE)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "(Clang|GNU)")
+        message(WARNING
+                "Coverage flags not known for: ${CMAKE_CXX_COMPILER_ID}.\n"
+                "Using --coverage as default")
+    endif ()
+    target_compile_options(nlohmann_json_schema_validator PRIVATE --coverage)
+    target_link_options(nlohmann_json_schema_validator PUBLIC --coverage)
+endif ()
 
 #[==============================================================================================[
 #                                       External packages                                       #
