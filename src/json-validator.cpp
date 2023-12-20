@@ -473,7 +473,7 @@ class logical_combination : public schema
 				esub.propagate(error_summary, "case#" + std::to_string(index) + "] ");
 			}
 
-			if (is_validate_complete(instance, ptr, e, esub, count))
+			if (is_validate_complete(instance, ptr, e, esub, count, index))
 				return;
 		}
 
@@ -485,7 +485,7 @@ class logical_combination : public schema
 
 	// specialized for each of the logical_combination_types
 	static const std::string key;
-	static bool is_validate_complete(const json &, const json::json_pointer &, error_handler &, const logical_combination_error_handler &, size_t);
+	static bool is_validate_complete(const json &, const json::json_pointer &, error_handler &, const logical_combination_error_handler &, size_t, size_t);
 
 public:
 	logical_combination(json &sch,
@@ -510,21 +510,24 @@ template <>
 const std::string logical_combination<oneOf>::key = "oneOf";
 
 template <>
-bool logical_combination<allOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &e, const logical_combination_error_handler &esub, size_t)
+bool logical_combination<allOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &e, const logical_combination_error_handler &esub, size_t, size_t current_schema_index)
 {
 	if (esub)
+	{
 		e.error(esub.error_entry_list_.front().ptr_, esub.error_entry_list_.front().instance_, "at least one subschema has failed, but all of them are required to validate - " + esub.error_entry_list_.front().message_);
+		esub.propagate(e, "[combination: allOf / case#" + std::to_string(current_schema_index) + "] ");
+	}
 	return esub;
 }
 
 template <>
-bool logical_combination<anyOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &, const logical_combination_error_handler &, size_t count)
+bool logical_combination<anyOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &, const logical_combination_error_handler &, size_t count, size_t)
 {
 	return count == 1;
 }
 
 template <>
-bool logical_combination<oneOf>::is_validate_complete(const json &instance, const json::json_pointer &ptr, error_handler &e, const logical_combination_error_handler &, size_t count)
+bool logical_combination<oneOf>::is_validate_complete(const json &instance, const json::json_pointer &ptr, error_handler &e, const logical_combination_error_handler &, size_t count, size_t)
 {
 	if (count > 1)
 		e.error(ptr, instance, "more than one subschema has succeeded, but exactly one of them is required to validate");
