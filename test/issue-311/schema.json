@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "element": {
+      "$ref": "#/$defs/element"
+    }
+  },
+  "$defs": {
+    "element": {
+      "type": "array",
+      "items": [
+        {
+          "$comment": "the comment should not lead to fail of loading schema",
+          "type": "number"
+        }
+      ]
+    }
+  }
+}

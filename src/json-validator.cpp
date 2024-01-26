@@ -192,10 +192,10 @@ public:
 			// for each token create an object, if not already existing
 			auto unk_kw = &file.unknown_keywords;
 			for (auto &rt : ref_tokens) {
-				auto existing_object = unk_kw->find(rt);
-				if (existing_object == unk_kw->end())
+				json::json_pointer rt_ptr{"/" + rt};
+				if (unk_kw->contains(rt_ptr) == false)
 					(*unk_kw)[rt] = json::object();
-				unk_kw = &(*unk_kw)[rt];
+				unk_kw = &(*unk_kw)[rt_ptr];
 			}
 			(*unk_kw)[key] = value;
 		}
