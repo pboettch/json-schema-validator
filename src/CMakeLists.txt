@@ -62,7 +62,7 @@ if (JSON_VALIDATOR_INSTALL)
                 NAMELINK_COMPONENT nlohmann_json_schema_validator_Development
                 ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT nlohmann_json_schema_validator_Development
                 PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nlohmann COMPONENT nlohmann_json_schema_validator_Development
-                RUNTIME DESTINATION ${CMAKE_INSTALL_RUNTIMEDIR} COMPONENT nlohmann_json_schema_validator_Runtime)
+                RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT nlohmann_json_schema_validator_Runtime)
     else ()
         install(TARGETS nlohmann_json_schema_validator
                 EXPORT nlohmann_json_schema_validatorTargets
