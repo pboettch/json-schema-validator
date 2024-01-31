@@ -54,21 +54,11 @@ target_link_libraries(nlohmann_json_schema_validator PUBLIC
 
 if (JSON_VALIDATOR_INSTALL)
     # Normal installation target to system. When using scikit-build check python subdirectory
-    if (WIN32)
-        # TODO: Probably wrong, please fix
-        install(TARGETS nlohmann_json_schema_validator
-                EXPORT nlohmann_json_schema_validatorTargets
-                LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT nlohmann_json_schema_validator_Runtime
-                NAMELINK_COMPONENT nlohmann_json_schema_validator_Development
-                ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT nlohmann_json_schema_validator_Development
-                PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nlohmann COMPONENT nlohmann_json_schema_validator_Development
-                RUNTIME DESTINATION ${CMAKE_INSTALL_RUNTIMEDIR} COMPONENT nlohmann_json_schema_validator_Runtime)
-    else ()
-        install(TARGETS nlohmann_json_schema_validator
-                EXPORT nlohmann_json_schema_validatorTargets
-                LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT nlohmann_json_schema_validator_Runtime
-                NAMELINK_COMPONENT nlohmann_json_schema_validator_Development
-                ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT nlohmann_json_schema_validator_Development
-                PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nlohmann COMPONENT nlohmann_json_schema_validator_Development)
-    endif ()
+    install(TARGETS nlohmann_json_schema_validator
+            EXPORT nlohmann_json_schema_validatorTargets
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT nlohmann_json_schema_validator_Runtime
+            NAMELINK_COMPONENT nlohmann_json_schema_validator_Development
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT nlohmann_json_schema_validator_Development
+            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/nlohmann COMPONENT nlohmann_json_schema_validator_Development
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT nlohmann_json_schema_validator_Runtime)
 endif ()
