@@ -5,10 +5,17 @@ if (POLICY CMP0140)
     # Enables: return(PROPAGATE)
     cmake_policy(SET CMP0140 NEW)
 endif ()
+# TODO: Remove when bumping cmake >= 3.22
+if (POLICY CMP0127)
+    # Enables: cmake_dependent_option: Full Condition Syntax
+    cmake_policy(SET CMP0127 NEW)
+endif ()
 
 #[==============================================================================================[
 #                                    Basic project definition                                   #
 ]==============================================================================================]
+
+list(APPEND CMAKE_MESSAGE_CONTEXT schema_validator)
 
 # TODO: CMake >= 3.19 can use string(JSON VERSION GET "${METADATA}" "version") to load from JSON
 set(PROJECT_VERSION 2.4.0)
@@ -23,8 +30,10 @@ project(nlohmann_json_schema_validator
 if (NOT DEFINED nlohmann_json_schema_validator_IS_TOP_LEVEL)
     if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         set(PROJECT_IS_TOP_LEVEL ON)
+        set(nlohmann_json_schema_validator_IS_TOP_LEVEL ON)
     else ()
         set(PROJECT_IS_TOP_LEVEL OFF)
+        set(nlohmann_json_schema_validator_IS_TOP_LEVEL OFF)
     endif ()
 endif ()
 
@@ -32,12 +41,17 @@ endif ()
 #                                            Options                                            #
 ]==============================================================================================]
 
+include(CMakeDependentOption)
+
 option(JSON_VALIDATOR_INSTALL "JsonValidator: Install targets" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_BUILD_TESTS "JsonValidator: Build tests" ${PROJECT_IS_TOP_LEVEL})
-option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.22)
+    # Only enable BUILD_EXAMPLES if we are building tests or installing the targets
+    cmake_dependent_option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL} "JSON_VALIDATOR_BUILD_TESTS OR JSON_VALIDATOR_INSTALL" OFF)
+else ()
+    option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
+endif ()
 option(JSON_VALIDATOR_SHARED_LIBS "JsonValidator: Build as shared library" ${PROJECT_IS_TOP_LEVEL})
-option(JSON_VALIDATOR_TEST_COVERAGE "JsonValidator: Build with test coverage" OFF)
-mark_as_advanced(JSON_VALIDATOR_TEST_COVERAGE)
 # Get a default JSON_FETCH_VERSION from environment variables to workaround the CI
 if (DEFINED ENV{NLOHMANN_JSON_VERSION})
     set(JSON_FETCH_VERSION_DEFAULT $ENV{NLOHMANN_JSON_VERSION})
@@ -64,19 +78,6 @@ endif ()
 
 # Enable cmake's BUILD_SHARED_LIBS
 set(BUILD_SHARED_LIBS ${nlohmann_json_schema_validator_SHARED_LIBS})
-
-if (JSON_VALIDATOR_TEST_COVERAGE)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-instr-generate -fcoverage-mapping")
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-    else ()
-        message(WARNING
-                "JsonValidator: Other toolchain coverage flags unknown.\n"
-                "Using --coverage as default")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
-    endif ()
-endif ()
 
 #[==============================================================================================[
 #                                       External packages                                       #
@@ -119,7 +120,7 @@ FetchContent_MakeAvailable(${fetch_packages})
 if (JSON_VALIDATOR_INSTALL AND NOT nlohmann_json_FOUND AND JSON_Install)
     # TODO: This is not ideal
     message(WARNING
-            "JsonValidator: No nlohmann::json found on the system and nlohmann_json_schema_validator will be installed\n"
+            "No nlohmann::json found on the system and nlohmann_json_schema_validator will be installed\n"
             "This will also install nlohmann::json in its typical installation path\n"
             "This is not ideal because it might overwrite system installed")
 endif ()
@@ -128,11 +129,11 @@ endif ()
 #                                        Main definition                                        #
 ]==============================================================================================]
 
-message(STATUS "JsonValidator: Configured for ${CMAKE_BUILD_TYPE}")
+message(STATUS "Configured for ${CMAKE_BUILD_TYPE}")
 if (DEFINED nlohmann_json_VERSION)
-    message(STATUS "JsonValidator: Using nlohmann/json version: ${nlohmann_json_VERSION}")
+    message(STATUS "Using nlohmann/json version: ${nlohmann_json_VERSION}")
 else ()
-    message(STATUS "JsonValidator: nlohmann_json_VERSION is not set. Possible value: ${JSON_FETCH_VERSION}")
+    message(STATUS "nlohmann_json_VERSION is not set. Possible value: ${JSON_FETCH_VERSION}")
 endif ()
 
 ## Main targets

@@ -9,6 +9,10 @@
         "CMAKE_BUILD_TYPE": {
           "type": "STRING",
           "value": "Release"
+        },
+        "CMAKE_MESSAGE_CONTEXT_SHOW": {
+          "type": "BOOL",
+          "value": true
         }
       }
     }

@@ -1,27 +1,129 @@
-set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
+cmake_minimum_required(VERSION 3.14)
 
-# built-in tests
-function(add_test_simple_schema name schema instance)
-    add_test(
-        NAME ${name}
-        COMMAND ${PIPE_IN_TEST_SCRIPT}
-            $<TARGET_FILE:json-schema-validate>
-            ${schema}
-            ${instance}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endfunction()
+#[==============================================================================================[
+#                                   Basic project definition                                   #
+]==============================================================================================]
 
-file(GLOB TEST_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/*)
+list(APPEND CMAKE_MESSAGE_CONTEXT Test)
+project(nlohmann_json_schema_validator_test
+        LANGUAGES CXX
+)
 
-foreach(DIR ${TEST_DIRS})
-    if(IS_DIRECTORY ${DIR})
-        add_subdirectory(${DIR})
-    endif()
-endforeach()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(uri uri.cpp)
-target_link_libraries(uri nlohmann_json_schema_validator)
-add_test(NAME uri COMMAND uri)
+#[==============================================================================================[
+#                                            Options                                            #
+]==============================================================================================]
+
+include(CMakeDependentOption)
+cmake_dependent_option(JSON_VALIDATOR_TEST_COVERAGE "JsonValidator: Build with test coverage" OFF "nlohmann_json_schema_validator_IS_TOP_LEVEL" OFF)
+mark_as_advanced(JSON_VALIDATOR_TEST_COVERAGE)
+
+#[==============================================================================================[
+#                                     Project configuration                                     #
+]==============================================================================================]
+
+include(FetchContent)
+
+if (JSON_VALIDATOR_TEST_COVERAGE)
+    if (NOT CMAKE_CXX_COMPILER_ID MATCHES "(Clang|GNU)")
+        message(WARNING
+                "Coverage flags not known for: ${CMAKE_CXX_COMPILER_ID}.\n"
+                "Using --coverage as default")
+    endif ()
+    target_compile_options(nlohmann_json_schema_validator PRIVATE --coverage)
+    target_link_options(nlohmann_json_schema_validator PUBLIC --coverage)
+endif ()
+
+#[==============================================================================================[
+#                                       External packages                                       #
+]==============================================================================================]
+
+set(fetch_packages)
+if (NOT TARGET nlohmann_json_schema_validator::validator)
+    # Fetch/Find nlohmann_json_schema_validator
+    # TODO: Remove when bumping cmake >= 3.24
+    if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+        FetchContent_Declare(nlohmann_json_schema_validator
+                GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
+                GIT_TAG main
+                FIND_PACKAGE_ARGS CONFIG
+        )
+        list(APPEND fetch_packages nlohmann_json_schema_validator)
+    else ()
+        # Try to get system installed version
+        find_package(nlohmann_json_schema_validator QUIET)
+        if (NOT nlohmann_json_schema_validator_FOUND)
+            # If failed fetch the desired version
+            FetchContent_Declare(nlohmann_json_schema_validator
+                    GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
+                    GIT_TAG main
+            )
+            list(APPEND fetch_packages nlohmann_json_schema_validator)
+        endif ()
+    endif ()
+endif ()
+# Fetch/Find Catch2
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
+    FetchContent_Declare(Catch2
+            GIT_REPOSITORY https://github.com/catchorg/Catch2
+            GIT_TAG v3.4.0
+            FIND_PACKAGE_ARGS 3.4.0 CONFIG
+    )
+    list(APPEND fetch_packages Catch2)
+else ()
+    # Try to get system installed version
+    find_package(Catch2 3.4.0 QUIET)
+    if (NOT Catch2_FOUND)
+        # If failed fetch the desired version
+        FetchContent_Declare(Catch2
+                GIT_REPOSITORY https://github.com/catchorg/Catch2
+                GIT_TAG v3.4.0
+        )
+        list(APPEND fetch_packages Catch2)
+    endif ()
+endif ()
+
+# Get all dependencies
+FetchContent_MakeAvailable(${fetch_packages})
+
+#[==============================================================================================[
+#                                        Main definition                                        #
+]==============================================================================================]
+
+enable_testing()
+include(Catch)
+
+add_executable(json-schema-test-suite)
+set_target_properties(json-schema-test-suite PROPERTIES
+        OUTPUT_NAME test-suite
+)
+target_link_libraries(json-schema-test-suite PRIVATE Catch2::Catch2WithMain nlohmann_json_schema_validator::validator)
+catch_discover_tests(json-schema-test-suite)
+
+target_sources(json-schema-test-suite PRIVATE
+        test_uri.cpp
+        utils.cpp
+)
+target_include_directories(json-schema-test-suite PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+foreach (issue IN ITEMS
+        issue-9
+        issue-12
+        issue-27
+        issue-48
+        issue-54
+        issue-75
+        issue-93
+        issue-96
+        issue-100
+        issue-101
+        issue-143
+        issue-209
+)
+    target_sources(json-schema-test-suite PRIVATE ${issue}/test_issue.cpp)
+endforeach ()
 
 add_executable(errors errors.cpp)
 target_link_libraries(errors nlohmann_json_schema_validator)
@@ -89,3 +191,5 @@ add_test(NAME issue-243-root-default-values COMMAND issue-243-root-default-value
 add_executable(issue-255-error-message-limit-precision issue-255-error-message-limit-precision.cpp)
 target_link_libraries(issue-255-error-message-limit-precision nlohmann_json_schema_validator)
 add_test(NAME issue-255-error-message-limit-precision COMMAND issue-255-error-message-limit-precision)
+
+add_subdirectory(JSON-Schema-Test-Suite)
