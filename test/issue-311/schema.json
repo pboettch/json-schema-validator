@@ -3,6 +3,9 @@
   "properties": {
     "element": {
       "$ref": "#/$defs/element"
+    },
+    "element2": {
+      "$ref": "#/$defs/element/items/0/$defs/element2"
     }
   },
   "$defs": {
@@ -10,7 +13,11 @@
       "type": "array",
       "items": [
         {
-          "$comment": "the comment should not lead to fail of loading schema",
+          "$defs": {
+            "element2": {
+              "type": "string"
+            }
+          },
           "type": "number"
         }
       ]

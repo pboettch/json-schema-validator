@@ -226,6 +226,7 @@ public:
 			// for each token create an object, if not already existing
 			auto unk_kw = &file.unknown_keywords;
 			for (auto &rt : ref_tokens) {
+				// create a json_pointer from rt as rt can be an stringified integer doing find on an array won't work
 				json::json_pointer rt_ptr{"/" + rt};
 				if (unk_kw->contains(rt_ptr) == false)
 					(*unk_kw)[rt] = json::object();
