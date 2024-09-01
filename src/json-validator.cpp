@@ -429,26 +429,25 @@ enum logical_combination_types {
 class logical_combination_error_handler : public error_handler
 {
 public:
-	struct error_entry
-	{
+	struct error_entry {
 		json::json_pointer ptr_;
 		json instance_;
 		std::string message_;
 	};
 
 	std::vector<error_entry> error_entry_list_;
-	
+
 	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
 	{
-		error_entry_list_.push_back(error_entry{ ptr, instance, message });
+		error_entry_list_.push_back(error_entry{ptr, instance, message});
 	}
 
-	void propagate(error_handler& e, const std::string& prefix) const
+	void propagate(error_handler &e, const std::string &prefix) const
 	{
-		for (const error_entry& entry : error_entry_list_)
+		for (const error_entry &entry : error_entry_list_)
 			e.error(entry.ptr_, entry.instance_, prefix + entry.message_);
 	}
-	
+
 	operator bool() const { return !error_entry_list_.empty(); }
 };
 
@@ -463,7 +462,7 @@ class logical_combination : public schema
 		logical_combination_error_handler error_summary;
 
 		for (std::size_t index = 0; index < subschemata_.size(); ++index) {
-			const std::shared_ptr<schema>& s = subschemata_[index];
+			const std::shared_ptr<schema> &s = subschemata_[index];
 			logical_combination_error_handler esub;
 			auto oldPatchSize = patch.get_json().size();
 			s->validate(ptr, instance, patch, esub);
@@ -513,8 +512,7 @@ const std::string logical_combination<oneOf>::key = "oneOf";
 template <>
 bool logical_combination<allOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &e, const logical_combination_error_handler &esub, size_t, size_t current_schema_index)
 {
-	if (esub)
-	{
+	if (esub) {
 		e.error(esub.error_entry_list_.front().ptr_, esub.error_entry_list_.front().instance_, "at least one subschema has failed, but all of them are required to validate - " + esub.error_entry_list_.front().message_);
 		esub.propagate(e, "[combination: allOf / case#" + std::to_string(current_schema_index) + "] ");
 	}
