@@ -1,0 +1,7 @@
+workspace(name = "json-schema-validator")
+
+load("//:workspace.bzl", "load_nlohmann_3_11_2")
+load("//:workspace.bzl", "load_nlohmann_3_11_3")
+
+load_nlohmann_3_11_2()
+load_nlohmann_3_11_3()

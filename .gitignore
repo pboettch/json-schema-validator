@@ -5,3 +5,8 @@ venv
 env
 compile_commands.json
 .vs/*
+bazel-bin
+bazel-json-schema-validator
+bazel-out
+bazel-testlogs
+
