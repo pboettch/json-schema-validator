@@ -135,6 +135,22 @@ CMake's `find_package()` to be used.
 This library is using this mechanism if `nlohmann_json::nlohmann_json`-target
 does not exist.
 
+### Building with Bazel
+
+To build the library with bazel run:
+
+```bash
+bazel build src:json_schema_validator
+```
+
+The output files are placed in bazel-bin/src directory.
+
+To execute unit tests run:
+
+```bash
+bazel test test/...
+```
+
 ### Install
 
 Since version 2.1.0 this library can be installed and CMake-package-files will be
