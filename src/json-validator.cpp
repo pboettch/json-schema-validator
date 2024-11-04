@@ -254,15 +254,15 @@ public:
 		//
 		// an unknown keyword can only be referenced by a json-pointer,
 		// not by a plain name fragment
-		if (uri.pointer().to_string() != "") {
-			try {
-				auto &subschema = file.unknown_keywords.at(uri.pointer()); // null is returned if not existing
-				auto s = schema::make(subschema, this, {}, {{uri}});       //  A JSON Schema MUST be an object or a boolean.
-				if (s) {                                                   // nullptr if invalid schema, e.g. null
+		if (!uri.pointer().to_string().empty()) {
+			bool contains_pointer = file.unknown_keywords.contains(uri.pointer());
+			if (contains_pointer) {
+				auto &subschema = file.unknown_keywords.at(uri.pointer());
+				auto s = schema::make(subschema, this, {}, {{uri}});
+				if (s) { // if schema is valid (non-null)
 					file.unknown_keywords.erase(uri.fragment());
 					return s;
 				}
-			} catch (nlohmann::detail::out_of_range &) { // at() did not find it
 			}
 		}
 
