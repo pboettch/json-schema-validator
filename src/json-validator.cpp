@@ -1396,8 +1396,8 @@ std::shared_ptr<schema> schema::make(json &schema,
 			}
 			return false;
 		};
-		if (!findDefinitions("definitions")) {
-			findDefinitions("$defs");
+		if (!findDefinitions("$defs")) {
+			findDefinitions("definitions");
 		}
 
 		attr = schema.find("$ref");
