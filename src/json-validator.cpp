@@ -1386,11 +1386,18 @@ std::shared_ptr<schema> schema::make(json &schema,
 			schema.erase(attr);
 		}
 
-		attr = schema.find("definitions");
-		if (attr != schema.end()) {
-			for (auto &def : attr.value().items())
-				schema::make(def.value(), root, {"definitions", def.key()}, uris);
-			schema.erase(attr);
+		auto findDefinitions = [&](const std::string &defs) -> bool {
+			attr = schema.find(defs);
+			if (attr != schema.end()) {
+				for (auto &def : attr.value().items())
+					schema::make(def.value(), root, {defs, def.key()}, uris);
+				schema.erase(attr);
+				return true;
+			}
+			return false;
+		};
+		if (!findDefinitions("definitions")) {
+			findDefinitions("$defs");
 		}
 
 		attr = schema.find("$ref");
