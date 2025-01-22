@@ -12,7 +12,7 @@ target_include_directories(nlohmann_json_schema_validator PUBLIC
         )
 
 set_target_properties(nlohmann_json_schema_validator PROPERTIES
-        PUBLIC_HEADER nlohmann/json-schema.hpp)
+        PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/nlohmann/json-schema.hpp)
 
 # TODO: Why would this need to be if guarded?
 if (JSON_VALIDATOR_SHARED_LIBS)
