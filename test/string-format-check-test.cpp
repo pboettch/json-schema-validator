@@ -98,5 +98,5 @@ int main()
 
 	numberOfErrors += testStringFormat("uri", uriChecks);
 
-	return numberOfErrors;
+	return static_cast<int>(numberOfErrors);
 }

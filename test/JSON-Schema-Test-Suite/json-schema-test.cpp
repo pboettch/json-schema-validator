@@ -150,5 +150,5 @@ int main(void)
 
 	std::cout << "Total RESULT: " << (total - total_failed) << " of " << total << " have succeeded - " << total_failed << " failed\n";
 
-	return total_failed;
+	return static_cast<int>(total_failed);
 }
