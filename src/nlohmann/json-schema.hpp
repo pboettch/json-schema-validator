@@ -37,7 +37,7 @@ namespace nlohmann
 
 // A class representing a JSON-URI for schemas derived from
 // section 8 of JSON Schema: A Media Type for Describing JSON Documents
-// draft-wright-json-schema-00
+// draft-wright-json-schema-00  <<-- might be incorrect now that 2020-12 is used
 //
 // New URIs can be derived from it using the derive()-method.
 // This is useful for resolving refs or subschema-IDs in json-schemas.
@@ -128,7 +128,7 @@ public:
 namespace json_schema
 {
 
-extern json draft7_schema_builtin;
+extern json draft_2020_12_schema_builtin;
 
 typedef std::function<void(const json_uri & /*id*/, json & /*value*/)> schema_loader;
 typedef std::function<void(const std::string & /*format*/, const std::string & /*value*/)> format_checker;

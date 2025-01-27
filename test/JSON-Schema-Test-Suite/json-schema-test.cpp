@@ -18,8 +18,8 @@ using nlohmann::json_schema::json_validator;
 
 static void loader(const json_uri &uri, json &schema)
 {
-	if (uri.location() == "http://json-schema.org/draft-07/schema") {
-		schema = nlohmann::json_schema::draft7_schema_builtin;
+	if (uri.location() == "http://json-schema.org/draft/2020-12/schema") {
+		schema = nlohmann::json_schema::draft_2020_12_schema_builtin;
 		return;
 	}
 

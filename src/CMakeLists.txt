@@ -1,6 +1,6 @@
 target_sources(nlohmann_json_schema_validator PRIVATE
         smtp-address-validator.cpp
-        json-schema-draft7.json.cpp
+        json-schema-draft_2020-12.json.cpp
         json-uri.cpp
         json-validator.cpp
         json-patch.cpp
