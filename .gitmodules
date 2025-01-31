@@ -1,0 +1,6 @@
+[submodule "json-schema-spec"]
+	path = json-schema-spec/2020-12
+	url = ../../json-schema-org/json-schema-spec.git
+[submodule "json-schema-spec_2019-09"]
+	path = json-schema-spec/2019-09
+	url = ../../json-schema-org/json-schema-spec.git
