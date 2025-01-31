@@ -7,7 +7,7 @@ using nlohmann::json_schema::json_validator;
 
 static const json rectangle_schema = R"(
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft/2020-12/schema",
     "properties": {
         "width": {
             "$ref": "#/definitions/length",
@@ -27,7 +27,7 @@ static const json rectangle_schema = R"(
 
 static const json quad_schema = R"(
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft/2020-12/schema",
     "properties": {
         "width": {
             "$ref": "#/properties/height",
@@ -57,7 +57,7 @@ static const json quad_schema = R"(
 
 static const json default_schema = R"(
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft/2020-12/schema",
     "definitions": {
         "defaultLength": {
             "default": 5

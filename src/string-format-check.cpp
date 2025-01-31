@@ -398,7 +398,7 @@ void default_string_format_check(const std::string &format, const std::string &v
 			throw exception;
 		}
 	} else {
-		/* yet unsupported JSON schema draft 7 built-ins */
+		/* as-of-yet unsupported JSON schema draft 2020-12 built-ins */
 		static const std::vector<std::string> jsonSchemaStringFormatBuiltIns{
 		    "date-time", "time", "date", "email", "idn-email", "hostname", "idn-hostname", "ipv4", "ipv6", "uri",
 		    "uri-reference", "iri", "iri-reference", "uri-template", "json-pointer", "relative-json-pointer", "regex"};

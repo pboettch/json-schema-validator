@@ -8,7 +8,7 @@ using nlohmann::json_schema::json_validator;
 // The schema is defined based upon a string literal
 static json uri_schema = R"(
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "http://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "properties": {
     "myUri": {

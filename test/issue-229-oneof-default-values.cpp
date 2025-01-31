@@ -7,7 +7,7 @@ using nlohmann::json_schema::json_validator;
 
 static const json default_schema = R"(
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft/2020-12/schema",
     "type": "object",
     "oneOf": [
         {
