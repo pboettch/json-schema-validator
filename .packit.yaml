@@ -9,7 +9,7 @@ files_to_sync:
       - "protect gating.yaml"
       # Temporary workaround until
       # https://github.com/packit/packit/pull/2573
-      - "- python-scikit-build-core.spec"
+      - "- json-schema-validator.spec"
   - .packit.yaml
 
 upstream_package_name: json-schema-validator
