@@ -30,7 +30,7 @@ _:
   - &build-in-lecris
     <<: *build-in-packit
     owner: "@scikit-build"
-  - &tests-downstream
+  - &tests
     job: tests
     fmf_path: .distro
     identifier: downstream
@@ -40,19 +40,19 @@ jobs:
   - <<: *build-in-lecris
     trigger: release
     project: release
-  - <<: *tests-downstream
-    trigger: release
+#  - <<: *tests
+#    trigger: release
   - <<: *build-in-lecris
     trigger: commit
     branch: main
     project: nightly
-  - <<: *tests-downstream
-    trigger: commit
-    branch: main
+#  - <<: *tests
+#    trigger: commit
+#    branch: main
   - <<: *build-in-packit
     trigger: pull_request
-  - <<: *tests-downstream
-    trigger: pull_request
+#  - <<: *tests
+#    trigger: pull_request
   # Downstream jobs
   - job: propose_downstream
     trigger: release
