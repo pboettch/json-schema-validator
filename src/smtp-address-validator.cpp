@@ -687,7 +687,7 @@ bool is_address(const char *p, const char *pe)
 		const signed char *_keys;
 		const signed char *_acts;
 		unsigned int _nacts;
-	_resume : {
+	_resume: {
 	}
 		if (p == pe && p != eof)
 			goto _out;
@@ -746,7 +746,7 @@ bool is_address(const char *p, const char *pe)
 				}
 			}
 
-		_match : {
+		_match: {
 		}
 		}
 		cs = (int) _address_cond_targs[_trans];
@@ -785,7 +785,7 @@ bool is_address(const char *p, const char *pe)
 				goto _resume;
 			}
 		}
-	_out : {
+	_out: {
 	}
 	}
 	return result;
