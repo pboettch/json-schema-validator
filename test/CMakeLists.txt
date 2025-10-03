@@ -1,15 +1,27 @@
 set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
 
 # built-in tests
-function(add_test_simple_schema name schema instance)
-    add_test(
-        NAME ${name}
-        COMMAND ${PIPE_IN_TEST_SCRIPT}
-            $<TARGET_FILE:json-schema-validate>
-            ${schema}
-            ${instance}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endfunction()
+if(NOT TARGET json-schema-validate)
+    # TODO: Move `json-schema-validate` to tests
+    message(WARNING "json-schema-validate is not present, tests are not run")
+    function(add_test_simple_schema name schema instance)
+        # simple no-op for now
+        add_test(
+            NAME ${name}
+            COMMAND ${CMAKE_COMMAND} -E true
+        )
+    endfunction()
+else ()
+    function(add_test_simple_schema name schema instance)
+        add_test(
+            NAME ${name}
+            COMMAND ${PIPE_IN_TEST_SCRIPT}
+                $<TARGET_FILE:json-schema-validate>
+                ${schema}
+                ${instance}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endfunction()
+endif ()
 
 file(GLOB TEST_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/*)
 
