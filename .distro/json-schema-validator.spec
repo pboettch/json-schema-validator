@@ -49,10 +49,10 @@ Json schema validator development files for C++ projects using nlohmann/json
 %files
 %doc README.md
 %license LICENSE
-%{_libdir}/libnlohmann_json_validator.so.*
+%{_libdir}/libnlohmann_json_schema_validator.so.*
 
 %files devel
-%{_libdir}/libnlohmann_json_validator.so
+%{_libdir}/libnlohmann_json_schema_validator.so
 %{_includedir}/nlohmann/json-schema.hpp
 %{_libdir}/cmake/nlohmann_json_schema_validator
 
