@@ -1,6 +1,9 @@
 set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
 
-# built-in tests
+# simple nlohmann_json_schema_validator-executable
+add_executable(json-schema-validate json-schema-validate.cpp)
+target_link_libraries(json-schema-validate nlohmann_json_schema_validator)
+
 function(add_test_simple_schema name schema instance)
     add_test(
         NAME ${name}

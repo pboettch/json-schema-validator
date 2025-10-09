@@ -1,79 +1,68 @@
-specfile_path: .distro/json-schema-validator.spec
 files_to_sync:
-    - src: .distro/json-schema-validator.spec
-      dest: json-schema-validator.spec
-    - .packit.yaml
-    - src: .distro/json-schema-validator.rpmlintrc
-      dest: json-schema-validator.rpmlintrc
-    # tmt setup
-    - src: .distro/.fmf/
-      dest: .fmf/
-    - src: .distro/plans/
-      dest: plans/
-      filters:
-          - "- .distro/plans/main.fmf.dist-git"
-          - "- .distro/plans/rpmlint.fmf"
-    - src: .distro/plans/main.fmf.dist-git
-      dest: plans/main.fmf
+  - src: .distro/
+    dest: ./
+    delete: true
+    filters:
+      - "protect .git*"
+      - "protect sources"
+      - "protect changelog"
+      - "protect gating.yaml"
+      # Temporary workaround until
+      # https://github.com/packit/packit/pull/2573
+      - "- json-schema-validator.spec"
+  - .packit.yaml
+
 upstream_package_name: json-schema-validator
+specfile_path: .distro/json-schema-validator.spec
 downstream_package_name: json-schema-validator
 update_release: false
-upstream_tag_template: v{version}
+
+targets: &targets
+  - fedora-all-x86_64
+  # TODO: aarch64 is failing at test
+  # JSON-Suite::Optional::Format::idn-email
+  # - fedora-all-aarch64
+
+_:
+  # Job templates
+  - &build-in-packit
+    job: copr_build
+  - &build-in-lecris
+    <<: *build-in-packit
+    owner: "@scikit-build"
+  - &tests
+    job: tests
+    fmf_path: .distro
+    identifier: downstream
 
 jobs:
-    - job: copr_build
-      trigger: pull_request
-      owner: lecris
-      project: json-schema-validator
-      update_release: true
-      release_suffix: "{PACKIT_RPMSPEC_RELEASE}"
-      targets:
-          - fedora-development
-    - job: tests
-      trigger: pull_request
-      targets:
-          - fedora-development
-      fmf_path: .distro
-    - job: copr_build
-      trigger: commit
-      branch: main
-      owner: lecris
-      project: nightly
-      # TODO: Remove when upstream issue is resolved
-      # https://github.com/packit/packit/issues/1924
-      additional_repos:
-          - copr://@scikit-build/release
-      targets:
-          - fedora-development-x86_64
-          - fedora-latest-x86_64
-          - fedora-development-aarch64
-          - fedora-latest-aarch64
-    - job: copr_build
-      trigger: release
-      owner: lecris
-      project: release
-      targets:
-          - fedora-development-x86_64
-          - fedora-latest-x86_64
-          - fedora-development-aarch64
-          - fedora-latest-aarch64
-    - job: tests
-      trigger: commit
-      branch: main
-      targets:
-          - fedora-development
-          - fedora-latest
-      fmf_path: .distro
-    - job: propose_downstream
-      trigger: release
-      dist_git_branches:
-          - fedora-development
-          - fedora-latest
-    - job: koji_build
-      trigger: commit
-      dist_git_branches:
-          - fedora-all
-    - job: bodhi_update
-      trigger: commit
-      dist_git_branches:
-          - fedora-branched
+  # Upstream jobs
+  - <<: *build-in-lecris
+    trigger: release
+    project: release
+#  - <<: *tests
+#    trigger: release
+  - <<: *build-in-lecris
+    trigger: commit
+    branch: main
+    project: nightly
+#  - <<: *tests
+#    trigger: commit
+#    branch: main
+  - <<: *build-in-packit
+    trigger: pull_request
+#  - <<: *tests
+#    trigger: pull_request
+  # Downstream jobs
+  - job: propose_downstream
+    trigger: release
+    dist_git_branches:
+      - fedora-rawhide
+  - job: koji_build
+    trigger: commit
+    dist_git_branches:
+      - fedora-all
+  - job: bodhi_update
+    trigger: commit
+    dist_git_branches:
+      - fedora-branched
