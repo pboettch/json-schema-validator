@@ -16,14 +16,15 @@ jobs:
     needs: [tests]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Create GitHub Release
-        uses: elgohr/Github-Release-Action@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          title: "Release ${{ github.ref }}"
-          tag: ${{ github.ref }}
+          name: "json-schema-validator ${{ github.ref }}"
           prerelease: false
+          draft: false
+          generate_release_notes: true
 
   build_conan:
     needs: [tests]
