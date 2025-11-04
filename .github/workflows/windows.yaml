@@ -1,0 +1,50 @@
+name: test-windows
+run-name: Tests Windows
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [ main ]
+
+defaults:
+  run:
+    shell: bash -e -l {0}
+
+jobs:
+  test:
+    name: Run ctests
+    runs-on: windows-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        json_version: [ develop, v3.12.0, v3.8.0 ]
+
+    steps:
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set conda environment
+      uses: mamba-org/setup-micromamba@main
+      with:
+        environment-name: myenv
+        environment-file: environment-dev.yml
+        init-shell: bash
+        cache-downloads: true
+        create-args: |
+          ninja
+
+    - name: Configure using cmake
+      run: cmake -Bbuild -DCMAKE_BUILD_TYPE:STING=Release -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -G Ninja
+
+    - name: Build
+      working-directory: build
+      run: ninja
+
+    - name: Run tests
+      working-directory: build
+      run: ctest -R ^test$ --output-on-failure
