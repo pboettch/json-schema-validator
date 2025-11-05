@@ -1409,7 +1409,7 @@ std::shared_ptr<schema> schema::make(json &schema,
 
 			schema.erase(attr);
 
-			// special case where we break draft-7 and allow overriding of properties when a $ref is used
+			// special case where we break draft-7 and allow overriding of properties when a $ref is used  <<-- might be out-of-date now that 2020-12 is used
 			attr = schema.find("default");
 			if (attr != schema.end()) {
 				// copy the referenced schema depending on the underlying type and modify the default value

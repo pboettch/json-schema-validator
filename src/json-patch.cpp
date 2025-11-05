@@ -9,7 +9,7 @@ namespace
 // with fixes
 const nlohmann::json patch_schema = R"patch({
     "title": "JSON schema for JSONPatch files",
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft/2020-12/schema",
     "type": "array",
 
     "items": {
