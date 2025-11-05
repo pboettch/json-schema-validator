@@ -566,12 +566,12 @@ class type_schema : public schema
 				}
 
 			if (!seen_in_enum)
-				e.error(ptr, instance, "instance not found in required enum");
+				e.error(ptr, instance, "instance not found in required enum " + enum_.second.dump());
 		}
 
 		if (const_.first &&
 		    const_.second != instance)
-			e.error(ptr, instance, "instance not const");
+			e.error(ptr, instance, "instance not const value '" + const_.second.dump() + "'");
 
 		for (auto l : logic_)
 			l->validate(ptr, instance, patch, e);
