@@ -1061,8 +1061,14 @@ class object : public schema
 			e.error(ptr, instance, "too few properties");
 
 		for (auto &r : required_)
-			if (instance.find(r) == instance.end())
+			if (instance.find(r) == instance.end()) {
+				// Skip required error if property has a default value (it will be added later)
+				auto prop = properties_.find(r);
+				if (prop != properties_.end() &&
+				    !prop->second->default_value(json::json_pointer{}, {}, e).is_null())
+					continue;
 				e.error(ptr, instance, "required property '" + r + "' not found in object");
+			}
 
 		// for each property in instance
 		for (auto &p : instance.items()) {
