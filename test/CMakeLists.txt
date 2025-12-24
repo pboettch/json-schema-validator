@@ -63,6 +63,10 @@ target_include_directories(json-patch PRIVATE ${PROJECT_SOURCE_DIR}/src)
 target_link_libraries(json-patch nlohmann_json_schema_validator)
 add_test(NAME json-patch COMMAND json-patch)
 
+add_executable(issue-required-with-default issue-required-with-default.cpp)
+target_link_libraries(issue-required-with-default nlohmann_json_schema_validator)
+add_test(NAME issue-required-with-default COMMAND issue-required-with-default)
+
 # Unit test for format checker fail at schema parsing time
 add_executable(issue-117-format-error issue-117-format-error.cpp)
 target_link_libraries(issue-117-format-error nlohmann_json_schema_validator)
