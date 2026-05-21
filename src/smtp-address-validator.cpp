@@ -670,11 +670,13 @@ static const short _address_eof_trans[] = {
 
 static const int address_start = 1;
 
-bool is_address(const char *p, const char *pe)
+bool is_address(const char *pc, const char *pec)
 {
 	int cs = 0;
 
-	const char *eof = pe;
+	const signed char *p = reinterpret_cast<const signed char *>(pc);
+	const signed char *pe = reinterpret_cast<const signed char *>(pec);
+	const signed char *eof = pe;
 
 	bool result = false;
 
