@@ -91,15 +91,15 @@ int main(void)
 	      "",
 	      "");
 
-	json_uri http("http://json-schema.org/draft-07/schema#");
+	json_uri http("http://json-schema.org/draft/2020-12/schema");
 	paths(http,
-	      "http://json-schema.org/draft-07/schema",
-	      "http://json-schema.org/draft-07",
+	      "http://json-schema.org/draft/2020-12/schema",
+	      "http://json-schema.org/draft/2020-12",
 	      "http://json-schema.org");
 
 	pointer_plain_name(http,
-	                   "http://json-schema.org/draft-07/schema",
-	                   "http://json-schema.org/draft-07",
+	                   "http://json-schema.org/draft/2020-12/schema",
+	                   "http://json-schema.org/draft/2020-12",
 	                   "http://json-schema.org");
 
 	return errors;

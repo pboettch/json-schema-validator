@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.19)
 # CMake version compatibility
 # TODO: Remove when bumping cmake >= 3.25
 if (POLICY CMP0140)
@@ -151,6 +151,9 @@ add_subdirectory(src)
 
 # Enable examples
 
+# Convert meta-schema into strings and include into build
+add_subdirectory(json-schema-spec)
+
 # Enable testings
 if (JSON_VALIDATOR_BUILD_TESTS)
     enable_testing()
@@ -160,7 +163,6 @@ endif ()
 if (JSON_VALIDATOR_BUILD_EXAMPLES)
     add_subdirectory(example)
 endif ()
-
 
 #[==============================================================================================[
 #                                       Install or Export                                       #

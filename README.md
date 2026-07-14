@@ -6,7 +6,7 @@
 
 This is a C++ library for validating JSON documents based on a
 [JSON Schema](http://json-schema.org/) which itself should validate with
-[draft-7 of JSON Schema Validation](http://json-schema.org/schema).
+[draft 2020-12 of JSON Schema Validation](http://json-schema.org/schema).
 
 First a disclaimer: *It is work in progress and
 contributions or hints or discussions are welcome.*
@@ -24,7 +24,7 @@ Although significant changes have been done for the 2nd version
 (a complete rewrite) the API is compatible with the 1.0.0 release. Except for
 the namespace which is now `nlohmann::json_schema`.
 
-Version **2** supports JSON schema draft 7, whereas 1 was supporting draft 4
+Version **2** supports JSON schema draft 2020-12, whereas 1 was supporting draft 4
 only. Please update your schemas.
 
 The primary change in 2 is the way a schema is used. While in version 1 the schema was
@@ -170,7 +170,7 @@ using nlohmann::json_schema::json_validator;
 // The schema is defined based upon a string literal
 static json person_schema = R"(
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft/2020-12/schema",
     "title": "A person",
     "properties": {
         "name": {
@@ -314,7 +314,7 @@ using nlohmann::json_schema::json_validator;
 
 static const json rectangle_schema = R"(
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "http://json-schema.org/draft/2020-12/schema",
     "title": "A rectangle",
     "properties": {
         "width": {
@@ -353,7 +353,7 @@ int main()
 
 The example above will output the specified default values `{"height":10,"width":20}` to stdout.
 
-> Note that the default value specified in a `$ref` may be overridden by the current instance location. Also note that this behavior will break draft-7, but it is compliant to newer drafts (e.g. `2019-09` or `2020-12`).
+> Note that the default value specified in a `$ref` may be overridden by the current instance location. Also note that this behavior will break draft 2020-12, but it is compliant to newer drafts (e.g. `2019-09` or `2020-12`).
 
 # Contributing
 

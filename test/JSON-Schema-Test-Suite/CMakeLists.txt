@@ -1,6 +1,6 @@
 set(JSON_SCHEMA_TEST_PREFIX "JSON-Suite" CACHE STRING "prefix for JSON-tests added to ctest")
 
-set(DRAFT "draft7")
+set(DRAFT "draft_2020-12")
 
 # find schema-test-suite
 find_path(JSON_SCHEMA_TEST_SUITE_PATH
