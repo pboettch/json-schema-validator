@@ -28,7 +28,7 @@ static void loader(const json_uri &uri, json &schema)
 	fn += uri.path();
 	std::cerr << fn << "\n";
 
-	std::fstream s(fn.c_str());
+	std::ifstream s(fn);
 	if (!s.good())
 		throw std::invalid_argument("could not open " + uri.url() + " for schema loading\n");
 

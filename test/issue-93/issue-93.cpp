@@ -39,7 +39,9 @@ int main(void)
 {
 	json_validator validator(loader);
 
-	std::fstream f("blueprints.schema.json");
+	std::ifstream f("blueprints.schema.json");
+	if (!f.good())
+		throw std::invalid_argument("Could not open main schema file");
 
 	json schema;
 	f >> schema;
