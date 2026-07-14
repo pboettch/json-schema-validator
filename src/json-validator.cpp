@@ -588,9 +588,6 @@ class type_schema : public schema
 					else_->validate(ptr, instance, patch, e);
 			}
 		}
-		if (instance.is_null()) {
-			patch.add(nlohmann::json::json_pointer{}, default_value_);
-		}
 	}
 
 protected:
