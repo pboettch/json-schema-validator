@@ -395,7 +395,7 @@ void default_string_format_check(const std::string &format, const std::string &v
 		try {
 			REGEX_NAMESPACE::regex re(value, std::regex::ECMAScript);
 		} catch (std::exception &exception) {
-			throw exception;
+			throw;
 		}
 	} else {
 		/* yet unsupported JSON schema draft 7 built-ins */
