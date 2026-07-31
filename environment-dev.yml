@@ -1,0 +1,7 @@
+name: json-schema-validator
+channels:
+- conda-forge
+dependencies:
+- cmake
+- ninja
+- nlohmann_json
