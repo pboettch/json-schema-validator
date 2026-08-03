@@ -364,11 +364,11 @@ void default_string_format_check(const std::string &format, const std::string &v
 		if (!is_ascii(value)) {
 			throw std::invalid_argument(value + " contains non-ASCII values, not RFC 5321 compliant.");
 		}
-		if (!is_address(&*value.begin(), &*value.end())) {
+		if (!is_address(value.data(), value.data() + value.size())) {
 			throw std::invalid_argument(value + " is not a valid email according to RFC 5321.");
 		}
 	} else if (format == "idn-email") {
-		if (!is_address(&*value.begin(), &*value.end())) {
+		if (!is_address(value.data(), value.data() + value.size())) {
 			throw std::invalid_argument(value + " is not a valid idn-email according to RFC 6531.");
 		}
 	} else if (format == "hostname") {
