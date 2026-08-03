@@ -98,5 +98,12 @@ int main()
 
 	numberOfErrors += testStringFormat("uri", uriChecks);
 
+	const std::vector<std::pair<std::string, bool>> emailChecks{
+	    {"test@example.com", true},
+	    {"", false}};
+
+	numberOfErrors += testStringFormat("email", emailChecks);
+	numberOfErrors += testStringFormat("idn-email", emailChecks);
+
 	return numberOfErrors;
 }
