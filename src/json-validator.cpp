@@ -371,22 +371,14 @@ public:
 namespace
 {
 
-class first_error_handler : public error_handler
+class bool_error_handler : public error_handler
 {
 public:
 	bool error_{false};
-	json::json_pointer ptr_;
-	json instance_;
-	std::string message_;
 
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const json::json_pointer &, const json &, const std::string &) override
 	{
-		if (*this)
-			return;
 		error_ = true;
-		ptr_ = ptr;
-		instance_ = instance;
-		message_ = message;
 	}
 
 	operator bool() const { return error_; }
@@ -398,10 +390,10 @@ class logical_not : public schema
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
-		first_error_handler esub;
-		subschema_->validate(ptr, instance, patch, esub);
+		bool_error_handler has_errors{};
+		subschema_->validate(ptr, instance, patch, has_errors);
 
-		if (!esub)
+		if (!has_errors)
 			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
 	}
 
@@ -577,10 +569,10 @@ class type_schema : public schema
 			l->validate(ptr, instance, patch, e);
 
 		if (if_) {
-			first_error_handler err;
+			bool_error_handler has_errors{};
+			if_->validate(ptr, instance, patch, has_errors);
 
-			if_->validate(ptr, instance, patch, err);
-			if (!err) {
+			if (!has_errors) {
 				if (then_)
 					then_->validate(ptr, instance, patch, e);
 			} else {
@@ -1088,10 +1080,7 @@ class object : public schema
 
 			// check additionalProperties as a last resort
 			if (!a_prop_or_pattern_matched && additionalProperties_) {
-				first_error_handler additional_prop_err;
-				additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_prop_err);
-				if (additional_prop_err)
-					e.error(ptr, instance, "validation failed for additional property '" + p.key() + "': " + additional_prop_err.message_);
+				additionalProperties_->validate(ptr / p.key(), p.value(), patch, e);
 			}
 		}
 
@@ -1252,9 +1241,9 @@ class array : public schema
 		if (contains_) {
 			bool contained = false;
 			for (auto &item : instance) {
-				first_error_handler local_e;
-				contains_->validate(ptr, item, patch, local_e);
-				if (!local_e) {
+				bool_error_handler has_errors;
+				contains_->validate(ptr, item, patch, has_errors);
+				if (!has_errors) {
 					contained = true;
 					break;
 				}

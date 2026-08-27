@@ -90,7 +90,7 @@ int main(void)
 	EXPECT_EQ(err.failed_pointers.size(), 3);
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
 	EXPECT_EQ(err.failed_pointers[1].to_string(), "");
-	EXPECT_EQ(err.failed_pointers[2].to_string(), "");
+	EXPECT_EQ(err.failed_pointers[2].to_string(), "/street");
 	err.reset();
 
 	validator.validate({{"age", 42}, {"name", 12}}, err); // name must be a string
@@ -103,7 +103,7 @@ int main(void)
 	                       {"name", "John"},
 	                       {"phones", {1234, "223"}},
 	                   },
-	                   err); // name must be a string
+	                   err); // items of phones must be numbers
 	EXPECT_EQ(err.failed_pointers.size(), 1);
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "/phones/1");
 	err.reset();
@@ -114,9 +114,9 @@ int main(void)
 	                       {"phones", {0}},
 	                       {"post-code", 12345},
 	                   },
-	                   err); // name must be a string
+	                   err); // invalid additional property post-code
 	EXPECT_EQ(err.failed_pointers.size(), 1);
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "/post-code");
 	err.reset();
 
 	return error_count;
