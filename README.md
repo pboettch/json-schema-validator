@@ -226,11 +226,11 @@ int main()
     /* json-parse the people - with custom error handler */
     class custom_error_handler : public nlohmann::json_schema::basic_error_handler
     {
-        void error(const nlohmann::json_pointer<nlohmann::basic_json<>> &pointer, const json &instance,
-            const std::string &message) override
+        void error(const nlohmann::json_schema::validation_error &error) override
         {
-            nlohmann::json_schema::basic_error_handler::error(pointer, instance, message);
-            std::cerr << "ERROR: '" << pointer << "' - '" << instance << "': " << message << "\n";
+            nlohmann::json_schema::basic_error_handler::error(error);
+            std::cerr << "ERROR: '" << error.instance_location << "' - '"
+                      << error.instance << "': " << error.message << "\n";
         }
     };
 
@@ -251,6 +251,35 @@ int main()
     return EXIT_SUCCESS;
 }
 ```
+
+## Validation errors
+
+Every `error_handler` callback receives a `validation_error` containing the instance
+location, instance value, human-readable message, failed JSON Schema `keyword`, and an
+extensible `details` object. When available, the schema keyword value is stored in
+`details["value"]`; other keyword-specific information can be added alongside it.
+
+Keyword details are initially populated for `enum` and `const` failures. Other failures use
+an empty keyword and an empty details object.
+
+```C++
+class collecting_handler : public nlohmann::json_schema::error_handler
+{
+    void error(const nlohmann::json_schema::validation_error &error) override
+    {
+        std::cerr << "ERROR: '" << error.instance_location << "' - '"
+                  << error.instance << "': " << error.message << "\n";
+
+        if (error.keyword == "enum")
+            std::cerr << "Allowed values: " << error.details.at("value") << "\n";
+    }
+};
+```
+
+Keyword details are preserved when errors are propagated through `allOf`, `anyOf`, and
+`oneOf`. Applications which only need to know whether validation failed can use
+`basic_error_handler`, which provides boolean state and `reset()`. This structured callback
+replaces the previous three-argument `error()` virtual function.
 
 # Compliance
 

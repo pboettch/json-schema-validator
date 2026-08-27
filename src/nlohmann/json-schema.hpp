@@ -134,12 +134,23 @@ typedef std::function<void(const json_uri & /*id*/, json & /*value*/)> schema_lo
 typedef std::function<void(const std::string & /*format*/, const std::string & /*value*/)> format_checker;
 typedef std::function<void(const std::string & /*contentEncoding*/, const std::string & /*contentMediaType*/, const json & /*instance*/)> content_checker;
 
-// Interface for validation error handlers
+// Machine-readable details for a validation failure. The keyword is empty when the validator
+// does not provide schema-keyword details for that failure. Keyword-specific information,
+// including the schema keyword value when available, belongs in details.
+struct validation_error {
+	json::json_pointer instance_location;
+	json instance;
+	std::string message;
+	std::string keyword;
+	json details;
+};
+
+// Interface for validation error handlers.
 class JSON_SCHEMA_VALIDATOR_API error_handler
 {
 public:
 	virtual ~error_handler() {}
-	virtual void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) = 0;
+	virtual void error(const validation_error & /*error*/) = 0;
 };
 
 class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
@@ -147,7 +158,7 @@ class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
 	bool error_{false};
 
 public:
-	void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) override
+	void error(const validation_error & /*error*/) override
 	{
 		error_ = true;
 	}

@@ -86,7 +86,7 @@ class schema_ref : public schema
 		if (target)
 			target->validate(ptr, instance, patch, e);
 		else
-			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+			e.error(validation_error{ptr, instance, "unresolved or freed schema-reference " + id_, {}, json::object()});
 	}
 
 	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override final
@@ -98,7 +98,7 @@ class schema_ref : public schema
 		if (target)
 			return target->default_value(ptr, instance, e);
 
-		e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+		e.error(validation_error{ptr, instance, "unresolved or freed schema-reference " + id_, {}, json::object()});
 
 		return default_value_;
 	}
@@ -344,20 +344,20 @@ public:
 	              const json_uri &initial) const
 	{
 		if (!root_) {
-			e.error(ptr, "", "no root schema has yet been set for validating an instance");
+			e.error(validation_error{ptr, "", "no root schema has yet been set for validating an instance", {}, json::object()});
 			return;
 		}
 
 		auto file_entry = files_.find(initial.location());
 		if (file_entry == files_.end()) {
-			e.error(ptr, "", "no file found serving requested root-URI. " + initial.location());
+			e.error(validation_error{ptr, "", "no file found serving requested root-URI. " + initial.location(), {}, json::object()});
 			return;
 		}
 
 		auto &file = file_entry->second;
 		auto sch = file.schemas.find(initial.fragment());
 		if (sch == file.schemas.end()) {
-			e.error(ptr, "", "no schema find for request initial URI: " + initial.to_string());
+			e.error(validation_error{ptr, "", "no schema find for request initial URI: " + initial.to_string(), {}, json::object()});
 			return;
 		}
 
@@ -374,22 +374,18 @@ namespace
 class first_error_handler : public error_handler
 {
 public:
-	bool error_{false};
-	json::json_pointer ptr_;
-	json instance_;
-	std::string message_;
+	bool has_error_{false};
+	validation_error first_error_{json::json_pointer{}, nullptr, {}, {}, json::object()};
 
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const validation_error &error) override
 	{
 		if (*this)
 			return;
-		error_ = true;
-		ptr_ = ptr;
-		instance_ = instance;
-		message_ = message;
+		has_error_ = true;
+		first_error_ = error;
 	}
 
-	operator bool() const { return error_; }
+	operator bool() const { return has_error_; }
 };
 
 class logical_not : public schema
@@ -402,7 +398,7 @@ class logical_not : public schema
 		subschema_->validate(ptr, instance, patch, esub);
 
 		if (!esub)
-			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
+			e.error(validation_error{ptr, instance, "the subschema has succeeded, but it is required to not validate", {}, json::object()});
 	}
 
 	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
@@ -429,23 +425,20 @@ enum logical_combination_types {
 class logical_combination_error_handler : public error_handler
 {
 public:
-	struct error_entry {
-		json::json_pointer ptr_;
-		json instance_;
-		std::string message_;
-	};
+	std::vector<validation_error> error_entry_list_;
 
-	std::vector<error_entry> error_entry_list_;
-
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const validation_error &error) override
 	{
-		error_entry_list_.push_back(error_entry{ptr, instance, message});
+		error_entry_list_.push_back(error);
 	}
 
-	void propagate(error_handler &e, const std::string &prefix) const
+	void propagate(error_handler &handler, const std::string &prefix) const
 	{
-		for (const error_entry &entry : error_entry_list_)
-			e.error(entry.ptr_, entry.instance_, prefix + entry.message_);
+		for (const validation_error &error : error_entry_list_) {
+			validation_error prefixed_error = error;
+			prefixed_error.message = prefix + error.message;
+			handler.error(prefixed_error);
+		}
 	}
 
 	operator bool() const { return !error_entry_list_.empty(); }
@@ -478,7 +471,7 @@ class logical_combination : public schema
 		}
 
 		if (count == 0) {
-			e.error(ptr, instance, "no subschema has succeeded, but one of them is required to validate. Type: " + key + ", number of failed subschemas: " + std::to_string(subschemata_.size()));
+			e.error(validation_error{ptr, instance, "no subschema has succeeded, but one of them is required to validate. Type: " + key + ", number of failed subschemas: " + std::to_string(subschemata_.size()), {}, json::object()});
 			error_summary.propagate(e, "[combination: " + key + " / ");
 		}
 	}
@@ -513,7 +506,8 @@ template <>
 bool logical_combination<allOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &e, const logical_combination_error_handler &esub, size_t, size_t current_schema_index)
 {
 	if (esub) {
-		e.error(esub.error_entry_list_.front().ptr_, esub.error_entry_list_.front().instance_, "at least one subschema has failed, but all of them are required to validate - " + esub.error_entry_list_.front().message_);
+		const validation_error &first_error = esub.error_entry_list_.front();
+		e.error(validation_error{first_error.instance_location, first_error.instance, "at least one subschema has failed, but all of them are required to validate - " + first_error.message, {}, json::object()});
 		esub.propagate(e, "[combination: allOf / case#" + std::to_string(current_schema_index) + "] ");
 	}
 	return esub;
@@ -529,7 +523,7 @@ template <>
 bool logical_combination<oneOf>::is_validate_complete(const json &instance, const json::json_pointer &ptr, error_handler &e, const logical_combination_error_handler &, size_t count, size_t)
 {
 	if (count > 1)
-		e.error(ptr, instance, "more than one subschema has succeeded, but exactly one of them is required to validate");
+		e.error(validation_error{ptr, instance, "more than one subschema has succeeded, but exactly one of them is required to validate", {}, json::object()});
 	return count > 1;
 }
 
@@ -555,7 +549,7 @@ class type_schema : public schema
 		if (type)
 			type->validate(ptr, instance, patch, e);
 		else
-			e.error(ptr, instance, "unexpected instance type");
+			e.error(validation_error{ptr, instance, "unexpected instance type", {}, json::object()});
 
 		if (enum_.first) {
 			bool seen_in_enum = false;
@@ -566,12 +560,12 @@ class type_schema : public schema
 				}
 
 			if (!seen_in_enum)
-				e.error(ptr, instance, "instance not found in required enum");
+				e.error(validation_error{ptr, instance, "instance not found in required enum", "enum", {{"value", enum_.second}}});
 		}
 
 		if (const_.first &&
 		    const_.second != instance)
-			e.error(ptr, instance, "instance not const");
+			e.error(validation_error{ptr, instance, "instance not const", "const", {{"value", const_.second}}});
 
 		for (auto l : logic_)
 			l->validate(ptr, instance, patch, e);
@@ -764,7 +758,7 @@ class string : public schema
 			if (utf8_length(instance.get<std::string>()) < minLength_.second) {
 				std::ostringstream s;
 				s << "instance is too short as per minLength:" << minLength_.second;
-				e.error(ptr, instance, s.str());
+				e.error(validation_error{ptr, instance, s.str(), {}, json::object()});
 			}
 		}
 
@@ -772,22 +766,22 @@ class string : public schema
 			if (utf8_length(instance.get<std::string>()) > maxLength_.second) {
 				std::ostringstream s;
 				s << "instance is too long as per maxLength: " << maxLength_.second;
-				e.error(ptr, instance, s.str());
+				e.error(validation_error{ptr, instance, s.str(), {}, json::object()});
 			}
 		}
 
 		if (std::get<0>(content_)) {
 			if (root_->content_check() == nullptr)
-				e.error(ptr, instance, std::string("a content checker was not provided but a contentEncoding or contentMediaType for this string have been present: '") + std::get<1>(content_) + "' '" + std::get<2>(content_) + "'");
+				e.error(validation_error{ptr, instance, std::string("a content checker was not provided but a contentEncoding or contentMediaType for this string have been present: '") + std::get<1>(content_) + "' '" + std::get<2>(content_) + "'", {}, json::object()});
 			else {
 				try {
 					root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
 				} catch (const std::exception &ex) {
-					e.error(ptr, instance, std::string("content-checking failed: ") + ex.what());
+					e.error(validation_error{ptr, instance, std::string("content-checking failed: ") + ex.what(), {}, json::object()});
 				}
 			}
 		} else if (instance.type() == json::value_t::binary) {
-			e.error(ptr, instance, "expected string, but get binary data");
+			e.error(validation_error{ptr, instance, "expected string, but get binary data", {}, json::object()});
 		}
 
 		if (instance.type() != json::value_t::string) {
@@ -797,17 +791,17 @@ class string : public schema
 #ifndef NO_STD_REGEX
 		if (pattern_.first &&
 		    !REGEX_NAMESPACE::regex_search(instance.get<std::string>(), pattern_.second))
-			e.error(ptr, instance, "instance does not match regex pattern: " + patternString_);
+			e.error(validation_error{ptr, instance, "instance does not match regex pattern: " + patternString_, {}, json::object()});
 #endif
 
 		if (format_.first) {
 			if (root_->format_check() == nullptr)
-				e.error(ptr, instance, std::string("a format checker was not provided but a format keyword for this string is present: ") + format_.second);
+				e.error(validation_error{ptr, instance, std::string("a format checker was not provided but a format keyword for this string is present: ") + format_.second, {}, json::object()});
 			else {
 				try {
 					root_->format_check()(format_.second, instance.get<std::string>());
 				} catch (const std::exception &ex) {
-					e.error(ptr, instance, std::string("format-checking failed: ") + ex.what());
+					e.error(validation_error{ptr, instance, std::string("format-checking failed: ") + ex.what(), {}, json::object()});
 				}
 			}
 		}
@@ -933,7 +927,7 @@ class numeric : public schema
 		auto size = oss.tellp();
 		if (size != 0) {
 			oss.seekp(0, std::ios::beg);
-			e.error(ptr, instance, oss.str());
+			e.error(validation_error{ptr, instance, oss.str(), {}, json::object()});
 		}
 	}
 
@@ -980,7 +974,7 @@ class null : public schema
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		if (!instance.is_null())
-			e.error(ptr, instance, "expected to be null");
+			e.error(validation_error{ptr, instance, "expected to be null", {}, json::object()});
 	}
 
 public:
@@ -1007,11 +1001,11 @@ class boolean : public schema
 			// switch (instance.type()) {
 			// case json::value_t::array:
 			//	if (instance.size() != 0) // valid false-schema
-			//		e.error(ptr, instance, "false-schema required empty array");
+			//		e.error(validation_error{ptr, instance, "false-schema required empty array", {}, json::object()});
 			//	return;
 			//}
 
-			e.error(ptr, instance, "instance invalid as per false-schema");
+			e.error(validation_error{ptr, instance, "instance invalid as per false-schema", {}, json::object()});
 		}
 	}
 
@@ -1028,7 +1022,7 @@ class required : public schema
 	{
 		for (auto &r : required_)
 			if (instance.find(r) == instance.end())
-				e.error(ptr, instance, "required property '" + r + "' not found in object as a dependency");
+				e.error(validation_error{ptr, instance, "required property '" + r + "' not found in object as a dependency", {}, json::object()});
 	}
 
 public:
@@ -1055,14 +1049,14 @@ class object : public schema
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override
 	{
 		if (maxProperties_.first && instance.size() > maxProperties_.second)
-			e.error(ptr, instance, "too many properties");
+			e.error(validation_error{ptr, instance, "too many properties", {}, json::object()});
 
 		if (minProperties_.first && instance.size() < minProperties_.second)
-			e.error(ptr, instance, "too few properties");
+			e.error(validation_error{ptr, instance, "too few properties", {}, json::object()});
 
 		for (auto &r : required_)
 			if (instance.find(r) == instance.end())
-				e.error(ptr, instance, "required property '" + r + "' not found in object");
+				e.error(validation_error{ptr, instance, "required property '" + r + "' not found in object", {}, json::object()});
 
 		// for each property in instance
 		for (auto &p : instance.items()) {
@@ -1090,8 +1084,13 @@ class object : public schema
 			if (!a_prop_or_pattern_matched && additionalProperties_) {
 				first_error_handler additional_prop_err;
 				additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_prop_err);
-				if (additional_prop_err)
-					e.error(ptr, instance, "validation failed for additional property '" + p.key() + "': " + additional_prop_err.message_);
+				if (additional_prop_err) {
+					validation_error error = additional_prop_err.first_error_;
+					error.instance_location = ptr;
+					error.instance = instance;
+					error.message = "validation failed for additional property '" + p.key() + "': " + error.message;
+					e.error(error);
+				}
 			}
 		}
 
@@ -1212,16 +1211,16 @@ class array : public schema
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override
 	{
 		if (maxItems_.first && instance.size() > maxItems_.second)
-			e.error(ptr, instance, "array has too many items");
+			e.error(validation_error{ptr, instance, "array has too many items", {}, json::object()});
 
 		if (minItems_.first && instance.size() < minItems_.second)
-			e.error(ptr, instance, "array has too few items");
+			e.error(validation_error{ptr, instance, "array has too few items", {}, json::object()});
 
 		if (uniqueItems_) {
 			for (auto it = instance.cbegin(); it != instance.cend(); ++it) {
 				auto v = std::find(it + 1, instance.end(), *it);
 				if (v != instance.end())
-					e.error(ptr, instance, "items have to be unique for this array");
+					e.error(validation_error{ptr, instance, "items have to be unique for this array", {}, json::object()});
 			}
 		}
 
@@ -1260,7 +1259,7 @@ class array : public schema
 				}
 			}
 			if (!contained)
-				e.error(ptr, instance, "array does not contain required element as per 'contains'");
+				e.error(validation_error{ptr, instance, "array does not contain required element as per 'contains'", {}, json::object()});
 		}
 	}
 
@@ -1441,9 +1440,9 @@ std::shared_ptr<schema> schema::make(json &schema,
 
 class throwing_error_handler : public error_handler
 {
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const validation_error &error) override
 	{
-		throw std::invalid_argument(std::string("At ") + ptr.to_string() + " of " + instance.dump() + " - " + message + "\n");
+		throw std::invalid_argument(std::string("At ") + error.instance_location.to_string() + " of " + error.instance.dump() + " - " + error.message + "\n");
 	}
 };
 

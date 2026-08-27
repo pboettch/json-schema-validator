@@ -20,9 +20,9 @@ static const json schema = R"(
 
 class custom_error_handler : public nlohmann::json_schema::basic_error_handler
 {
-	void error(const nlohmann::json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const nlohmann::json_schema::validation_error &error) override
 	{
-		if (message != "instance exceeds maximum of 3.141592653589793")
+		if (error.message != "instance exceeds maximum of 3.141592653589793")
 			throw std::invalid_argument("Precision print does not work.");
 	}
 };

@@ -126,9 +126,9 @@ public:
 	}
 
 private:
-	auto error(const nlohmann::json::json_pointer &ptr, const nlohmann::json &instance, const std::string &message) -> void override
+	auto error(const nlohmann::json_schema::validation_error &error) -> void override
 	{
-		m_error_list.push_back(ErrorEntry{ptr, instance, message});
+		m_error_list.push_back(ErrorEntry{error.instance_location, error.instance, error.message});
 	}
 
 	ErrorEntryList m_error_list;
