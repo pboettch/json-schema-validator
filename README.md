@@ -259,8 +259,31 @@ location, instance value, human-readable message, failed JSON Schema `keyword`, 
 extensible `details` object. When available, the schema keyword value is stored in
 `details["value"]`; other keyword-specific information can be added alongside it.
 
-Keyword details are initially populated for `enum` and `const` failures. Other failures use
-an empty keyword and an empty details object.
+Structured details are provided for scalar, object, array, reference, and logical-combination
+constraints. This includes `type`, numeric and length limits, `pattern`, `format`, content
+keywords, `required`, dependencies, property and item constraints, `enum`, `const`, `$ref`,
+`not`, `allOf`, `anyOf`, and `oneOf`.
+
+The details object uses the following common members:
+
+| Member                                   | Meaning                                                        |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| `value`                                  | Parsed value of the failed schema keyword, when retained       |
+| `actual_type`                            | JSON type of the instance for a `type` failure                 |
+| `missing_property`                       | Required property which is absent                              |
+| `property`                               | Property associated with an object constraint                  |
+| `duplicate`                              | Repeated value for a `uniqueItems` failure                     |
+| `reason`                                 | Error reported by a format or content checker                  |
+| `content_media_type`                     | Media type paired with a `contentEncoding` failure             |
+| `failed_subschema` / `failed_subschemas` | Logical-combination branch information                         |
+| `successful_subschemas`                  | Successful `oneOf` branches when validation stopped            |
+| `location` / `fragment`                  | Requested schema location for setup failures                   |
+| `code`                                   | Stable identifier for a non-keyword validator or setup failure |
+
+Validator-level failures are identified through `details["code"]`; the code may accompany
+a schema keyword when an applicator wraps the underlying failure. Schema-valued applicators
+such as `contains` and logical combinations report branch or count information rather than
+copying their complete subschemas into every error.
 
 ```C++
 class collecting_handler : public nlohmann::json_schema::error_handler
@@ -278,8 +301,7 @@ class collecting_handler : public nlohmann::json_schema::error_handler
 
 Keyword details are preserved when errors are propagated through `allOf`, `anyOf`, and
 `oneOf`. Applications which only need to know whether validation failed can use
-`basic_error_handler`, which provides boolean state and `reset()`. This structured callback
-replaces the previous three-argument `error()` virtual function.
+`basic_error_handler`, which provides boolean state and `reset()`.
 
 # Compliance
 
