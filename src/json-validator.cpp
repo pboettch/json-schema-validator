@@ -390,8 +390,10 @@ class logical_not : public schema
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
+		auto size = patch.save();
 		bool_error_handler has_errors{};
 		subschema_->validate(ptr, instance, patch, has_errors);
+		patch.restore(size);
 
 		if (!has_errors)
 			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
@@ -456,12 +458,12 @@ class logical_combination : public schema
 		for (std::size_t index = 0; index < subschemata_.size(); ++index) {
 			const std::shared_ptr<schema> &s = subschemata_[index];
 			logical_combination_error_handler esub;
-			auto oldPatchSize = patch.get_json().size();
+			auto size = patch.save();
 			s->validate(ptr, instance, patch, esub);
 			if (!esub)
 				count++;
 			else {
-				patch.get_json().get_ref<nlohmann::json::array_t &>().resize(oldPatchSize);
+				patch.restore(size);
 				esub.propagate(error_summary, "case#" + std::to_string(index) + "] ");
 			}
 
@@ -569,6 +571,7 @@ class type_schema : public schema
 			l->validate(ptr, instance, patch, e);
 
 		if (if_) {
+			auto size = patch.save();
 			bool_error_handler has_errors{};
 			if_->validate(ptr, instance, patch, has_errors);
 
@@ -576,6 +579,7 @@ class type_schema : public schema
 				if (then_)
 					then_->validate(ptr, instance, patch, e);
 			} else {
+				patch.restore(size);
 				if (else_)
 					else_->validate(ptr, instance, patch, e);
 			}
@@ -1242,11 +1246,12 @@ class array : public schema
 			bool contained = false;
 			for (auto &item : instance) {
 				bool_error_handler has_errors;
+				auto size = patch.save();
 				contains_->validate(ptr, item, patch, has_errors);
-				if (!has_errors) {
+				if (has_errors)
+					patch.restore(size);
+				else
 					contained = true;
-					break;
-				}
 			}
 			if (!contained)
 				e.error(ptr, instance, "array does not contain required element as per 'contains'");

@@ -100,3 +100,7 @@ add_test(NAME issue-105-verbose-combination-errors COMMAND issue-105-verbose-com
 add_executable(issue-383-additional-properties issue-383-additional-properties.cpp)
 target_link_libraries(issue-383-additional-properties nlohmann_json_schema_validator)
 add_test(NAME issue-383-additional-properties COMMAND issue-383-additional-properties)
+
+add_executable(issue-383-conditional-default issue-383-conditional-default.cpp)
+target_link_libraries(issue-383-conditional-default nlohmann_json_schema_validator)
+add_test(NAME issue-383-conditional-default COMMAND issue-383-conditional-default)
