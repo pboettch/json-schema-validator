@@ -150,7 +150,19 @@ class JSON_SCHEMA_VALIDATOR_API error_handler
 {
 public:
 	virtual ~error_handler() {}
-	virtual void error(const validation_error & /*error*/) = 0;
+
+	// New handlers should override this structured callback. By default it forwards to
+	// the original callback below so existing handlers remain source-compatible.
+	virtual void error(const validation_error &error)
+	{
+		this->error(error.instance_location, error.instance, error.message);
+	}
+
+	virtual void error(const json::json_pointer & /*ptr*/,
+	                   const json & /*instance*/,
+	                   const std::string & /*message*/)
+	{
+	}
 };
 
 class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
@@ -158,7 +170,14 @@ class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
 	bool error_{false};
 
 public:
-	void error(const validation_error & /*error*/) override
+	void error(const validation_error &error) override
+	{
+		error_handler::error(error);
+	}
+
+	void error(const json::json_pointer & /*ptr*/,
+	           const json & /*instance*/,
+	           const std::string & /*message*/) override
 	{
 		error_ = true;
 	}

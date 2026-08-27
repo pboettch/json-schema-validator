@@ -36,6 +36,24 @@ public:
 	std::vector<validation_error> errors;
 };
 
+class legacy_error_handler : public basic_error_handler
+{
+	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+	{
+		basic_error_handler::error(ptr, instance, message);
+		location = ptr.to_string();
+		reported_instance = instance;
+		reported_message = message;
+		count++;
+	}
+
+public:
+	int count{0};
+	std::string location;
+	json reported_instance;
+	std::string reported_message;
+};
+
 void expect_single_error(const json &schema, const json &instance, const std::string &keyword, const json &details)
 {
 	json_validator validator(schema);
@@ -359,6 +377,20 @@ void test_basic_error_handler()
 	EXPECT_EQ(static_cast<bool>(errors), false);
 }
 
+void test_legacy_error_handler()
+{
+	const json schema = {{"enum", {"red", "green"}}};
+	json_validator validator(schema);
+	legacy_error_handler errors;
+
+	validator.validate("blue", errors);
+	EXPECT_EQ(errors.count, 1);
+	EXPECT_EQ(errors.location, "");
+	EXPECT_EQ(errors.reported_instance, "blue");
+	EXPECT_EQ(errors.reported_message.empty(), false);
+	EXPECT_EQ(static_cast<bool>(errors), true);
+}
+
 } // namespace
 
 int main()
@@ -380,5 +412,6 @@ int main()
 	test_details_survive_additional_properties();
 	test_non_keyword_error_details();
 	test_basic_error_handler();
+	test_legacy_error_handler();
 	return error_count;
 }

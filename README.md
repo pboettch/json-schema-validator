@@ -254,10 +254,14 @@ int main()
 
 ## Validation errors
 
-Every `error_handler` callback receives a `validation_error` containing the instance
+New `error_handler` implementations receive a `validation_error` containing the instance
 location, instance value, human-readable message, failed JSON Schema `keyword`, and an
 extensible `details` object. When available, the schema keyword value is stored in
 `details["value"]`; other keyword-specific information can be added alongside it.
+
+Handlers which override the previous three-argument callback remain source-compatible. The
+structured callback forwards to that overload by default; new handlers should override the
+structured callback directly.
 
 Structured details are provided for scalar, object, array, reference, and logical-combination
 constraints. This includes `type`, numeric and length limits, `pattern`, `format`, content
