@@ -1082,12 +1082,12 @@ class object : public schema
 	std::vector<std::pair<REGEX_NAMESPACE::regex, std::shared_ptr<schema>>> patternProperties_;
 #endif
 	std::shared_ptr<schema> additionalProperties_;
-	json additionalPropertiesKeyword_;
+	bool denyAdditionalProperties_{false};
 
 	std::map<std::string, std::shared_ptr<schema>> dependencies_;
 
 	std::shared_ptr<schema> propertyNames_;
-	json propertyNamesKeyword_;
+	bool denyPropertyNames_{false};
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override
 	{
@@ -1104,8 +1104,10 @@ class object : public schema
 		// for each property in instance
 		for (auto &p : instance.items()) {
 			if (propertyNames_) {
-				annotating_error_handler property_name_error(e, "propertyNames", propertyNamesKeyword_, {{"property", p.key()}});
+				annotating_error_handler property_name_error(e, "propertyNames", nullptr, {{"property", p.key()}});
 				propertyNames_->validate(ptr, p.key(), patch, property_name_error);
+			} else if (denyPropertyNames_) {
+				e.error(validation_error{ptr, p.key(), "invalid property name '" + p.key() + "'", "propertyNames", {{"value", false}, {"property", p.key()}}});
 			}
 
 			bool a_prop_or_pattern_matched = false;
@@ -1126,22 +1128,23 @@ class object : public schema
 #endif
 
 			// check additionalProperties as a last resort
-			if (!a_prop_or_pattern_matched && additionalProperties_) {
-				first_error_handler additional_prop_err;
-				additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_prop_err);
-				if (additional_prop_err) {
-					validation_error error = additional_prop_err.first_error_;
-					error.instance_location = ptr;
-					error.instance = instance;
-					error.message = "validation failed for additional property '" + p.key() + "': " + error.message;
-					if (!error.details.contains("property"))
-						error.details["property"] = p.key();
-					if (error.keyword.empty()) {
-						error.keyword = "additionalProperties";
-						if (!additionalPropertiesKeyword_.is_null())
-							error.details["value"] = additionalPropertiesKeyword_;
+			if (!a_prop_or_pattern_matched) {
+				if (additionalProperties_) {
+					first_error_handler additional_prop_err;
+					additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_prop_err);
+					if (additional_prop_err) {
+						validation_error error = additional_prop_err.first_error_;
+						error.instance_location = ptr;
+						error.instance = instance;
+						error.message = "validation failed for additional property '" + p.key() + "': " + error.message;
+						if (!error.details.contains("property"))
+							error.details["property"] = p.key();
+						if (error.keyword.empty())
+							error.keyword = "additionalProperties";
+						e.error(error);
 					}
-					e.error(error);
+				} else if (denyAdditionalProperties_) {
+					e.error(validation_error{ptr, instance, "unexpected additional property '" + p.key() + "'", "additionalProperties", {{"value", false}, {"property", p.key()}}});
 				}
 			}
 		}
@@ -1212,9 +1215,11 @@ public:
 
 		attr = sch.find("additionalProperties");
 		if (attr != sch.end()) {
+			auto additionalProperties = schema::make(attr.value(), root, {"additionalProperties"}, uris);
 			if (attr.value().is_boolean())
-				additionalPropertiesKeyword_ = attr.value();
-			additionalProperties_ = schema::make(attr.value(), root, {"additionalProperties"}, uris);
+				denyAdditionalProperties_ = !attr.value().get<bool>();
+			else
+				additionalProperties_ = std::move(additionalProperties);
 			sch.erase(attr);
 		}
 
@@ -1238,9 +1243,11 @@ public:
 
 		attr = sch.find("propertyNames");
 		if (attr != sch.end()) {
+			auto propertyNames = schema::make(attr.value(), root, {"propertyNames"}, uris);
 			if (attr.value().is_boolean())
-				propertyNamesKeyword_ = attr.value();
-			propertyNames_ = schema::make(attr.value(), root, {"propertyNames"}, uris);
+				denyPropertyNames_ = !attr.value().get<bool>();
+			else
+				propertyNames_ = std::move(propertyNames);
 			sch.erase(attr);
 		}
 
@@ -1261,7 +1268,7 @@ class array : public schema
 
 	std::vector<std::shared_ptr<schema>> items_;
 	std::shared_ptr<schema> additionalItems_;
-	json additionalItemsKeyword_;
+	bool denyAdditionalItems_{false};
 
 	std::shared_ptr<schema> contains_;
 
@@ -1291,22 +1298,18 @@ class array : public schema
 			auto item = items_.cbegin();
 			for (auto &i : instance) {
 				const bool is_additional_item = item == items_.cend();
-				std::shared_ptr<schema> item_validator;
-				if (is_additional_item)
-					item_validator = additionalItems_;
-				else {
-					item_validator = *item;
-					item++;
-				}
-
-				if (!item_validator)
-					break;
-
 				if (is_additional_item) {
-					annotating_error_handler additional_item_error(e, "additionalItems", additionalItemsKeyword_, json::object());
-					item_validator->validate(ptr / index, i, patch, additional_item_error);
+					if (additionalItems_) {
+						annotating_error_handler additional_item_error(e, "additionalItems", nullptr, json::object());
+						additionalItems_->validate(ptr / index, i, patch, additional_item_error);
+					} else if (denyAdditionalItems_) {
+						e.error(validation_error{ptr / index, i, "unexpected additional item", "additionalItems", {{"value", false}}});
+					} else {
+						break;
+					}
 				} else {
-					item_validator->validate(ptr / index, i, patch, e);
+					(*item)->validate(ptr / index, i, patch, e);
+					item++;
 				}
 				index++;
 			}
@@ -1359,9 +1362,11 @@ public:
 
 				auto attr_add = sch.find("additionalItems");
 				if (attr_add != sch.end()) {
+					auto additionalItems = schema::make(attr_add.value(), root, {"additionalItems"}, uris);
 					if (attr_add.value().is_boolean())
-						additionalItemsKeyword_ = attr_add.value();
-					additionalItems_ = schema::make(attr_add.value(), root, {"additionalItems"}, uris);
+						denyAdditionalItems_ = !attr_add.value().get<bool>();
+					else
+						additionalItems_ = std::move(additionalItems);
 					sch.erase(attr_add);
 				}
 

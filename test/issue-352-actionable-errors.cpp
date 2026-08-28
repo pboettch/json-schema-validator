@@ -54,7 +54,11 @@ public:
 	std::string reported_message;
 };
 
-void expect_single_error(const json &schema, const json &instance, const std::string &keyword, const json &details)
+void expect_single_error(const json &schema,
+                         const json &instance,
+                         const std::string &keyword,
+                         const json &details,
+                         const std::string &message = {})
 {
 	json_validator validator(schema);
 	collecting_error_handler errors;
@@ -64,6 +68,8 @@ void expect_single_error(const json &schema, const json &instance, const std::st
 		return;
 	EXPECT_EQ(errors.errors[0].keyword, keyword);
 	EXPECT_EQ(errors.errors[0].details, details);
+	if (!message.empty())
+		EXPECT_EQ(errors.errors[0].message, message);
 }
 
 void test_scalar_keyword_details()
@@ -126,7 +132,7 @@ void test_array_keyword_details()
 	expect_single_error({{"type", "array"}, {"maxItems", 1}}, {1, 2}, "maxItems", {{"value", 1}});
 	expect_single_error({{"type", "array"}, {"uniqueItems", true}}, {1, 1}, "uniqueItems", {{"value", true}, {"duplicate", 1}});
 	expect_single_error({{"type", "array"}, {"contains", {{"const", "required"}}}}, {"other"}, "contains", json::object());
-	expect_single_error({{"type", "array"}, {"items", {{{"type", "integer"}}}}, {"additionalItems", false}}, {1, 2}, "additionalItems", {{"code", "false-schema"}, {"value", false}});
+	expect_single_error({{"type", "array"}, {"items", {{{"type", "integer"}}}}, {"additionalItems", false}}, {1, 2}, "additionalItems", {{"value", false}}, "unexpected additional item");
 	expect_single_error({{"type", "array"}, {"items", {{{"type", "integer"}}}}, {"additionalItems", {{"minimum", 10}}}}, {1, 2}, "minimum", {{"value", 10}});
 }
 
@@ -158,9 +164,21 @@ void test_object_keyword_details()
 	expect_single_error({{"type", "object"}, {"maxProperties", 1}}, {{"a", 1}, {"b", 2}}, "maxProperties", {{"value", 1}});
 	expect_single_error({{"type", "object"}, {"required", {"a", "b"}}}, {{"a", 1}}, "required", {{"value", {"a", "b"}}, {"missing_property", "b"}});
 	expect_single_error({{"type", "object"}, {"dependencies", {{"credit_card", {"billing_address"}}}}}, {{"credit_card", 1}}, "dependencies", {{"value", {"billing_address"}}, {"property", "credit_card"}, {"missing_property", "billing_address"}});
-	expect_single_error({{"type", "object"}, {"additionalProperties", false}}, {{"extra", 1}}, "additionalProperties", {{"property", "extra"}, {"value", false}, {"code", "false-schema"}});
-	expect_single_error({{"type", "object"}, {"additionalProperties", {{"type", "object"}, {"additionalProperties", false}}}}, {{"outer", {{"inner", 1}}}}, "additionalProperties", {{"property", "inner"}, {"value", false}, {"code", "false-schema"}});
-	expect_single_error({{"type", "object"}, {"propertyNames", false}}, {{"bad", 1}}, "propertyNames", {{"property", "bad"}, {"value", false}, {"code", "false-schema"}});
+	expect_single_error({{"type", "object"}, {"additionalProperties", false}}, {{"extra", 1}}, "additionalProperties", {{"property", "extra"}, {"value", false}}, "unexpected additional property 'extra'");
+	expect_single_error({{"type", "object"}, {"additionalProperties", {{"type", "object"}, {"additionalProperties", false}}}}, {{"outer", {{"inner", 1}}}}, "additionalProperties", {{"property", "inner"}, {"value", false}}, "validation failed for additional property 'outer': unexpected additional property 'inner'");
+	expect_single_error({{"type", "object"}, {"propertyNames", false}}, {{"bad", 1}}, "propertyNames", {{"property", "bad"}, {"value", false}}, "invalid property name 'bad'");
+}
+
+void test_allowed_boolean_applicators()
+{
+	collecting_error_handler errors;
+	json_validator object_validator({{"type", "object"}, {"propertyNames", true}, {"additionalProperties", true}});
+	object_validator.validate({{"extra", 1}}, errors);
+	EXPECT_EQ(errors.errors.size(), 0);
+
+	json_validator array_validator({{"type", "array"}, {"items", {{{"type", "integer"}}}}, {"additionalItems", true}});
+	array_validator.validate({1, 2}, errors);
+	EXPECT_EQ(errors.errors.size(), 0);
 }
 
 void test_direct_keyword_details()
@@ -403,6 +421,7 @@ int main()
 	test_tuple_item_locations();
 	test_not_keyword_details();
 	test_object_keyword_details();
+	test_allowed_boolean_applicators();
 	test_direct_keyword_details();
 	test_details_survive_logical_combinations();
 	test_one_of_multiple_matches();
