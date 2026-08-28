@@ -371,33 +371,14 @@ public:
 namespace
 {
 
-class first_error_handler : public error_handler
-{
-public:
-	bool has_error_{false};
-	validation_error first_error_{json::json_pointer{}, nullptr, {}, {}, json::object()};
-
-	void error(const validation_error &error) override
-	{
-		if (*this)
-			return;
-		has_error_ = true;
-		first_error_ = error;
-	}
-
-	operator bool() const { return has_error_; }
-};
-
-class annotating_error_handler : public error_handler
+class details_error_handler : public error_handler
 {
 	error_handler &handler_;
-	std::string keyword_;
-	json keyword_value_;
 	json details_;
 
 public:
-	annotating_error_handler(error_handler &handler, std::string keyword, json keyword_value, json details)
-	    : handler_(handler), keyword_(std::move(keyword)), keyword_value_(std::move(keyword_value)), details_(std::move(details)) {}
+	details_error_handler(error_handler &handler, json details)
+	    : handler_(handler), details_(std::move(details)) {}
 
 	void error(const validation_error &source_error) override
 	{
@@ -405,11 +386,6 @@ public:
 		for (const auto &detail : details_.items())
 			if (!error.details.contains(detail.key()))
 				error.details[detail.key()] = detail.value();
-		if (error.keyword.empty()) {
-			error.keyword = keyword_;
-			if (!keyword_value_.is_null())
-				error.details["value"] = keyword_value_;
-		}
 		handler_.error(error);
 	}
 };
@@ -420,7 +396,7 @@ class logical_not : public schema
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
-		first_error_handler esub;
+		basic_error_handler esub;
 		subschema_->validate(ptr, instance, patch, esub);
 
 		if (!esub)
@@ -576,9 +552,7 @@ class type_schema : public schema
 		if (type)
 			type->validate(ptr, instance, patch, e);
 		else {
-			json details = {{"actual_type", instance.type_name()}};
-			if (!typeKeyword_.is_null())
-				details["value"] = typeKeyword_;
+			json details = {{"value", typeKeyword_}, {"actual_type", instance.type_name()}};
 			e.error(validation_error{ptr, instance, "unexpected instance type", "type", details});
 		}
 
@@ -602,7 +576,7 @@ class type_schema : public schema
 			l->validate(ptr, instance, patch, e);
 
 		if (if_) {
-			first_error_handler err;
+			basic_error_handler err;
 
 			if_->validate(ptr, instance, patch, err);
 			if (!err) {
@@ -1104,7 +1078,7 @@ class object : public schema
 		// for each property in instance
 		for (auto &p : instance.items()) {
 			if (propertyNames_) {
-				annotating_error_handler property_name_error(e, "propertyNames", nullptr, {{"property", p.key()}});
+				details_error_handler property_name_error(e, {{"property", p.key()}});
 				propertyNames_->validate(ptr, p.key(), patch, property_name_error);
 			} else if (denyPropertyNames_) {
 				e.error(validation_error{ptr, p.key(), "invalid property name '" + p.key() + "'", "propertyNames", {{"value", false}, {"property", p.key()}}});
@@ -1130,10 +1104,9 @@ class object : public schema
 			// check additionalProperties as a last resort
 			if (!a_prop_or_pattern_matched) {
 				if (additionalProperties_) {
-					annotating_error_handler additional_properties_error(e, "additionalProperties", nullptr, json::object());
-					additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_properties_error);
+					additionalProperties_->validate(ptr / p.key(), p.value(), patch, e);
 				} else if (denyAdditionalProperties_) {
-					e.error(validation_error{ptr, instance, "unexpected additional property '" + p.key() + "'", "additionalProperties", {{"value", false}, {"property", p.key()}}});
+					e.error(validation_error{ptr / p.key(), p.value(), "unexpected additional property '" + p.key() + "'", "additionalProperties", {{"value", false}}});
 				}
 			}
 		}
@@ -1289,8 +1262,7 @@ class array : public schema
 				const bool is_additional_item = item == items_.cend();
 				if (is_additional_item) {
 					if (additionalItems_) {
-						annotating_error_handler additional_item_error(e, "additionalItems", nullptr, json::object());
-						additionalItems_->validate(ptr / index, i, patch, additional_item_error);
+						additionalItems_->validate(ptr / index, i, patch, e);
 					} else if (denyAdditionalItems_) {
 						e.error(validation_error{ptr / index, i, "unexpected additional item", "additionalItems", {{"value", false}}});
 					} else {
@@ -1307,7 +1279,7 @@ class array : public schema
 		if (contains_) {
 			bool contained = false;
 			for (auto &item : instance) {
-				first_error_handler local_e;
+				basic_error_handler local_e;
 				contains_->validate(ptr, item, patch, local_e);
 				if (!local_e) {
 					contained = true;

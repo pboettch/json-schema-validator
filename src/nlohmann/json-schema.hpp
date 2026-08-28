@@ -23,6 +23,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <stdexcept>
+
 #ifdef NLOHMANN_JSON_VERSION_MAJOR
 #	if (NLOHMANN_JSON_VERSION_MAJOR * 10000 + NLOHMANN_JSON_VERSION_MINOR * 100 + NLOHMANN_JSON_VERSION_PATCH) < 30800
 #		error "Please use this library with NLohmann's JSON version 3.8.0 or higher"
@@ -162,6 +164,7 @@ public:
 	                   const json & /*instance*/,
 	                   const std::string & /*message*/)
 	{
+		throw std::logic_error("error_handler must override an error callback");
 	}
 };
 

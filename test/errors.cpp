@@ -97,7 +97,7 @@ int main(void)
 	EXPECT_EQ(err.failed_pointers.size(), 3);
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
 	EXPECT_EQ(err.failed_pointers[1].to_string(), "");
-	EXPECT_EQ(err.failed_pointers[2].to_string(), "");
+	EXPECT_EQ(err.failed_pointers[2].to_string(), "/street");
 	err.reset();
 
 	validator.validate({{"age", 42}, {"name", 12}}, err); // name must be a string
@@ -123,7 +123,7 @@ int main(void)
 	                   },
 	                   err); // name must be a string
 	EXPECT_EQ(err.failed_pointers.size(), 1);
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "/post-code");
 	err.reset();
 
 	return error_count;

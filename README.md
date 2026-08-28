@@ -261,7 +261,8 @@ extensible `details` object. When available, the schema keyword value is stored 
 
 Handlers which override the previous three-argument callback remain source-compatible. The
 structured callback forwards to that overload by default; new handlers should override the
-structured callback directly.
+structured callback directly. A handler which overrides neither callback throws `std::logic_error`
+when an error is reported rather than silently discarding it.
 
 Structured details are provided for scalar, object, array, reference, and logical-combination
 constraints. This includes `type`, numeric and length limits, `pattern`, `format`, content
@@ -284,10 +285,11 @@ The details object uses the following common members:
 | `location` / `fragment`                  | Requested schema location for setup failures                   |
 | `code`                                   | Stable identifier for a non-keyword validator or setup failure |
 
-Validator-level failures are identified through `details["code"]`; the code may accompany
-a schema keyword when an applicator wraps the underlying failure. Schema-valued applicators
+Validator-level failures are identified through `details["code"]`. Schema-valued applicators
 such as `contains` and logical combinations report branch or count information rather than
-copying their complete subschemas into every error.
+copying their complete subschemas into every error. Each violated numeric constraint produces
+a separate error. Denied additional properties and items are reported at the offending child
+location with a direct message.
 
 ```C++
 class collecting_handler : public nlohmann::json_schema::error_handler

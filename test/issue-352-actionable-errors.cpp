@@ -36,6 +36,10 @@ public:
 	std::vector<validation_error> errors;
 };
 
+class incomplete_error_handler : public error_handler
+{
+};
+
 class legacy_error_handler : public basic_error_handler
 {
 	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
@@ -164,8 +168,8 @@ void test_object_keyword_details()
 	expect_single_error({{"type", "object"}, {"maxProperties", 1}}, {{"a", 1}, {"b", 2}}, "maxProperties", {{"value", 1}});
 	expect_single_error({{"type", "object"}, {"required", {"a", "b"}}}, {{"a", 1}}, "required", {{"value", {"a", "b"}}, {"missing_property", "b"}});
 	expect_single_error({{"type", "object"}, {"dependencies", {{"credit_card", {"billing_address"}}}}}, {{"credit_card", 1}}, "dependencies", {{"value", {"billing_address"}}, {"property", "credit_card"}, {"missing_property", "billing_address"}});
-	expect_single_error({{"type", "object"}, {"additionalProperties", false}}, {{"extra", 1}}, "additionalProperties", {{"property", "extra"}, {"value", false}}, "unexpected additional property 'extra'");
-	expect_single_error({{"type", "object"}, {"additionalProperties", {{"type", "object"}, {"additionalProperties", false}}}}, {{"outer", {{"inner", 1}}}}, "additionalProperties", {{"property", "inner"}, {"value", false}}, "unexpected additional property 'inner'");
+	expect_single_error({{"type", "object"}, {"additionalProperties", false}}, {{"extra", 1}}, "additionalProperties", {{"value", false}}, "unexpected additional property 'extra'");
+	expect_single_error({{"type", "object"}, {"additionalProperties", {{"type", "object"}, {"additionalProperties", false}}}}, {{"outer", {{"inner", 1}}}}, "additionalProperties", {{"value", false}}, "unexpected additional property 'inner'");
 	expect_single_error({{"type", "object"}, {"propertyNames", false}}, {{"bad", 1}}, "propertyNames", {{"property", "bad"}, {"value", false}}, "invalid property name 'bad'");
 }
 
@@ -378,6 +382,63 @@ void test_all_additional_property_errors()
 	EXPECT_EQ(errors.errors[1].details.at("missing_property"), "second");
 }
 
+void test_nested_additional_property_context()
+{
+	collecting_error_handler errors;
+	json_validator deny_validator({{"type", "object"}, {"additionalProperties", false}});
+	deny_validator.validate({{"extra", 1}}, errors);
+	EXPECT_EQ(errors.errors.size(), 1);
+	if (errors.errors.size() == 1) {
+		EXPECT_EQ(errors.errors[0].instance_location, json::json_pointer("/extra"));
+		EXPECT_EQ(errors.errors[0].instance, 1);
+		EXPECT_EQ(errors.errors[0].keyword, "additionalProperties");
+		EXPECT_EQ(errors.errors[0].details, json({{"value", false}}));
+	}
+
+	errors.errors.clear();
+	json_validator reference_validator({
+	    {"type", "object"},
+	    {"definitions", {{"deny", false}}},
+	    {"additionalProperties", {{"$ref", "#/definitions/deny"}}},
+	});
+	reference_validator.validate({{"extra", 1}}, errors);
+	EXPECT_EQ(errors.errors.size(), 1);
+	if (errors.errors.size() == 1) {
+		EXPECT_EQ(errors.errors[0].instance_location, json::json_pointer("/extra"));
+		EXPECT_EQ(errors.errors[0].instance, 1);
+		EXPECT_EQ(errors.errors[0].keyword, "");
+		EXPECT_EQ(errors.errors[0].details, json({{"code", "false-schema"}}));
+	}
+
+	errors.errors.clear();
+	json_validator nested_false_validator({
+	    {"type", "object"},
+	    {"additionalProperties", {{"type", "object"}, {"properties", {{"x", false}}}}},
+	});
+	nested_false_validator.validate({{"outer", {{"x", 1}}}}, errors);
+	EXPECT_EQ(errors.errors.size(), 1);
+	if (errors.errors.size() == 1) {
+		EXPECT_EQ(errors.errors[0].instance_location, json::json_pointer("/outer/x"));
+		EXPECT_EQ(errors.errors[0].instance, 1);
+		EXPECT_EQ(errors.errors[0].keyword, "");
+		EXPECT_EQ(errors.errors[0].details, json({{"code", "false-schema"}}));
+	}
+
+	errors.errors.clear();
+	json_validator property_name_validator({
+	    {"type", "object"},
+	    {"additionalProperties", {{"type", "object"}, {"propertyNames", false}}},
+	});
+	property_name_validator.validate({{"foo", {{"bar", "baz"}}}}, errors);
+	EXPECT_EQ(errors.errors.size(), 1);
+	if (errors.errors.size() == 1) {
+		EXPECT_EQ(errors.errors[0].instance_location, json::json_pointer("/foo"));
+		EXPECT_EQ(errors.errors[0].instance, "bar");
+		EXPECT_EQ(errors.errors[0].keyword, "propertyNames");
+		EXPECT_EQ(errors.errors[0].details, json({{"value", false}, {"property", "bar"}}));
+	}
+}
+
 void test_non_keyword_error_details()
 {
 	collecting_error_handler errors;
@@ -417,6 +478,22 @@ void test_basic_error_handler()
 	EXPECT_EQ(static_cast<bool>(errors), false);
 }
 
+void test_incomplete_error_handler()
+{
+	const json schema = {{"enum", {"red", "green"}}};
+	json_validator validator(schema);
+	incomplete_error_handler errors;
+	bool threw = false;
+
+	try {
+		validator.validate("blue", errors);
+	} catch (const std::logic_error &error) {
+		threw = true;
+		EXPECT_EQ(std::string(error.what()), "error_handler must override an error callback");
+	}
+	EXPECT_EQ(threw, true);
+}
+
 void test_legacy_error_handler()
 {
 	const json schema = {{"enum", {"red", "green"}}};
@@ -452,8 +529,10 @@ int main()
 	test_details_survive_nested_combinations();
 	test_details_survive_additional_properties();
 	test_all_additional_property_errors();
+	test_nested_additional_property_context();
 	test_non_keyword_error_details();
 	test_basic_error_handler();
+	test_incomplete_error_handler();
 	test_legacy_error_handler();
 	return error_count;
 }
