@@ -1130,19 +1130,8 @@ class object : public schema
 			// check additionalProperties as a last resort
 			if (!a_prop_or_pattern_matched) {
 				if (additionalProperties_) {
-					first_error_handler additional_prop_err;
-					additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_prop_err);
-					if (additional_prop_err) {
-						validation_error error = additional_prop_err.first_error_;
-						error.instance_location = ptr;
-						error.instance = instance;
-						error.message = "validation failed for additional property '" + p.key() + "': " + error.message;
-						if (!error.details.contains("property"))
-							error.details["property"] = p.key();
-						if (error.keyword.empty())
-							error.keyword = "additionalProperties";
-						e.error(error);
-					}
+					annotating_error_handler additional_properties_error(e, "additionalProperties", nullptr, json::object());
+					additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_properties_error);
 				} else if (denyAdditionalProperties_) {
 					e.error(validation_error{ptr, instance, "unexpected additional property '" + p.key() + "'", "additionalProperties", {{"value", false}, {"property", p.key()}}});
 				}

@@ -165,7 +165,7 @@ void test_object_keyword_details()
 	expect_single_error({{"type", "object"}, {"required", {"a", "b"}}}, {{"a", 1}}, "required", {{"value", {"a", "b"}}, {"missing_property", "b"}});
 	expect_single_error({{"type", "object"}, {"dependencies", {{"credit_card", {"billing_address"}}}}}, {{"credit_card", 1}}, "dependencies", {{"value", {"billing_address"}}, {"property", "credit_card"}, {"missing_property", "billing_address"}});
 	expect_single_error({{"type", "object"}, {"additionalProperties", false}}, {{"extra", 1}}, "additionalProperties", {{"property", "extra"}, {"value", false}}, "unexpected additional property 'extra'");
-	expect_single_error({{"type", "object"}, {"additionalProperties", {{"type", "object"}, {"additionalProperties", false}}}}, {{"outer", {{"inner", 1}}}}, "additionalProperties", {{"property", "inner"}, {"value", false}}, "validation failed for additional property 'outer': unexpected additional property 'inner'");
+	expect_single_error({{"type", "object"}, {"additionalProperties", {{"type", "object"}, {"additionalProperties", false}}}}, {{"outer", {{"inner", 1}}}}, "additionalProperties", {{"property", "inner"}, {"value", false}}, "unexpected additional property 'inner'");
 	expect_single_error({{"type", "object"}, {"propertyNames", false}}, {{"bad", 1}}, "propertyNames", {{"property", "bad"}, {"value", false}}, "invalid property name 'bad'");
 }
 
@@ -350,10 +350,32 @@ void test_details_survive_additional_properties()
 	if (errors.errors.size() != 1)
 		return;
 
-	EXPECT_EQ(errors.errors[0].instance_location, json::json_pointer(""));
-	EXPECT_EQ(errors.errors[0].message, "validation failed for additional property 'color': instance not found in required enum");
+	EXPECT_EQ(errors.errors[0].instance_location, json::json_pointer("/color"));
+	EXPECT_EQ(errors.errors[0].message, "instance not found in required enum");
 	EXPECT_EQ(errors.errors[0].keyword, "enum");
-	EXPECT_EQ(errors.errors[0].details, json({{"value", json({"red", "green"})}, {"property", "color"}}));
+	EXPECT_EQ(errors.errors[0].details, json({{"value", json({"red", "green"})}}));
+}
+
+void test_all_additional_property_errors()
+{
+	const json schema = {
+	    {"type", "object"},
+	    {"additionalProperties", {{"type", "object"}, {"required", {"first", "second"}}}},
+	};
+	json_validator validator(schema);
+	collecting_error_handler errors;
+
+	validator.validate({{"outer", json::object()}}, errors);
+	EXPECT_EQ(errors.errors.size(), 2);
+	if (errors.errors.size() != 2)
+		return;
+
+	EXPECT_EQ(errors.errors[0].instance_location, json::json_pointer("/outer"));
+	EXPECT_EQ(errors.errors[0].keyword, "required");
+	EXPECT_EQ(errors.errors[0].details.at("missing_property"), "first");
+	EXPECT_EQ(errors.errors[1].instance_location, json::json_pointer("/outer"));
+	EXPECT_EQ(errors.errors[1].keyword, "required");
+	EXPECT_EQ(errors.errors[1].details.at("missing_property"), "second");
 }
 
 void test_non_keyword_error_details()
@@ -429,6 +451,7 @@ int main()
 	test_details_survive_all_of();
 	test_details_survive_nested_combinations();
 	test_details_survive_additional_properties();
+	test_all_additional_property_errors();
 	test_non_keyword_error_details();
 	test_basic_error_handler();
 	test_legacy_error_handler();
