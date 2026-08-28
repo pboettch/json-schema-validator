@@ -51,11 +51,11 @@ static json person_schema = R"(
 
 class store_ptr_err_handler : public nlohmann::json_schema::basic_error_handler
 {
-	void error(const nlohmann::json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const nlohmann::json_schema::validation_error &error) override
 	{
-		nlohmann::json_schema::basic_error_handler::error(ptr, instance, message);
-		std::cerr << "ERROR: '" << ptr << "' - '" << instance << "': " << message << "\n";
-		failed_pointers.push_back(ptr);
+		nlohmann::json_schema::basic_error_handler::error(error);
+		std::cerr << "ERROR: '" << error.instance_location << "' - '" << error.instance << "': " << error.message << "\n";
+		failed_pointers.push_back(error.instance_location);
 	}
 
 public:
@@ -97,7 +97,7 @@ int main(void)
 	EXPECT_EQ(err.failed_pointers.size(), 3);
 	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
 	EXPECT_EQ(err.failed_pointers[1].to_string(), "");
-	EXPECT_EQ(err.failed_pointers[2].to_string(), "");
+	EXPECT_EQ(err.failed_pointers[2].to_string(), "/street");
 	err.reset();
 
 	validator.validate({{"age", 42}, {"name", 12}}, err); // name must be a string
@@ -123,7 +123,7 @@ int main(void)
 	                   },
 	                   err); // name must be a string
 	EXPECT_EQ(err.failed_pointers.size(), 1);
-	EXPECT_EQ(err.failed_pointers[0].to_string(), "");
+	EXPECT_EQ(err.failed_pointers[0].to_string(), "/post-code");
 	err.reset();
 
 	return error_count;

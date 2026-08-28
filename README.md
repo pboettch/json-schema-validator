@@ -226,11 +226,11 @@ int main()
     /* json-parse the people - with custom error handler */
     class custom_error_handler : public nlohmann::json_schema::basic_error_handler
     {
-        void error(const nlohmann::json_pointer<nlohmann::basic_json<>> &pointer, const json &instance,
-            const std::string &message) override
+        void error(const nlohmann::json_schema::validation_error &error) override
         {
-            nlohmann::json_schema::basic_error_handler::error(pointer, instance, message);
-            std::cerr << "ERROR: '" << pointer << "' - '" << instance << "': " << message << "\n";
+            nlohmann::json_schema::basic_error_handler::error(error);
+            std::cerr << "ERROR: '" << error.instance_location << "' - '"
+                      << error.instance << "': " << error.message << "\n";
         }
     };
 
@@ -251,6 +251,63 @@ int main()
     return EXIT_SUCCESS;
 }
 ```
+
+## Validation errors
+
+New `error_handler` implementations receive a `validation_error` containing the instance
+location, instance value, human-readable message, failed JSON Schema `keyword`, and an
+extensible `details` object. When available, the schema keyword value is stored in
+`details["value"]`; other keyword-specific information can be added alongside it.
+
+Handlers which override the previous three-argument callback remain source-compatible. The
+structured callback forwards to that overload by default; new handlers should override the
+structured callback directly. A handler which overrides neither callback throws `std::logic_error`
+when an error is reported rather than silently discarding it.
+
+Structured details are provided for scalar, object, array, reference, and logical-combination
+constraints. This includes `type`, numeric and length limits, `pattern`, `format`, content
+keywords, `required`, dependencies, property and item constraints, `enum`, `const`, `$ref`,
+`not`, `allOf`, `anyOf`, and `oneOf`.
+
+The details object uses the following common members:
+
+| Member                                   | Meaning                                                        |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| `value`                                  | Parsed value of the failed schema keyword, when retained       |
+| `actual_type`                            | JSON type of the instance for a `type` failure                 |
+| `missing_property`                       | Required property which is absent                              |
+| `property`                               | Property associated with an object constraint                  |
+| `duplicate`                              | Repeated value for a `uniqueItems` failure                     |
+| `reason`                                 | Error reported by a format or content checker                  |
+| `content_media_type`                     | Media type paired with a `contentEncoding` failure             |
+| `failed_subschema` / `failed_subschemas` | Logical-combination branch information                         |
+| `successful_subschemas`                  | Successful `oneOf` branches when validation stopped            |
+| `location` / `fragment`                  | Requested schema location for setup failures                   |
+| `code`                                   | Stable identifier for a non-keyword validator or setup failure |
+
+Validator-level failures are identified through `details["code"]`. Schema-valued applicators
+such as `contains` and logical combinations report branch or count information rather than
+copying their complete subschemas into every error. Each violated numeric constraint produces
+a separate error. Denied additional properties and items are reported at the offending child
+location with a direct message.
+
+```C++
+class collecting_handler : public nlohmann::json_schema::error_handler
+{
+    void error(const nlohmann::json_schema::validation_error &error) override
+    {
+        std::cerr << "ERROR: '" << error.instance_location << "' - '"
+                  << error.instance << "': " << error.message << "\n";
+
+        if (error.keyword == "enum")
+            std::cerr << "Allowed values: " << error.details.at("value") << "\n";
+    }
+};
+```
+
+Keyword details are preserved when errors are propagated through `allOf`, `anyOf`, and
+`oneOf`. Applications which only need to know whether validation failed can use
+`basic_error_handler`, which provides boolean state and `reset()`.
 
 # Compliance
 

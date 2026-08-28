@@ -96,3 +96,7 @@ add_test(NAME issue-255-error-message-limit-precision COMMAND issue-255-error-me
 add_executable(issue-105-verbose-combination-errors issue-105-verbose-combination-errors.cpp)
 target_link_libraries(issue-105-verbose-combination-errors nlohmann_json_schema_validator)
 add_test(NAME issue-105-verbose-combination-errors COMMAND issue-105-verbose-combination-errors)
+
+add_executable(issue-352-actionable-errors issue-352-actionable-errors.cpp)
+target_link_libraries(issue-352-actionable-errors nlohmann_json_schema_validator)
+add_test(NAME issue-352-actionable-errors COMMAND issue-352-actionable-errors)
