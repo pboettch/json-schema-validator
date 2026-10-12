@@ -149,7 +149,7 @@ find_package(nlohmann_json_schema_validator REQUIRED)
 and
 
 ```CMake
-target_link_libraries(<your-target> [..] nlohmann_json_schema_validator)
+target_link_libraries(<your-target> [..] nlohmann_json_schema_validator::validator)
 ```
 
 to build and link.
