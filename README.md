@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/pboettch/json-schema-validator.svg?branch=master)](https://travis-ci.org/pboettch/json-schema-validator)
+[![Tests](https://github.com/pboettch/json-schema-validator/actions/workflows/test.yaml/badge.svg)](https://github.com/pboettch/json-schema-validator/actions/workflows/test.yaml)
 
 # JSON schema validator for JSON for Modern C++
 
@@ -107,33 +107,25 @@ cmake [..] -DBUILD_SHARED_LIBS=ON [..]
 
 ## nlohmann-json integration
 
-As nlohmann-json is a dependency, this library tries find it.
+As nlohmann-json is a dependency, the CMake configuration looks for it in this order:
 
-The cmake-configuration first checks if nlohmann-json is available as a cmake-target. This may be the case, because it is used as a submodule in a super-project which already provides and uses nlohmann-json.
-Otherwise, it calls `find_package` for nlohmann-json and requires nlohmann-json to be installed on the system.
-
-### Building with Hunter package manager
-
-To enable access to nlohmann json library, Hunter can be used. Just run with `JSON_VALIDATOR_HUNTER=ON` option. No further dependencies needed
+1. If a CMake target `nlohmann_json` already exists, it is used. This is the case when a parent project added
+   nlohmann-json with `add_subdirectory()` or `FetchContent` before adding this library.
+1. Otherwise an installed nlohmann-json is searched with `find_package()`.
+1. If none is found, nlohmann-json is fetched from GitHub with `FetchContent`. The version is set with
+   `JSON_FETCH_VERSION` (default `v3.12.0`):
 
 ```bash
-cmake [..] -DJSON_VALIDATOR_HUNTER=ON [..]
+cmake [..] -DJSON_FETCH_VERSION=v3.11.3 [..]
 ```
+
+This library and the code using it must be compiled with the same version of nlohmann-json: since version 3.11 its
+symbols are versioned and a mismatch results in link errors.
 
 ### Building as a CMake-subdirectory from within another project
 
-Adding this library as a subdirectory to a parent project is one way of
-building it.
-
-If the parent project already used `find_package()` to find the CMake-package of nlohmann_json or includes it as a submodule likewise.
-
-### Building directly, finding a CMake-package. (short)
-
-When nlohmann-json has been installed, it provides files which allows
-CMake's `find_package()` to be used.
-
-This library is using this mechanism if `nlohmann_json::nlohmann_json`-target
-does not exist.
+This library can be added to a parent project with `add_subdirectory()` or `FetchContent`. Its tests, examples and
+install rules are then disabled by default. Link your target with `nlohmann_json_schema_validator::validator`.
 
 ### Install
 
@@ -377,6 +369,24 @@ int main()
 The example above will output the specified default values `{"height":10,"width":20}` to stdout.
 
 > Note that the default value specified in a `$ref` may be overridden by the current instance location. Also note that this behavior will break draft-7, but it is compliant to newer drafts (e.g. `2019-09` or `2020-12`).
+
+Default values are added one level at a time:
+
+- The `default` of a property is added when the property is missing. A property which is present is kept, even if its
+  value is `null`.
+- The `default` of an object is used when the object itself is missing. It does not fill in properties of an object
+  which is present.
+- `"default": null` is treated as no default value.
+- An empty document (`null`) is replaced by the `default` of the root schema.
+
+The defaults inside an added default value are only found by the next validation. To get all nested default
+values, validate and apply the patch until it is empty:
+
+```C++
+json instance = "{}"_json;
+for (auto patch = validator.validate(instance); !patch.empty(); patch = validator.validate(instance))
+	instance = instance.patch(patch);
+```
 
 # Contributing
 
