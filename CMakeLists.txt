@@ -116,6 +116,15 @@ endif ()
 
 # Get all dependencies
 FetchContent_MakeAvailable(${fetch_packages})
+# Treat fetched nlohmann_json headers as system headers (as it is for imported targets),
+# so warnings inside them do not show up in (or break -Werror builds of) this project
+# TODO: Remove the version check when bumping cmake >= 3.25
+if (TARGET nlohmann_json AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
+    get_target_property(_json_imported nlohmann_json IMPORTED)
+    if (NOT _json_imported)
+        set_target_properties(nlohmann_json PROPERTIES SYSTEM ON)
+    endif ()
+endif ()
 if (JSON_VALIDATOR_INSTALL AND NOT nlohmann_json_FOUND AND JSON_Install)
     # TODO: This is not ideal
     message(WARNING
