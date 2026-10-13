@@ -1013,6 +1013,18 @@ class boolean : public schema
 		}
 	}
 
+protected:
+	virtual std::shared_ptr<schema> make_for_default_(
+	    std::shared_ptr<::schema> & /* sch */,
+	    root_schema * /* root */,
+	    std::vector<nlohmann::json_uri> & /* uris */,
+	    nlohmann::json &default_value) const override
+	{
+		auto result = std::make_shared<boolean>(*this);
+		result->set_default_value(default_value);
+		return result;
+	}
+
 public:
 	boolean(json &sch, root_schema *root)
 	    : schema(root), true_(sch) {}
