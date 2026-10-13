@@ -154,6 +154,8 @@ target_link_libraries(<your-target> [..] nlohmann_json_schema_validator::validat
 
 to build and link.
 
+Before version 2.3.0 the target was named `nlohmann_json_schema_validator` (without namespace).
+
 ## Code
 
 See also `app/json-schema-validate.cpp`.
