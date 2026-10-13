@@ -65,7 +65,7 @@ static const json default_schema = R"(
     }
 })"_json;
 
-static void loader(const json_uri &uri, json &schema)
+static void loader(const json_uri & /*uri*/, json &schema)
 {
 	schema = default_schema;
 }
