@@ -11,7 +11,7 @@ endif ()
 ]==============================================================================================]
 
 # TODO: CMake >= 3.19 can use string(JSON VERSION GET "${METADATA}" "version") to load from JSON
-set(PROJECT_VERSION 2.4.0)
+set(PROJECT_VERSION 2.4.1)
 
 # TODO: Version 3, rename the project and namespace to something more compact
 project(nlohmann_json_schema_validator

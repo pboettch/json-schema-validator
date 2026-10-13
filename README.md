@@ -162,7 +162,7 @@ include(FetchContent)
 set(JSON_VALIDATOR_INSTALL ON)
 FetchContent_Declare(nlohmann_json_schema_validator
     GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
-    GIT_TAG        2.4.0)
+    GIT_TAG        2.4.1)
 FetchContent_MakeAvailable(nlohmann_json_schema_validator)
 
 target_link_libraries(<your-target> PRIVATE nlohmann_json_schema_validator::validator)
