@@ -1,5 +1,5 @@
 {
-    "$id": "http://acme.com/schemas/v2/v2.json",
+    "$id": "v2.json",
     "definitions": {
         "msg": { "$ref": "./../v1/v1.json#/definitions/msg" }
     }
