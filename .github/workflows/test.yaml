@@ -154,5 +154,8 @@ jobs:
         with:
           # Not available for PRs from forks, which are uploaded tokenless
           token: ${{ secrets.CODECOV_TOKEN }}
+          # Only upload the filtered lcov report, do not search for or generate (gcov) other reports
           files: coverage.info
+          disable_search: true
+          plugins: noop
           verbose: true
