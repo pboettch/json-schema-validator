@@ -5,3 +5,4 @@ venv
 env
 compile_commands.json
 .vs/*
+CMakeUserPresets.json

@@ -164,6 +164,21 @@ jobs:
         run: cmake --build build --config Debug --parallel
       - name: Test
         run: ctest --test-dir build --build-config Debug --output-on-failure --parallel 4
+  conan:
+    name: Conan package
+    needs: [ pre-commit ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - run: python -m pip install conan
+      - run: conan profile detect
+      - name: Create the package (static and shared) and run test_package
+        run: |
+          conan create . --build=missing
+          conan create . --build=missing -o '&:shared=True'
   coverage:
     name: Run coverage tests
     needs: [ test ]
