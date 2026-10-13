@@ -1377,10 +1377,12 @@ std::shared_ptr<schema> schema::make(json &schema,
 		auto attr = schema.find("$id"); // if $id is present, this schema can be referenced by this ID
 		                                // as an additional URI
 		if (attr != schema.end()) {
-			if (std::find(uris.begin(),
-			              uris.end(),
-			              attr.value().get<std::string>()) == uris.end())
-				uris.push_back(uris.back().derive(attr.value().get<std::string>())); // so add it to the list if it is not there already
+			// resolved against the current base URI, a relative $id can be the URI of the loaded file itself
+			auto id = uris.back().derive(attr.value().get<std::string>());
+			auto existing = std::find(uris.begin(), uris.end(), id);
+			if (existing != uris.end()) // already known, but the base URI for this schema now
+				uris.erase(existing);
+			uris.push_back(id);
 			schema.erase(attr);
 		}
 
