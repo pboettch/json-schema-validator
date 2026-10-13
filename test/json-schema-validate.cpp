@@ -23,7 +23,15 @@ static void usage(const char *name)
 
 static void loader(const json_uri &uri, json &schema)
 {
-	std::string filename = "./" + uri.path();
+	// a file://-URI contains an absolute path, other URIs are looked up relative to the current directory
+	std::string filename;
+	if (uri.scheme() == "file") {
+		filename = uri.path();
+		if (filename.size() > 2 && filename[0] == '/' && filename[2] == ':') // file:///C:/... on Windows
+			filename = filename.substr(1);
+	} else
+		filename = "./" + uri.path();
+
 	std::ifstream lf(filename);
 	if (!lf.good())
 		throw std::invalid_argument("could not open " + uri.url() + " tried with " + filename);
