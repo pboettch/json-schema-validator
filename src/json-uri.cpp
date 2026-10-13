@@ -8,6 +8,7 @@
  */
 #include <nlohmann/json-schema.hpp>
 
+#include <cctype>
 #include <sstream>
 #include <vector>
 
@@ -65,24 +66,19 @@ void json_uri::update(const std::string &uri)
 	if (pointer_separator != std::string::npos) {    // and extract the pointer-string if found
 		pointer = uri.substr(pointer_separator + 1); // remove #
 
-		// unescape %-values IOW, decode JSON-URI-formatted JSON-pointer
-		std::size_t pos = pointer.size() - 1;
-		do {
-			pos = pointer.rfind('%', pos);
-			if (pos == std::string::npos)
-				break;
-
-			if (pos >= pointer.size() - 2) {
-				pos--;
-				continue;
-			}
-
-			std::string hex = pointer.substr(pos + 1, 2);
-			char ascii = static_cast<char>(std::strtoul(hex.c_str(), nullptr, 16));
-			pointer.replace(pos, 3, 1, ascii);
-
-			pos--;
-		} while (1);
+		// unescape %-values IOW, decode JSON-URI-formatted JSON-pointer,
+		// each %XX once, a % not followed by two hex digits is kept as it is
+		std::string decoded;
+		for (std::size_t pos = 0; pos < pointer.size(); pos++) {
+			if (pointer[pos] == '%' && pos + 2 < pointer.size() &&
+			    std::isxdigit(static_cast<unsigned char>(pointer[pos + 1])) &&
+			    std::isxdigit(static_cast<unsigned char>(pointer[pos + 2]))) {
+				decoded += static_cast<char>(std::strtoul(pointer.substr(pos + 1, 2).c_str(), nullptr, 16));
+				pos += 2;
+			} else
+				decoded += pointer[pos];
+		}
+		pointer = decoded;
 	}
 
 	auto location = uri.substr(0, pointer_separator);
