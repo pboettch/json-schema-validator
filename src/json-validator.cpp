@@ -10,7 +10,9 @@
 
 #include "json-patch.hpp"
 
+#include <cmath>
 #include <deque>
+#include <limits>
 #include <memory>
 #include <set>
 #include <sstream>
@@ -547,6 +549,15 @@ class type_schema : public schema
 	{
 		// depending on the type of instance run the type specific validator - if present
 		auto type = type_[static_cast<uint8_t>(instance.type())];
+
+		// a number with a zero fractional part is an integer (e.g. 1.0), if it fits into the integer type
+		if (!type && instance.is_number_float()) {
+			auto value = instance.get<json::number_float_t>();
+			if (std::floor(value) == value &&
+			    value >= static_cast<json::number_float_t>(std::numeric_limits<json::number_integer_t>::min()) &&
+			    value < -static_cast<json::number_float_t>(std::numeric_limits<json::number_integer_t>::min()))
+				type = type_[static_cast<uint8_t>(json::value_t::number_integer)];
+		}
 
 		if (type)
 			type->validate(ptr, instance, patch, e);
