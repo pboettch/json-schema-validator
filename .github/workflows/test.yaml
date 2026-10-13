@@ -122,6 +122,27 @@ jobs:
         run: cmake --build --preset ${{ matrix.toolchain }}-ci
       - name: Test
         run: ctest --preset ${{ matrix.toolchain }}-ci
+  windows:
+    name: Windows
+    needs: [ pre-commit ]
+    strategy:
+      fail-fast: false
+      matrix:
+        toolset: [ msvc, clang-cl ]
+        shared_libs: [ ON, OFF ]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure with ${{ matrix.toolset }}, shared library ${{ matrix.shared_libs }}
+        # Visual Studio generator (default on Windows), clang-cl is its ClangCL toolset
+        run: >-
+          cmake -S . -B build ${{ matrix.toolset == 'clang-cl' && '-T ClangCL' || '' }}
+          -DJSON_VALIDATOR_SHARED_LIBS=${{ matrix.shared_libs }}
+          -DJSON_VALIDATOR_BUILD_TESTS=ON -DJSON_VALIDATOR_INSTALL=OFF -DJSON_BuildTests=OFF
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+      - name: Test
+        run: ctest --test-dir build --build-config Debug --output-on-failure --parallel 4
   coverage:
     name: Run coverage tests
     needs: [ test ]
