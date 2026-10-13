@@ -1,0 +1,6 @@
+{
+    "$id": "http://acme.com/schemas/common.json",
+    "definitions": {
+        "attr": { "type": "string" }
+    }
+}

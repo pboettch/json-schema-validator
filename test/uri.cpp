@@ -83,8 +83,34 @@ static void pointer_plain_name(json_uri start,
 	EXPECT_EQ(a.identifier(), "");
 }
 
+// "." and ".." segments are removed, so that different paths to the same document result in the same URI
+static void dot_segments()
+{
+	json_uri v2("http://acme.com/schemas/v2/v2.json");
+
+	EXPECT_EQ(v2.derive("./../v1/v1.json"), "http://acme.com/schemas/v1/v1.json # ");
+	EXPECT_EQ(v2.derive("../common.json#/definitions/attr"), "http://acme.com/schemas/common.json # /definitions/attr");
+	EXPECT_EQ(v2.derive("sub/./x/../v1.json"), "http://acme.com/schemas/v2/sub/v1.json # ");
+	EXPECT_EQ(v2.derive("/schemas/./v2/../v1/v1.json"), "http://acme.com/schemas/v1/v1.json # ");
+	EXPECT_EQ(v2.derive("sub/."), "http://acme.com/schemas/v2/sub/ # ");
+	EXPECT_EQ(v2.derive("sub/x/.."), "http://acme.com/schemas/v2/sub/ # ");
+	EXPECT_EQ(v2.derive("sub/x/../"), "http://acme.com/schemas/v2/sub/ # ");
+
+	if (!(v2.derive("./../v1/v1.json") == json_uri("http://acme.com/schemas/v1/v1.json"))) {
+		std::cerr << "Failed: URIs with and without dot-segments are not equal\n";
+		errors++;
+	}
+
+	// a ".." going above the beginning of the path is kept (e.g. relative to the current directory)
+	json_uri empty("");
+	EXPECT_EQ(empty.derive("../common.json"), "/../common.json # ");
+	EXPECT_EQ(empty.derive("../sub/../common.json"), "/../common.json # ");
+}
+
 int main(void)
 {
+	dot_segments();
+
 	json_uri empty("");
 	paths(empty,
 	      "",

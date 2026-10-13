@@ -9,6 +9,49 @@
 #include <nlohmann/json-schema.hpp>
 
 #include <sstream>
+#include <vector>
+
+namespace
+{
+
+// remove "." and ".." segments from a path (RFC 3986, section 5.2.4), so that
+// different paths to the same document result in the same URI.
+// A ".." which would go above the beginning of the path is kept.
+std::string remove_dot_segments(const std::string &path)
+{
+	std::vector<std::string> segments;
+
+	std::size_t start = 0;
+	do {
+		auto end = path.find('/', start);
+		auto segment = path.substr(start, end == std::string::npos ? std::string::npos : end - start);
+		bool last = end == std::string::npos;
+
+		if (segment == ".") {
+			if (last)
+				segments.push_back(""); // keep the trailing slash
+		} else if (segment == ".." && !segments.empty() && segments.back() != ".." && segments.back() != "") {
+			segments.pop_back();
+			if (last)
+				segments.push_back(""); // keep the trailing slash
+		} else
+			segments.push_back(segment);
+
+		start = end + 1;
+		if (last)
+			break;
+	} while (1);
+
+	std::string result;
+	for (std::size_t i = 0; i < segments.size(); i++) {
+		if (i > 0)
+			result += '/';
+		result += segments[i];
+	}
+	return result;
+}
+
+} // namespace
 
 namespace nlohmann
 {
@@ -87,6 +130,8 @@ void json_uri::update(const std::string &uri)
 				path_ = path_.substr(0, last_slash) + '/' + path;
 			} else // otherwise it is a subfolder
 				path_.append(path);
+
+			path_ = remove_dot_segments(path_);
 		}
 	}
 

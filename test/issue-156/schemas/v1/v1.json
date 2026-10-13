@@ -1,0 +1,6 @@
+{
+    "$id": "http://acme.com/schemas/v1/v1.json",
+    "definitions": {
+        "msg": { "$ref": "../common.json#/definitions/attr" }
+    }
+}

@@ -1,0 +1,12 @@
+{
+    "$id": "http://acme.com/schemas/root.json",
+    "properties": {
+        "msg": {
+            "anyOf": [
+                { "$ref": "v1/v1.json#/definitions/msg" },
+                { "$ref": "v2/v2.json#/definitions/msg" }
+            ]
+        }
+    },
+    "required": ["msg"]
+}
