@@ -156,6 +156,27 @@ to build and link.
 
 Before version 2.3.0 the target was named `nlohmann_json_schema_validator` (without namespace).
 
+### Installing when used via FetchContent
+
+When this library is included in another project with `FetchContent` (or `add_subdirectory()`), its install
+rules are disabled by default. Do not add `nlohmann_json_schema_validator` to your own `install(TARGETS ...)`:
+the header will not be found or will be installed to the wrong location. Instead, enable the library's own
+install rules before making it available:
+
+```CMake
+include(FetchContent)
+
+set(JSON_VALIDATOR_INSTALL ON)
+FetchContent_Declare(nlohmann_json_schema_validator
+    GIT_REPOSITORY https://github.com/pboettch/json-schema-validator
+    GIT_TAG        2.4.0)
+FetchContent_MakeAvailable(nlohmann_json_schema_validator)
+
+target_link_libraries(<your-target> PRIVATE nlohmann_json_schema_validator::validator)
+```
+
+If nlohmann-json is fetched as well, it will be installed alongside (`JSON_Install` is enabled automatically).
+
 ## Code
 
 See also `app/json-schema-validate.cpp`.
