@@ -4,30 +4,44 @@
 using nlohmann::json;
 using nlohmann::json_schema::json_validator;
 
-// Test: object with additionalProperties containing null value should validate
-// additionalProperties causes traversal into the object where null value triggers the bug
-static const json schema = R"(
-{
-    "properties": {
-        "x": {"type": "object", "additionalProperties": {}}
-    }
-})"_json;
-
-int main(void)
+// null values inside a document are values, they must not generate a default-patch
+// (which used to be an add-operation on the root, replacing the whole document, issue-380)
+static int check(const json &schema, const json &instance)
 {
 	json_validator validator{};
 	validator.set_root_schema(schema);
 
-	json instance = R"({"x": {"nested": null}})"_json;
-
 	const auto patch = validator.validate(instance);
 	const auto result = instance.patch(patch);
 
-	// null value should be preserved
-	if (!result["x"]["nested"].is_null()) {
-		std::cerr << "Failed: nested should be null, got: " << result["x"]["nested"].dump() << std::endl;
+	if (!patch.empty() || result != instance) {
+		std::cerr << "Failed: schema " << schema.dump() << ", instance " << instance.dump()
+		          << ": patch " << patch.dump() << " gives " << result.dump() << std::endl;
 		return 1;
 	}
 
 	return 0;
+}
+
+int main(void)
+{
+	int failed = 0;
+
+	// additionalProperties causes traversal into the object where the null value triggered the bug
+	failed += check(R"({"properties": {"x": {"type": "object", "additionalProperties": {}}}})"_json,
+	                R"({"x": {"nested": null}})"_json);
+
+	// a null default for a present null value
+	failed += check(R"({"properties": {"test": {"default": null}}})"_json,
+	                R"({"test": null})"_json);
+
+	// a present null value is not replaced by its default
+	failed += check(R"({"properties": {"x": {"default": {"a": 1}}}})"_json,
+	                R"({"x": null})"_json);
+
+	// a root-default is only applied to an empty document, not to a document containing null values
+	failed += check(R"({"properties": {"a": {"type": "null"}}, "default": {"a": null}})"_json,
+	                R"({"a": null})"_json);
+
+	return failed;
 }

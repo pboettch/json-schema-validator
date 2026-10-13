@@ -41,6 +41,7 @@ int main(void)
 		const auto expected = R"({"width": 42})"_json;
 		if (actual != expected) {
 			std::cerr << "Patch of defaults is wrong for root schema: '" << actual.dump() << "' instead of expected '" << expected.dump() << "'" << std::endl;
+			return 1;
 		}
 	}
 
