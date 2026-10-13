@@ -126,6 +126,7 @@ static void misc()
 
 	// an URN has no path
 	json_uri urn("urn:example:schema");
+	EXPECT_EQ(urn.location(), "urn:example:schema");
 	try {
 		urn.derive("other.json");
 		std::cerr << "Failed: a path was added to an URN\n";

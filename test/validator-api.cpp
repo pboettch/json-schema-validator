@@ -44,10 +44,10 @@ public:
 	}
 };
 
-static void expect_error(const std::string &test, const json_validator &validator, const json_uri &initial_uri, const std::string &expected)
+static void expect_error(const std::string &test, const json_validator &validator, const json &instance, const json_uri &initial_uri, const std::string &expected)
 {
 	collecting_error_handler handler;
-	validator.validate(1, handler, initial_uri);
+	validator.validate(instance, handler, initial_uri);
 	if (handler.messages.find(expected) == std::string::npos) {
 		std::cerr << "FAILED: " << test << ": '" << handler.messages << "' does not contain '" << expected << "'\n";
 		errors++;
@@ -65,9 +65,9 @@ static void initial_uri()
 {
 	json_validator validator(json::parse(R"({"definitions": {"integer": {"type": "integer"}}})"));
 
-	expect_error("initial URI of an unknown file", validator, json_uri("http://example.com/other.json"),
+	expect_error("initial URI of an unknown file", validator, 1, json_uri("http://example.com/other.json"),
 	             "no file found serving requested root-URI");
-	expect_error("initial URI of an unknown subschema", validator, json_uri("#/definitions/missing"),
+	expect_error("initial URI of an unknown subschema", validator, 1, json_uri("#/definitions/missing"),
 	             "for request initial URI");
 }
 
@@ -86,6 +86,8 @@ static void no_loader()
 	expect_exception(
 	    "default value of an unresolved reference", [&]() { validator.validate(json::object()); },
 	    "unresolved or freed schema-reference http://example.com/other.json");
+	expect_error("default value of an unresolved reference, collecting errors", validator, json::object(), json_uri("#"),
+	             "unresolved or freed schema-reference http://example.com/other.json");
 }
 
 static void unresolved_references()

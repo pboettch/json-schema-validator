@@ -82,6 +82,9 @@ int main()
 
 	numberOfErrors += testStringFormat("ipv4", ipv4Checks);
 
+	numberOfErrors += testStringFormat("email", {{"j\xc3\xb6rg@example.com", false}}); // non-ASCII, UTF-8
+	numberOfErrors += testStringFormat("unknown-format", {{"value", false}});
+
 	const std::vector<std::pair<std::string, bool>> uriChecks{
 	    {"http://www.google.com/search?q=regular%20expression", true},
 	    {"http://www.google.com/", true},
