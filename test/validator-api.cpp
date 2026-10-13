@@ -106,6 +106,17 @@ static void duplicate_id()
 	    "already inserted");
 }
 
+static void missing_checkers()
+{
+	json_validator validator;
+	expect_exception(
+	    "format without format checker", [&]() { validator.set_root_schema(json::parse(R"({"format": "email"})")); },
+	    "a format checker was not provided but a format keyword for this string is present: email");
+	expect_exception(
+	    "content without content checker", [&]() { validator.set_root_schema(json::parse(R"({"contentEncoding": "base64"})")); },
+	    "content checker was not set");
+}
+
 static void move()
 {
 	json_validator validator(json::parse(R"({"type": "integer"})"));
@@ -129,6 +140,7 @@ int main()
 	no_loader();
 	unresolved_references();
 	duplicate_id();
+	missing_checkers();
 	move();
 
 	return errors ? EXIT_FAILURE : EXIT_SUCCESS;
