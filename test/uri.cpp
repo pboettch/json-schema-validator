@@ -60,8 +60,8 @@ static void paths(json_uri start,
 
 static void pointer_plain_name(json_uri start,
                                const std::string &full,
-                               const std::string &full_path,
-                               const std::string &no_path)
+                               const std::string & /*full_path*/,
+                               const std::string & /*no_path*/)
 {
 	auto a = start.derive("#/json/path");
 	EXPECT_EQ(a, full + " # /json/path");
