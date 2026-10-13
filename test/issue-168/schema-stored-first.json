@@ -1,0 +1,10 @@
+{
+  "properties": {
+    "a": {
+      "myDefs": {
+        "r": { "oneOf": [ { "type": "string" }, { "type": "object", "additionalProperties": { "$ref": "#/properties/a/myDefs/r" } } ] }
+      }
+    },
+    "b": { "$ref": "#/properties/a/myDefs/r" }
+  }
+}

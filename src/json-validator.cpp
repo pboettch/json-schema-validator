@@ -251,31 +251,26 @@ public:
 		if (sch != file.schemas.end())
 			return sch->second;
 
+		// get or create a schema_ref
+		auto r = file.unresolved.lower_bound(uri.fragment());
+		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.fragment(), r->first)))
+			return r->second; // unresolved, already seen previously - use existing reference
+
+		auto ref = file.unresolved.insert(r,
+		                                  {uri.fragment(), std::make_shared<schema_ref>(uri.to_string(), this)})
+		               ->second; // unresolved, create reference
+
 		// referencing an unknown keyword, turn it into schema
 		//
 		// an unknown keyword can only be referenced by a json-pointer,
 		// not by a plain name fragment
-		if (!uri.pointer().to_string().empty()) {
-			bool contains_pointer = file.unknown_keywords.contains(uri.pointer());
-			if (contains_pointer) {
-				auto &subschema = file.unknown_keywords.at(uri.pointer());
-				auto s = schema::make(subschema, this, {}, {{uri}});
-				if (s) { // if schema is valid (non-null)
-					file.unknown_keywords.erase(uri.fragment());
-					return s;
-				}
-			}
-		}
+		//
+		// the reference has been created before: a recursive reference to this schema
+		// found while creating it uses it, it is resolved when the schema is inserted
+		if (!uri.pointer().to_string().empty() && file.unknown_keywords.contains(uri.pointer()))
+			return schema::make(file.unknown_keywords.at(uri.pointer()), this, {}, {{uri}});
 
-		// get or create a schema_ref
-		auto r = file.unresolved.lower_bound(uri.fragment());
-		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.fragment(), r->first))) {
-			return r->second; // unresolved, already seen previously - use existing reference
-		} else {
-			return file.unresolved.insert(r,
-			                              {uri.fragment(), std::make_shared<schema_ref>(uri.to_string(), this)})
-			    ->second; // unresolved, create reference
-		}
+		return ref;
 	}
 
 	void set_root_schema(json sch)
