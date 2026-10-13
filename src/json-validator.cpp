@@ -401,11 +401,6 @@ class logical_not : public schema
 			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
 	}
 
-	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
-	{
-		return subschema_->default_value(ptr, instance, e);
-	}
-
 public:
 	logical_not(json &sch,
 	            root_schema *root,
@@ -610,7 +605,10 @@ public:
 	    : schema(root), type_(static_cast<uint8_t>(json::value_t::discarded) + 1)
 	{
 		// association between JSON-schema-type and NLohmann-types
-		static const std::vector<std::pair<std::string, json::value_t>> schema_types = {
+		static const struct {
+			const char *name;
+			json::value_t type;
+		} schema_types[] = {
 		    {"null", json::value_t::null},
 		    {"object", json::value_t::object},
 		    {"array", json::value_t::array},
@@ -625,23 +623,23 @@ public:
 		auto attr = sch.find("type");
 		if (attr == sch.end()) // no type field means all sub-types possible
 			for (auto &t : schema_types)
-				type_[static_cast<uint8_t>(t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
+				type_[static_cast<uint8_t>(t.type)] = type_schema::make(sch, t.type, root, uris, known_keywords);
 		else {
 			switch (attr.value().type()) { // "type": "type"
 
 			case json::value_t::string: {
 				auto schema_type = attr.value().get<std::string>();
 				for (auto &t : schema_types)
-					if (t.first == schema_type)
-						type_[static_cast<uint8_t>(t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
+					if (schema_type == t.name)
+						type_[static_cast<uint8_t>(t.type)] = type_schema::make(sch, t.type, root, uris, known_keywords);
 			} break;
 
 			case json::value_t::array: // "type": ["type1", "type2"]
 				for (auto &array_value : attr.value()) {
 					auto schema_type = array_value.get<std::string>();
 					for (auto &t : schema_types)
-						if (t.first == schema_type)
-							type_[static_cast<uint8_t>(t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
+						if (schema_type == t.name)
+							type_[static_cast<uint8_t>(t.type)] = type_schema::make(sch, t.type, root, uris, known_keywords);
 				}
 				break;
 
@@ -774,15 +772,12 @@ class string : public schema
 			}
 		}
 
+		// the checkers are present, the constructor checks it
 		if (std::get<0>(content_)) {
-			if (root_->content_check() == nullptr)
-				e.error(ptr, instance, std::string("a content checker was not provided but a contentEncoding or contentMediaType for this string have been present: '") + std::get<1>(content_) + "' '" + std::get<2>(content_) + "'");
-			else {
-				try {
-					root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
-				} catch (const std::exception &ex) {
-					e.error(ptr, instance, std::string("content-checking failed: ") + ex.what());
-				}
+			try {
+				root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
+			} catch (const std::exception &ex) {
+				e.error(ptr, instance, std::string("content-checking failed: ") + ex.what());
 			}
 		} else if (instance.type() == json::value_t::binary) {
 			e.error(ptr, instance, "expected string, but get binary data");
@@ -799,14 +794,10 @@ class string : public schema
 #endif
 
 		if (format_.first) {
-			if (root_->format_check() == nullptr)
-				e.error(ptr, instance, std::string("a format checker was not provided but a format keyword for this string is present: ") + format_.second);
-			else {
-				try {
-					root_->format_check()(format_.second, instance.get<std::string>());
-				} catch (const std::exception &ex) {
-					e.error(ptr, instance, std::string("format-checking failed: ") + ex.what());
-				}
+			try {
+				root_->format_check()(format_.second, instance.get<std::string>());
+			} catch (const std::exception &ex) {
+				e.error(ptr, instance, std::string("format-checking failed: ") + ex.what());
 			}
 		}
 	}
@@ -975,11 +966,8 @@ public:
 
 class null : public schema
 {
-	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
-	{
-		if (!instance.is_null())
-			e.error(ptr, instance, "expected to be null");
-	}
+	// only used for null instances (type_schema), nothing to check
+	void validate(const json::json_pointer &, const json &, json_patch &, error_handler &) const override {}
 
 public:
 	null(json &, root_schema *root)
