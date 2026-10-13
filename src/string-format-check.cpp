@@ -292,51 +292,56 @@ bool is_ascii(std::string const &value)
  * @see adapted from: https://github.com/jhermsmeier/uri.regex/blob/master/uri.regex
  *
  */
+const std::string unreserved{R"([A-Za-z0-9\-._~])"};
+const std::string pctEncoded{R"(%[0-9A-Fa-f]{2})"};
+const std::string subDelims{R"([!$&'()*+,;=])"};
+const std::string pchar{"(?:" + unreserved + "|" + pctEncoded + "|" + subDelims + "|[:@])"};
+const std::string segment{pchar + "*"};
+const std::string segmentNz{pchar + "+"};
+const std::string segmentNzNc{"(?:" + unreserved + "|" + pctEncoded + "|" + subDelims + "|@)+"};
+const std::string authority{"(?:(?:" + unreserved + "|" + pctEncoded + "|" + subDelims + "|:)*@)?" + host + "(?::[0-9]*)?"};
+const std::string pathAbempty{"(?:/" + segment + ")*"};
+const std::string pathAbsolute{"/(?:" + segmentNz + "(?:/" + segment + ")*)?"};
+const std::string queryOrFragment{"(?:" + pchar + "|[/?])*"};
+const std::string queryAndFragment{"(?:\\?" + queryOrFragment + ")?(?:#" + queryOrFragment + ")?"};
+const std::string uri{"[A-Za-z][A-Za-z0-9+\\-.]*:(?://" + authority + pathAbempty + "|" + pathAbsolute + "|" +
+                      segmentNz + "(?:/" + segment + ")*|)" + queryAndFragment};
+const std::string relativeRef{"(?://" + authority + pathAbempty + "|" + pathAbsolute + "|" +
+                              segmentNzNc + "(?:/" + segment + ")*|)" + queryAndFragment};
+const std::string uriReference{"(?:" + uri + ")|(?:" + relativeRef + ")"};
+
 void rfc3986_uri_check(const std::string &value)
 {
-	const static std::string scheme{R"(([A-Za-z][A-Za-z0-9+\-.]*):)"};
-	const static std::string hierPart{
-	    R"((?:(\/\/)(?:((?:[A-Za-z0-9\-._~!$&'()*+,;=:]|)"
-	    R"(%[0-9A-Fa-f]{2})*)@)?((?:\[(?:(?:(?:(?:[0-9A-Fa-f]{1,4}:){6}|)"
-	    R"(::(?:[0-9A-Fa-f]{1,4}:){5}|)"
-	    R"((?:[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){4}|)"
-	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,1}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){3}|)"
-	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,2}[0-9A-Fa-f]{1,4})?::(?:[0-9A-Fa-f]{1,4}:){2}|)"
-	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,3}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}:|)"
-	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,4}[0-9A-Fa-f]{1,4})?::)(?:[0-9A-Fa-f]{1,4}:[0-9A-Fa-f]{1,4}|)"
-	    R"((?:(?:25[0-5]|2[0-4][0-9]|)"
-	    R"(1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|)"
-	    R"(2[0-4][0-9]|)"
-	    R"(1[0-9][0-9]|[1-9]?[0-9]))|)"
-	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,5}[0-9A-Fa-f]{1,4})?::[0-9A-Fa-f]{1,4}|)"
-	    R"((?:(?:[0-9A-Fa-f]{1,4}:){0,6}[0-9A-Fa-f]{1,4})?::)|)"
-	    R"([Vv][0-9A-Fa-f]+\.[A-Za-z0-9\-._~!$&'()*+,;=:]+)\]|)"
-	    R"((?:(?:25[0-5]|)"
-	    R"(2[0-4][0-9]|)"
-	    R"(1[0-9][0-9]|[1-9]?[0-9])\.){3}(?:25[0-5]|)"
-	    R"(2[0-4][0-9]|)"
-	    R"(1[0-9][0-9]|[1-9]?[0-9])|)"
-	    R"((?:[A-Za-z0-9\-._~!$&'()*+,;=]|)"
-	    R"(%[0-9A-Fa-f]{2})*))(?::([0-9]*))?((?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
-	    R"(%[0-9A-Fa-f]{2})*)*)|)"
-	    R"(\/((?:(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
-	    R"(%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
-	    R"(%[0-9A-Fa-f]{2})*)*)?)|)"
-	    R"(((?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
-	    R"(%[0-9A-Fa-f]{2})+(?:\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@]|)"
-	    R"(%[0-9A-Fa-f]{2})*)*)|))"};
-
-	const static std::string query{R"((?:\?((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
-	const static std::string fragment{
-	    R"((?:\#((?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*))?)"};
-	const static std::string uriFormat{scheme + hierPart + query + fragment};
-
-	const static REGEX_NAMESPACE::regex uriRegex{uriFormat};
+	const static REGEX_NAMESPACE::regex uriRegex{uri};
 
 	if (!REGEX_NAMESPACE::regex_match(value, uriRegex)) {
 		throw std::invalid_argument("not a URI string according to RFC 3986.");
 	}
 }
+
+/**
+ * An IRI (RFC 3987) is a URI which allows non-ASCII characters where a URI allows unreserved characters. The non-ASCII
+ * characters (UTF-8 bytes) are replaced by an unreserved character, which is not allowed in a scheme or a port, and
+ * the result is checked as URI. Not checked: private-use characters are only allowed in the query.
+ */
+std::string non_ascii_to_unreserved(std::string value)
+{
+	for (auto &ch : value)
+		if (ch & 0x80)
+			ch = '~';
+	return value;
+}
+
+// RFC 6901
+const std::string jsonPointer{R"((?:/(?:[^/~]|~[01])*)*)"};
+
+// draft-handrews-relative-json-pointer-01
+const std::string relativeJsonPointer{"(?:0|[1-9][0-9]*)(?:#|" + jsonPointer + ")"};
+
+// RFC 6570, level 4, non-ASCII characters replaced
+const std::string varchar{R"((?:[A-Za-z0-9_]|%[0-9A-Fa-f]{2}))"};
+const std::string varspec{varchar + R"((?:\.?)" + varchar + R"()*(?::[1-9][0-9]{0,3}|\*)?)"};
+const std::string uriTemplate{R"((?:[!#$&-;=?-\[\]_a-z~]|%[0-9A-Fa-f]{2}|\{[+#./;?&=,!@|]?)" + varspec + "(?:," + varspec + R"()*\})*)"};
 
 } // namespace
 
@@ -397,6 +402,36 @@ void default_string_format_check(const std::string &format, const std::string &v
 			REGEX_NAMESPACE::regex re(value, std::regex::ECMAScript);
 		} catch (std::exception &exception) {
 			throw;
+		}
+	} else if (format == "uri-reference") {
+		static const REGEX_NAMESPACE::regex uriReferenceRegex{uriReference};
+		if (!REGEX_NAMESPACE::regex_match(value, uriReferenceRegex)) {
+			throw std::invalid_argument("not a URI reference according to RFC 3986.");
+		}
+	} else if (format == "iri") {
+		static const REGEX_NAMESPACE::regex iriRegex{uri};
+		if (!REGEX_NAMESPACE::regex_match(non_ascii_to_unreserved(value), iriRegex)) {
+			throw std::invalid_argument("not an IRI according to RFC 3987.");
+		}
+	} else if (format == "iri-reference") {
+		static const REGEX_NAMESPACE::regex iriReferenceRegex{uriReference};
+		if (!REGEX_NAMESPACE::regex_match(non_ascii_to_unreserved(value), iriReferenceRegex)) {
+			throw std::invalid_argument("not an IRI reference according to RFC 3987.");
+		}
+	} else if (format == "uri-template") {
+		static const REGEX_NAMESPACE::regex uriTemplateRegex{uriTemplate};
+		if (!REGEX_NAMESPACE::regex_match(non_ascii_to_unreserved(value), uriTemplateRegex)) {
+			throw std::invalid_argument("not a URI template according to RFC 6570.");
+		}
+	} else if (format == "json-pointer") {
+		static const REGEX_NAMESPACE::regex jsonPointerRegex{jsonPointer};
+		if (!REGEX_NAMESPACE::regex_match(value, jsonPointerRegex)) {
+			throw std::invalid_argument("not a JSON pointer according to RFC 6901.");
+		}
+	} else if (format == "relative-json-pointer") {
+		static const REGEX_NAMESPACE::regex relativeJsonPointerRegex{relativeJsonPointer};
+		if (!REGEX_NAMESPACE::regex_match(value, relativeJsonPointerRegex)) {
+			throw std::invalid_argument("not a relative JSON pointer.");
 		}
 	} else {
 		/* yet unsupported JSON schema draft 7 built-ins */

@@ -148,5 +148,12 @@ int main()
 
 	numberOfErrors += testStringFormat("uuid", uuidChecks);
 
+	numberOfErrors += testStringFormat("uri-reference", {{"http://example.com/a?b#c", true}, {"//example.com/a", true}, {"/a/b", true}, {"a:b/c", true}, {"./a:b", true}, {"", true}, {"#f", true}, {"a b", false}, {"/a%zz", false}, {"1:b", false}, {"/\xc3\xa4", false}});
+	numberOfErrors += testStringFormat("iri", {{"http://\xc3\xa4.example/\xc3\xb6?\xc3\xbc#\xc3\x9f", true}, {"/\xc3\xa4", false}, {"\xc3\xa4:b", false}, {"http://example.com:8\xc3\xa4/", false}});
+	numberOfErrors += testStringFormat("iri-reference", {{"/\xc3\xa4", true}, {"\xc3\xa4", true}, {"#\xc3\xa4", true}, {"/a\\b", false}});
+	numberOfErrors += testStringFormat("uri-template", {{"http://example.com/{a}/{+b}{?c,d*}{#e:3}", true}, {"\xc3\xa4{a.b}", true}, {"{}", false}, {"{a", false}, {"a}", false}, {"{a:0}", false}, {"a b", false}});
+	numberOfErrors += testStringFormat("json-pointer", {{"", true}, {"/", true}, {"/a~0b~1c", true}, {"/a//b/", true}, {"abc", false}, {"/a~", false}, {"/a~2", false}, {"#/a", false}});
+	numberOfErrors += testStringFormat("relative-json-pointer", {{"0", true}, {"1#", true}, {"10/a~1b", true}, {"", false}, {"/a", false}, {"01", false}, {"-1", false}, {"1#/a", false}});
+
 	return numberOfErrors;
 }
