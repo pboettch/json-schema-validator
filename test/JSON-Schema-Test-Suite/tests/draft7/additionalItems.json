@@ -21,6 +21,29 @@
     {
         "description": "when items is schema, additionalItems does nothing",
         "schema": {
+            "items": {
+                "type": "integer"
+            },
+            "additionalItems": {
+                "type": "string"
+            }
+        },
+        "tests": [
+            {
+                "description": "valid with a array of type integers",
+                "data": [1,2,3],
+                "valid": true
+            },
+            {
+                "description": "invalid with a array of mixed types",
+                "data": [1,"2","3"],
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "when items is schema, boolean additionalItems does nothing",
+        "schema": {
             "items": {},
             "additionalItems": false
         },
@@ -95,23 +118,7 @@
         ]
     },
     {
-        "description": "additionalItems should not look in applicators, valid case",
-        "schema": {
-            "allOf": [
-                { "items": [ { "type": "integer" } ] }
-            ],
-            "additionalItems": { "type": "boolean" }
-        },
-        "tests": [
-            {
-                "description": "items defined in allOf are not examined",
-                "data": [ 1, null ],
-                "valid": true
-            }
-        ]
-    },
-    {
-        "description": "additionalItems should not look in applicators, invalid case",
+        "description": "additionalItems does not look in applicators, invalid case",
         "schema": {
             "allOf": [
                 { "items": [ { "type": "integer" }, { "type": "string" } ] }
@@ -143,6 +150,40 @@
                 "description": "wrong type of second item",
                 "data": [ "x", "y" ],
                 "valid": false
+            }
+        ]
+    },
+    {
+        "description": "additionalItems with heterogeneous array",
+        "schema": {
+            "items": [{}],
+            "additionalItems": false
+        },
+        "tests": [
+            {
+                "description": "heterogeneous invalid instance",
+                "data": [ "foo", "bar", 37 ],
+                "valid": false
+            },
+            {
+                "description": "valid instance",
+                "data": [ null ],
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "additionalItems with null instance elements",
+        "schema": {
+            "additionalItems": {
+                "type": "null"
+            }
+        },
+        "tests": [
+            {
+                "description": "allows null elements",
+                "data": [ null ],
+                "valid": true
             }
         ]
     }

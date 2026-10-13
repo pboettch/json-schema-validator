@@ -105,5 +105,24 @@ int main()
 	numberOfErrors += testStringFormat("email", emailChecks);
 	numberOfErrors += testStringFormat("idn-email", emailChecks);
 
+	const std::vector<std::pair<std::string, bool>> uuidChecks{
+	    {"2EB8AA08-AA98-11EA-B4AA-73B441D16380", true},
+	    {"2eb8aa08-aa98-11ea-b4aa-73b441d16380", true},
+	    {"2eb8aa08-AA98-11ea-B4Aa-73B441D16380", true},
+	    {"00000000-0000-0000-0000-000000000000", true},
+	    {"98d80576-482e-427f-8434-7f86890ab222", true},
+	    {"99c17cbb-656f-564a-940f-1a4568f03487", true},
+	    {"99c17cbb-656f-664a-940f-1a4568f03487", true},
+	    {"99c17cbb-656f-f64a-940f-1a4568f03487", true},
+	    {"2eb8aa08-aa98-11ea-b4aa-73b441d1638", false},
+	    {"2eb8aa08-aa98-11ea-73b441d16380", false},
+	    {"2eb8aa08-aa98-11ea-b4ga-73b441d16380", false},
+	    {"2eb8aa08aa9811eab4aa73b441d16380", false},
+	    {"2eb8aa08aa98-11ea-b4aa73b441d16380", false},
+	    {"2eb8-aa08-aa98-11ea-b4aa73b44-1d16380", false},
+	    {"2eb8aa08aa9811eab4aa73b441d16380----", false}};
+
+	numberOfErrors += testStringFormat("uuid", uuidChecks);
+
 	return numberOfErrors;
 }

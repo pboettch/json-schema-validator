@@ -22,13 +22,22 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
 
     option(JSON_SCHEMA_ENABLE_OPTIONAL_TESTS "Enable optional tests of the JSONSchema Test Suite" ON)
 
+    # test cases known to fail, by test file, group and test description
+    set(KNOWN_FAILURES ${CMAKE_CURRENT_SOURCE_DIR}/known-failures.json)
+
+    # one test per test file, NAME is the ctest name
+    function(add_suite_test NAME TEST_FILE)
+        file(RELATIVE_PATH test_file ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/${DRAFT} ${TEST_FILE})
+        add_test(NAME "${NAME}"
+                 COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${KNOWN_FAILURES} ${test_file} ${TEST_FILE})
+    endfunction()
+
     # create tests foreach test-file
     file(GLOB TEST_FILES ${JSON_SCHEMA_TEST_SUITE_PATH}/tests/${DRAFT}/*.json)
 
     foreach(TEST_FILE ${TEST_FILES})
         get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
-        add_test(NAME "${JSON_SCHEMA_TEST_PREFIX}::${TEST_NAME}"
-                 COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${TEST_FILE})
+        add_suite_test("${JSON_SCHEMA_TEST_PREFIX}::${TEST_NAME}" ${TEST_FILE})
     endforeach()
 
     if (JSON_SCHEMA_ENABLE_OPTIONAL_TESTS)
@@ -37,17 +46,15 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
 
         foreach(TEST_FILE ${OPT_TEST_FILES})
             get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
-            add_test(NAME "${JSON_SCHEMA_TEST_PREFIX}::Optional::${TEST_NAME}"
-                     COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${TEST_FILE})
+            add_suite_test("${JSON_SCHEMA_TEST_PREFIX}::Optional::${TEST_NAME}" ${TEST_FILE})
         endforeach()
 
         foreach(TEST_FILE ${FORMAT_TEST_FILES})
             get_filename_component(TEST_NAME ${TEST_FILE} NAME_WE)
-            add_test(NAME "${JSON_SCHEMA_TEST_PREFIX}::Optional::Format::${TEST_NAME}"
-                     COMMAND ${PIPE_IN_TEST_SCRIPT} $<TARGET_FILE:json-schema-test> ${TEST_FILE})
+            add_suite_test("${JSON_SCHEMA_TEST_PREFIX}::Optional::Format::${TEST_NAME}" ${TEST_FILE})
         endforeach()
 
-        # some optional tests will fail
+        # optional tests which fail completely, single failing test cases are in known-failures.json
         set_tests_properties(
             JSON-Suite::Optional::bignum
             JSON-Suite::Optional::non-bmp-regex
@@ -61,7 +68,6 @@ if(JSON_SCHEMA_TEST_SUITE_PATH)
             JSON-Suite::Optional::Format::relative-json-pointer
             JSON-Suite::Optional::Format::uri-reference
             JSON-Suite::Optional::Format::uri-template
-            JSON-Suite::Optional::unicode
 
             PROPERTIES
                 WILL_FAIL ON)

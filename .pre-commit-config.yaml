@@ -1,3 +1,5 @@
+# plain copies of the JSON-Schema-Test-Suite, kept as they are upstream
+exclude: ^test/JSON-Schema-Test-Suite/(tests|remotes)/
 repos:
   - repo: https://github.com/Takishima/cmake-pre-commit-hooks
     rev: v1.9.6
