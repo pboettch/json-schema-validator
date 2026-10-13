@@ -61,8 +61,8 @@ class JsonSchemaValidatorConan(ConanFile):
         tc = CMakeToolchain(self)
         tc.variables['JSON_VALIDATOR_BUILD_EXAMPLES'] = self.options.build_examples
         tc.variables['JSON_VALIDATOR_BUILD_TESTS'] = self.options.build_tests
-        tc.variables['JSON_VALIDATOR_SHARED_LIBS '] = self.options.shared
-        tc.variables['JSON_VALIDATOR_TEST_COVERAGE '] = self.options.test_coverage
+        tc.variables['JSON_VALIDATOR_SHARED_LIBS'] = self.options.shared
+        tc.variables['JSON_VALIDATOR_TEST_COVERAGE'] = self.options.test_coverage
         tc.generate()
 
     def layout(self):

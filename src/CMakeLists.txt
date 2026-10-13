@@ -14,10 +14,11 @@ target_include_directories(nlohmann_json_schema_validator PUBLIC
 set_target_properties(nlohmann_json_schema_validator PROPERTIES
         PUBLIC_HEADER nlohmann/json-schema.hpp)
 
-# TODO: Why would this need to be if guarded?
+# Windows: export the API when building the DLL, import it when using it
 if (JSON_VALIDATOR_SHARED_LIBS)
-    target_compile_definitions(nlohmann_json_schema_validator PRIVATE
-            -DJSON_SCHEMA_VALIDATOR_EXPORTS)
+    target_compile_definitions(nlohmann_json_schema_validator
+            PRIVATE JSON_SCHEMA_VALIDATOR_EXPORTS
+            INTERFACE JSON_SCHEMA_VALIDATOR_IMPORTS)
 endif ()
 
 # TODO: Consider setting minimum cxx standard instead
