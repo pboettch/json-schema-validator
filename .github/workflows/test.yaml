@@ -142,6 +142,13 @@ jobs:
           # Note lcov-action prepends and appends wild-cards *. Account for those
           # https://github.com/danielealbano/lcov-action/issues/11
           remove_patterns: /test/,/cmake-build*/
+      - name: Install codecov dependencies
+        # The codecov action requires curl, which is missing in the container.
+        # Some third-party apt sources of the container are broken (expired key, missing Release file), ignore
+        # the failing update, the Ubuntu package lists are still updated
+        run: |
+          apt-get update || true
+          apt-get install -y --no-install-recommends curl
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
         with:
