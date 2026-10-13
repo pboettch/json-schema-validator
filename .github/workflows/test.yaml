@@ -18,9 +18,16 @@ jobs:
     name: Check pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-      - uses: pre-commit/action@v3.0.0
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ env.pythonLocation }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      - run: python -m pip install pre-commit
+      - run: pre-commit run --all-files --show-diff-on-failure --color=always
 
   test:
     name: Run ctests
@@ -59,12 +66,14 @@ jobs:
         run: |
           update-alternatives --install /usr/bin/clang++ clang++ $(which clang++-${{ matrix.compiler_version }}) 999
         if: matrix.compiler_version && matrix.toolchain == 'llvm'
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         # container version is < 3.25 which does not have workflows
       - name: Get a working cmake version
-        uses: lukka/get-cmake@v3.25.2
+        uses: lukka/get-cmake@v4.4.2
+        with:
+          cmakeVersion: "~3.25.0"
       - name: Run CMake ${{ matrix.toolchain }}-ci workflow with nlohmann/json version ${{ matrix.json_version }}
-        uses: lukka/run-cmake@v10.5
+        uses: lukka/run-cmake@v10.9
         with:
           workflowPreset: "${{ matrix.toolchain }}-ci"
   strict:
@@ -95,7 +104,7 @@ jobs:
           sudo bash llvm.sh
           echo "CXX=clang++-$(sed -n 's/^CURRENT_LLVM_STABLE=//p' llvm.sh)" >> $GITHUB_ENV
         if: matrix.toolchain == 'llvm'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Get latest cmake version
         uses: lukka/get-cmake@latest
       - name: Show compiler version
@@ -116,11 +125,11 @@ jobs:
     container: ghcr.io/nlohmann/json-ci:v2.4.0
     if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Get latest cmake version
         uses: lukka/get-cmake@latest
       - name: Get test coverage
-        uses: lukka/run-cmake@v10.5
+        uses: lukka/run-cmake@v10.9
         with:
           workflowPreset: ci-coverage
       - name: Get lcov data
