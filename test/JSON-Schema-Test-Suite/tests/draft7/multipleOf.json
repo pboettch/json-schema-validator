@@ -35,6 +35,11 @@
                 "valid": true
             },
             {
+                "description": "-4.5 is multiple of 1.5",
+                "data": -4.5,
+                "valid": true
+            },
+            {
                 "description": "35 is not multiple of 1.5",
                 "data": 35,
                 "valid": false
@@ -58,13 +63,24 @@
         ]
     },
     {
-        "description": "invalid instance should not raise error when float division = inf",
+        "description": "float division = inf",
         "schema": {"type": "integer", "multipleOf": 0.123456789},
         "tests": [
             {
                 "description": "always invalid, but naive implementations may raise an overflow error",
                 "data": 1e308,
                 "valid": false
+            }
+        ]
+    },
+    {
+        "description": "small multiple of large integer",
+        "schema": {"type": "integer", "multipleOf": 1e-8},
+        "tests": [
+            {
+                "description": "any integer is a multiple of 1e-8",
+                "data": 12391239123,
+                "valid": true
             }
         ]
     }

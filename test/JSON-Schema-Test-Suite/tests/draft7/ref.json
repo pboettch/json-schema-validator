@@ -182,17 +182,17 @@
             "definitions": {
                 "foo": {
                     "$id": "http://localhost:1234/sibling_id/foo.json",
-                    "minimum": 2
+                    "type": "string"
                 },
                 "base_foo": {
                     "$comment": "this canonical uri is http://localhost:1234/sibling_id/base/foo.json",
                     "$id": "foo.json",
-                    "minimum": 5
+                    "type": "number"
                 }
             },
             "allOf": [
                 {
-                    "$comment": "$ref resolves to http://localhost:1234/sibling_id/base/foo.json, not ttp://localhost:1234/sibling_id/foo.json",
+                    "$comment": "$ref resolves to http://localhost:1234/sibling_id/base/foo.json, not http://localhost:1234/sibling_id/foo.json",
                     "$id": "http://localhost:1234/sibling_id/",
                     "$ref": "foo.json"
                 }
@@ -200,14 +200,14 @@
         },
         "tests": [
             {
-                "description": "$ref resolves to /definitions/foo, data validates",
-                "data": 10,
-                "valid": true
+                "description": "$ref resolves to /definitions/base_foo, data does not validate",
+                "data": "a",
+                "valid": false
             },
             {
-                "description": "$ref resolves to /definitions/foo, data does not validate",
+                "description": "$ref resolves to /definitions/base_foo, data validates",
                 "data": 1,
-                "valid": false
+                "valid": true
             }
         ]
     },
@@ -334,7 +334,7 @@
         "tests": [
             {
                 "description": "valid tree",
-                "data": {
+                "data": { 
                     "meta": "root",
                     "nodes": [
                         {
@@ -363,7 +363,7 @@
             },
             {
                 "description": "invalid tree",
-                "data": {
+                "data": { 
                     "meta": "root",
                     "nodes": [
                         {
@@ -424,6 +424,33 @@
         "schema": {
             "allOf": [{
                 "$ref": "#foo"
+            }],
+            "definitions": {
+                "A": {
+                    "$id": "#foo",
+                    "type": "integer"
+                }
+            }
+        },
+        "tests": [
+            {
+                "data": 1,
+                "description": "match",
+                "valid": true
+            },
+            {
+                "data": "a",
+                "description": "mismatch",
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "Reference an anchor with a non-relative URI",
+        "schema": {
+            "$id": "https://example.com/schema-with-anchor",
+            "allOf": [{
+                "$ref": "https://example.com/schema-with-anchor#foo"
             }],
             "definitions": {
                 "A": {
@@ -606,6 +633,410 @@
                     "bar": "a"
                 },
                 "valid": true
+            }
+        ]
+    },
+    {
+        "description": "$id must be resolved against nearest parent, not just immediate parent",
+        "schema": {
+            "$id": "http://example.com/a.json",
+            "definitions": {
+                "x": {
+                    "$id": "http://example.com/b/c.json",
+                    "not": {
+                        "definitions": {
+                            "y": {
+                                "$id": "d.json",
+                                "type": "number"
+                            }
+                        }
+                    }
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "http://example.com/b/d.json"
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "number is valid",
+                "data": 1,
+                "valid": true
+            },
+            {
+                "description": "non-number is invalid",
+                "data": "a",
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "simple URN base URI with $ref via the URN",
+        "schema": {
+            "$comment": "URIs do not have to have HTTP(s) schemes",
+            "$id": "urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed",
+            "minimum": 30,
+            "properties": {
+                "foo": {"$ref": "urn:uuid:deadbeef-1234-ffff-ffff-4321feebdaed"}
+            }
+        },
+        "tests": [
+            {
+                "description": "valid under the URN IDed schema",
+                "data": {"foo": 37},
+                "valid": true
+            },
+            {
+                "description": "invalid under the URN IDed schema",
+                "data": {"foo": 12},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "simple URN base URI with JSON pointer",
+        "schema": {
+            "$comment": "URIs do not have to have HTTP(s) schemes",
+            "$id": "urn:uuid:deadbeef-1234-00ff-ff00-4321feebdaed",
+            "properties": {
+                "foo": {"$ref": "#/definitions/bar"}
+            },
+            "definitions": {
+                "bar": {"type": "string"}
+            }
+        },
+        "tests": [
+            {
+                "description": "a string is valid",
+                "data": {"foo": "bar"},
+                "valid": true
+            },
+            {
+                "description": "a non-string is invalid",
+                "data": {"foo": 12},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "URN base URI with NSS",
+        "schema": {
+            "$comment": "RFC 8141 §2.2",
+            "$id": "urn:example:1/406/47452/2",
+            "properties": {
+                "foo": {"$ref": "#/definitions/bar"}
+            },
+            "definitions": {
+                "bar": {"type": "string"}
+            }
+        },
+        "tests": [
+            {
+                "description": "a string is valid",
+                "data": {"foo": "bar"},
+                "valid": true
+            },
+            {
+                "description": "a non-string is invalid",
+                "data": {"foo": 12},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "URN base URI with r-component",
+        "schema": {
+            "$comment": "RFC 8141 §2.3.1",
+            "$id": "urn:example:foo-bar-baz-qux?+CCResolve:cc=uk",
+            "properties": {
+                "foo": {"$ref": "#/definitions/bar"}
+            },
+            "definitions": {
+                "bar": {"type": "string"}
+            }
+        },
+        "tests": [
+            {
+                "description": "a string is valid",
+                "data": {"foo": "bar"},
+                "valid": true
+            },
+            {
+                "description": "a non-string is invalid",
+                "data": {"foo": 12},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "URN base URI with q-component",
+        "schema": {
+            "$comment": "RFC 8141 §2.3.2",
+            "$id": "urn:example:weather?=op=map&lat=39.56&lon=-104.85&datetime=1969-07-21T02:56:15Z",
+            "properties": {
+                "foo": {"$ref": "#/definitions/bar"}
+            },
+            "definitions": {
+                "bar": {"type": "string"}
+            }
+        },
+        "tests": [
+            {
+                "description": "a string is valid",
+                "data": {"foo": "bar"},
+                "valid": true
+            },
+            {
+                "description": "a non-string is invalid",
+                "data": {"foo": 12},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "URN base URI with URN and JSON pointer ref",
+        "schema": {
+            "$id": "urn:uuid:deadbeef-1234-0000-0000-4321feebdaed",
+            "properties": {
+                "foo": {"$ref": "urn:uuid:deadbeef-1234-0000-0000-4321feebdaed#/definitions/bar"}
+            },
+            "definitions": {
+                "bar": {"type": "string"}
+            }
+        },
+        "tests": [
+            {
+                "description": "a string is valid",
+                "data": {"foo": "bar"},
+                "valid": true
+            },
+            {
+                "description": "a non-string is invalid",
+                "data": {"foo": 12},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "URN base URI with URN and anchor ref",
+        "schema": {
+            "$id": "urn:uuid:deadbeef-1234-ff00-00ff-4321feebdaed",
+            "properties": {
+                "foo": {"$ref": "urn:uuid:deadbeef-1234-ff00-00ff-4321feebdaed#something"}
+            },
+            "definitions": {
+                "bar": {
+                    "$id": "#something",
+                    "type": "string"
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "a string is valid",
+                "data": {"foo": "bar"},
+                "valid": true
+            },
+            {
+                "description": "a non-string is invalid",
+                "data": {"foo": 12},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "ref to if",
+        "schema": {
+            "allOf": [
+                {"$ref": "http://example.com/ref/if"},
+                {
+                    "if": {
+                        "$id": "http://example.com/ref/if",
+                        "type": "integer"
+                    }
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "a non-integer is invalid due to the $ref",
+                "data": "foo",
+                "valid": false
+            },
+            {
+                "description": "an integer is valid",
+                "data": 12,
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "ref to then",
+        "schema": {
+            "allOf": [
+                {"$ref": "http://example.com/ref/then"},
+                {
+                    "then": {
+                        "$id": "http://example.com/ref/then",
+                        "type": "integer"
+                    }
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "a non-integer is invalid due to the $ref",
+                "data": "foo",
+                "valid": false
+            },
+            {
+                "description": "an integer is valid",
+                "data": 12,
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "ref to else",
+        "schema": {
+            "allOf": [
+                {"$ref": "http://example.com/ref/else"},
+                {
+                    "else": {
+                        "$id": "http://example.com/ref/else",
+                        "type": "integer"
+                    }
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "a non-integer is invalid due to the $ref",
+                "data": "foo",
+                "valid": false
+            },
+            {
+                "description": "an integer is valid",
+                "data": 12,
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "ref with absolute-path-reference",
+        "schema": {
+            "$id": "http://example.com/ref/absref.json",
+            "definitions": {
+                "a": {
+                    "$id": "http://example.com/ref/absref/foobar.json",
+                    "type": "number"
+                 },
+                 "b": {
+                     "$id": "http://example.com/absref/foobar.json",
+                     "type": "string"
+                 }
+            },
+            "allOf": [
+                { "$ref": "/absref/foobar.json" }
+            ]
+        },
+        "tests": [
+            {
+                "description": "a string is valid",
+                "data": "foo",
+                "valid": true
+            },
+            {
+                "description": "an integer is invalid",
+                "data": 12,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "$id with file URI still resolves pointers - *nix",
+        "schema": {
+            "$id": "file:///folder/file.json",
+            "definitions": {
+                "foo": {
+                    "type": "number"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/foo"
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "number is valid",
+                "data": 1,
+                "valid": true
+            },
+            {
+                "description": "non-number is invalid",
+                "data": "a",
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "$id with file URI still resolves pointers - windows",
+        "schema": {
+            "$id": "file:///c:/folder/file.json",
+            "definitions": {
+                "foo": {
+                    "type": "number"
+                }
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions/foo"
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "number is valid",
+                "data": 1,
+                "valid": true
+            },
+            {
+                "description": "non-number is invalid",
+                "data": "a",
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "empty tokens in $ref json-pointer",
+        "schema": {
+            "definitions": {
+                "": {
+                    "definitions": {
+                        "": { "type": "number" }
+                    }
+                } 
+            },
+            "allOf": [
+                {
+                    "$ref": "#/definitions//definitions/"
+                }
+            ]
+        },
+        "tests": [
+            {
+                "description": "number is valid",
+                "data": 1,
+                "valid": true
+            },
+            {
+                "description": "non-number is invalid",
+                "data": "a",
+                "valid": false
             }
         ]
     }
