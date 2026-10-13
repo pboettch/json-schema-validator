@@ -74,6 +74,7 @@ int main(int argc, char *argv[])
 	} catch (const std::exception &e) {
 		std::cerr << "setting root schema failed\n";
 		std::cerr << e.what() << "\n";
+		return EXIT_FAILURE;
 	}
 
 	// 3) do the actual validation of the document
