@@ -99,10 +99,14 @@ jobs:
         run: echo "CXX=g++" >> $GITHUB_ENV
         if: matrix.toolchain == 'gcc'
       - name: Setup latest llvm toolchain
+        # The default version of llvm.sh lags behind releases, use the major version of the latest LLVM release
         run: |
+          version=$(curl -sSf -H "Authorization: Bearer ${{ github.token }}" \
+            https://api.github.com/repos/llvm/llvm-project/releases/latest | jq -r .tag_name | sed -E 's/^llvmorg-([0-9]+)\..*/\1/')
+          echo "Latest LLVM release: $version"
           wget -q https://apt.llvm.org/llvm.sh
-          sudo bash llvm.sh
-          echo "CXX=clang++-$(sed -n 's/^CURRENT_LLVM_STABLE=//p' llvm.sh)" >> $GITHUB_ENV
+          sudo bash llvm.sh $version
+          echo "CXX=clang++-$version" >> $GITHUB_ENV
         if: matrix.toolchain == 'llvm'
       - uses: actions/checkout@v7
       - name: Get latest cmake version
