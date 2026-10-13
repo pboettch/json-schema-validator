@@ -101,7 +101,10 @@ jobs:
       - name: Show compiler version
         run: $CXX --version
       - name: Configure with C++${{ matrix.cxx_standard }} and nlohmann/json version ${{ matrix.json_version }}
-        run: cmake --preset ${{ matrix.toolchain }}-ci -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_STANDARD=${{ matrix.cxx_standard }}
+        # CMAKE_POLICY_VERSION_MINIMUM: older nlohmann/json versions declare a minimum cmake < 3.10, rejected (< 3.5) or deprecated by cmake >= 4
+        run: >-
+          cmake --preset ${{ matrix.toolchain }}-ci -DCMAKE_CXX_COMPILER=$CXX
+          -DCMAKE_CXX_STANDARD=${{ matrix.cxx_standard }} -DCMAKE_POLICY_VERSION_MINIMUM=3.10
       - name: Build
         run: cmake --build --preset ${{ matrix.toolchain }}-ci
       - name: Test
