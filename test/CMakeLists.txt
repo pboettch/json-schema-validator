@@ -1,4 +1,5 @@
-set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
+# runs a program with arguments, the last argument is the file used as its standard input
+set(PIPE_IN_TEST_SCRIPT ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.cmake)
 
 # simple nlohmann_json_schema_validator-executable
 add_executable(json-schema-validate json-schema-validate.cpp)
