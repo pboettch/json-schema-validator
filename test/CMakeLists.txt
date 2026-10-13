@@ -31,6 +31,10 @@ add_executable(errors errors.cpp)
 target_link_libraries(errors nlohmann_json_schema_validator)
 add_test(NAME errors COMMAND errors)
 
+add_executable(validator-api validator-api.cpp)
+target_link_libraries(validator-api nlohmann_json_schema_validator)
+add_test(NAME validator-api COMMAND validator-api)
+
 add_executable(issue-70 issue-70.cpp)
 target_link_libraries(issue-70 nlohmann_json_schema_validator)
 add_test(NAME issue-70 COMMAND issue-70)

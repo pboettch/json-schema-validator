@@ -10,6 +10,7 @@
 #include <nlohmann/json-schema.hpp>
 
 #include <iostream>
+#include <sstream>
 
 using nlohmann::json;
 using nlohmann::json_uri;
@@ -122,6 +123,32 @@ static void dot_segments()
 	EXPECT_EQ(empty.derive("../sub/../common.json"), "/../common.json # ");
 }
 
+// a URL without path, output, accessors, plain-name fragments and URNs
+static void misc()
+{
+	json_uri host("http://example.com");
+	EXPECT_EQ(host, "http://example.com # ");
+	EXPECT_EQ(host.url(), "http://example.com");
+	EXPECT_EQ(host.derive("schema.json"), "http://example.com/schema.json # ");
+
+	std::ostringstream os;
+	os << json_uri("http://example.com/schema.json#/definitions/a");
+	EXPECT_EQ(os.str(), "http://example.com/schema.json # /definitions/a");
+
+	// a plain-name fragment has no pointer to append to
+	json_uri plain("http://example.com/schema.json#foo");
+	EXPECT_EQ(plain.append("bar"), "http://example.com/schema.json # foo");
+
+	// an URN has no path
+	json_uri urn("urn:example:schema");
+	try {
+		urn.derive("other.json");
+		std::cerr << "Failed: a path was added to an URN\n";
+		errors++;
+	} catch (const std::invalid_argument &) {
+	}
+}
+
 int main(void)
 {
 	percent_decoding();
@@ -143,6 +170,8 @@ int main(void)
 	                   "http://json-schema.org/draft-07/schema",
 	                   "http://json-schema.org/draft-07",
 	                   "http://json-schema.org");
+
+	misc();
 
 	return errors;
 }
