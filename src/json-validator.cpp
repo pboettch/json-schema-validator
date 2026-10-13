@@ -567,7 +567,7 @@ class type_schema : public schema
 		for (auto l : logic_)
 			l->validate(ptr, instance, patch, e);
 
-		if (if_) {
+		if (if_ && (then_ || else_)) {
 			first_error_handler err;
 
 			if_->validate(ptr, instance, patch, err);
@@ -709,24 +709,22 @@ public:
 			sch.erase(attr);
 		}
 
+		// if, then and else are compiled even when they have no effect alone, they can be referenced
 		attr = sch.find("if");
 		if (attr != sch.end()) {
-			auto attr_then = sch.find("then");
-			auto attr_else = sch.find("else");
+			if_ = schema::make(attr.value(), root, {"if"}, uris);
+			sch.erase(attr);
+		}
 
-			if (attr_then != sch.end() || attr_else != sch.end()) {
-				if_ = schema::make(attr.value(), root, {"if"}, uris);
+		attr = sch.find("then");
+		if (attr != sch.end()) {
+			then_ = schema::make(attr.value(), root, {"then"}, uris);
+			sch.erase(attr);
+		}
 
-				if (attr_then != sch.end()) {
-					then_ = schema::make(attr_then.value(), root, {"then"}, uris);
-					sch.erase(attr_then);
-				}
-
-				if (attr_else != sch.end()) {
-					else_ = schema::make(attr_else.value(), root, {"else"}, uris);
-					sch.erase(attr_else);
-				}
-			}
+		attr = sch.find("else");
+		if (attr != sch.end()) {
+			else_ = schema::make(attr.value(), root, {"else"}, uris);
 			sch.erase(attr);
 		}
 	}
