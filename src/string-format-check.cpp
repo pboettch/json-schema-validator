@@ -44,7 +44,7 @@ void rfc3339_date_check(const std::string &value)
 
 	REGEX_NAMESPACE::smatch matches;
 	if (!REGEX_NAMESPACE::regex_match(value, matches, dateRegex)) {
-		throw std::invalid_argument(value + " is not a date string according to RFC 3339.");
+		throw std::invalid_argument("not a date string according to RFC 3339.");
 	}
 
 	const auto year = std::stoi(matches[1].str());
@@ -70,7 +70,7 @@ void rfc3339_time_check(const std::string &value)
 
 	REGEX_NAMESPACE::smatch matches;
 	if (!REGEX_NAMESPACE::regex_match(value, matches, timeRegex)) {
-		throw std::invalid_argument(value + " is not a time string according to RFC 3339.");
+		throw std::invalid_argument("not a time string according to RFC 3339.");
 	}
 
 	auto hour = std::stoi(matches[1].str());
@@ -145,7 +145,7 @@ void rfc3339_date_time_check(const std::string &value)
 
 	REGEX_NAMESPACE::smatch matches;
 	if (!REGEX_NAMESPACE::regex_match(value, matches, dateTimeRegex)) {
-		throw std::invalid_argument(value + " is not a date-time string according to RFC 3339.");
+		throw std::invalid_argument("not a date-time string according to RFC 3339.");
 	}
 
 	rfc3339_date_check(matches[1].str());
@@ -333,7 +333,7 @@ void rfc3986_uri_check(const std::string &value)
 	const static REGEX_NAMESPACE::regex uriRegex{uriFormat};
 
 	if (!REGEX_NAMESPACE::regex_match(value, uriRegex)) {
-		throw std::invalid_argument(value + " is not a URI string according to RFC 3986.");
+		throw std::invalid_argument("not a URI string according to RFC 3986.");
 	}
 }
 
@@ -362,34 +362,34 @@ void default_string_format_check(const std::string &format, const std::string &v
 		rfc3986_uri_check(value);
 	} else if (format == "email") {
 		if (!is_ascii(value)) {
-			throw std::invalid_argument(value + " contains non-ASCII values, not RFC 5321 compliant.");
+			throw std::invalid_argument("contains non-ASCII characters, not RFC 5321 compliant.");
 		}
 		if (!is_address(value.data(), value.data() + value.size())) {
-			throw std::invalid_argument(value + " is not a valid email according to RFC 5321.");
+			throw std::invalid_argument("not a valid email according to RFC 5321.");
 		}
 	} else if (format == "idn-email") {
 		if (!is_address(value.data(), value.data() + value.size())) {
-			throw std::invalid_argument(value + " is not a valid idn-email according to RFC 6531.");
+			throw std::invalid_argument("not a valid idn-email according to RFC 6531.");
 		}
 	} else if (format == "hostname") {
 		static const REGEX_NAMESPACE::regex hostRegex{hostname};
 		if (!REGEX_NAMESPACE::regex_match(value, hostRegex)) {
-			throw std::invalid_argument(value + " is not a valid hostname according to RFC 3986 Appendix A.");
+			throw std::invalid_argument("not a valid hostname according to RFC 3986 Appendix A.");
 		}
 	} else if (format == "ipv4") {
 		const static REGEX_NAMESPACE::regex ipv4Regex{"^" + ipv4Address + "$"};
 		if (!REGEX_NAMESPACE::regex_match(value, ipv4Regex)) {
-			throw std::invalid_argument(value + " is not an IPv4 string according to RFC 2673.");
+			throw std::invalid_argument("not an IPv4 string according to RFC 2673.");
 		}
 	} else if (format == "ipv6") {
 		static const REGEX_NAMESPACE::regex ipv6Regex{ipv6Address};
 		if (!REGEX_NAMESPACE::regex_match(value, ipv6Regex)) {
-			throw std::invalid_argument(value + " is not an IPv6 string according to RFC 5954.");
+			throw std::invalid_argument("not an IPv6 string according to RFC 5954.");
 		}
 	} else if (format == "uuid") {
 		static const REGEX_NAMESPACE::regex uuidRegex{uuid};
 		if (!REGEX_NAMESPACE::regex_match(value, uuidRegex)) {
-			throw std::invalid_argument(value + " is not an uuid string according to RFC 4122.");
+			throw std::invalid_argument("not a UUID string according to RFC 4122.");
 		}
 	} else if (format == "regex") {
 		try {

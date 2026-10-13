@@ -27,6 +27,12 @@ testStringFormat(const std::string &format,
 				std::cerr << "[ERROR] String with " << format << " format '" << stringValid->first
 				          << "' did NOT validate even though it should!\n";
 			}
+
+			// the message does not contain the value, the error handler gets the instance (#353)
+			if (!stringValid->first.empty() && std::string(exception.what()).find(stringValid->first) != std::string::npos) {
+				++numberOfErrors;
+				std::cerr << "[ERROR] Message for " << format << " format contains the value '" << stringValid->first << "'\n";
+			}
 		}
 	}
 
