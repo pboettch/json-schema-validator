@@ -35,7 +35,7 @@ endif ()
 option(JSON_VALIDATOR_INSTALL "JsonValidator: Install targets" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_BUILD_TESTS "JsonValidator: Build tests" ${PROJECT_IS_TOP_LEVEL})
 option(JSON_VALIDATOR_BUILD_EXAMPLES "JsonValidator: Build examples" ${PROJECT_IS_TOP_LEVEL})
-option(JSON_VALIDATOR_SHARED_LIBS "JsonValidator: Build as shared library" ${PROJECT_IS_TOP_LEVEL})
+option(JSON_VALIDATOR_SHARED_LIBS "JsonValidator: Build as shared library" ${BUILD_SHARED_LIBS})
 option(JSON_VALIDATOR_TEST_COVERAGE "JsonValidator: Build with test coverage" OFF)
 mark_as_advanced(JSON_VALIDATOR_TEST_COVERAGE)
 # Get a default JSON_FETCH_VERSION from environment variables to workaround the CI
@@ -61,9 +61,6 @@ endif ()
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()
-
-# Enable cmake's BUILD_SHARED_LIBS
-set(BUILD_SHARED_LIBS ${nlohmann_json_schema_validator_SHARED_LIBS})
 
 if (JSON_VALIDATOR_TEST_COVERAGE)
     if (CMAKE_CXX_COMPILER_ID STREQUAL Clang)
@@ -145,7 +142,17 @@ else ()
 endif ()
 
 ## Main targets
-add_library(nlohmann_json_schema_validator)
+# On Windows an executable finds a DLL only in its own directory (or in PATH):
+# put the library and the executables (tests, examples) in the same directory
+if (WIN32 AND PROJECT_IS_TOP_LEVEL AND NOT DEFINED CMAKE_RUNTIME_OUTPUT_DIRECTORY)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
+endif ()
+
+if (JSON_VALIDATOR_SHARED_LIBS)
+    add_library(nlohmann_json_schema_validator SHARED)
+else ()
+    add_library(nlohmann_json_schema_validator STATIC)
+endif ()
 add_library(nlohmann_json_schema_validator::validator ALIAS nlohmann_json_schema_validator)
 set_target_properties(nlohmann_json_schema_validator PROPERTIES
         VERSION ${PROJECT_VERSION}

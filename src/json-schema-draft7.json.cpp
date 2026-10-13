@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: MIT
  *
  */
-#include <nlohmann/json.hpp>
+#include <nlohmann/json-schema.hpp> // for the declaration exporting draft7_schema_builtin from a DLL
 
 namespace nlohmann
 {
