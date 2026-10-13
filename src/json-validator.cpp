@@ -905,7 +905,7 @@ class numeric : public schema
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
-		T value = instance; // conversion of json to value_type
+		T value = instance.get<T>(); // conversion of json to value_type
 
 		std::ostringstream oss;
 

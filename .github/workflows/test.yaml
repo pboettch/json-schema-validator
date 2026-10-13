@@ -115,9 +115,11 @@ jobs:
         run: $CXX --version
       - name: Configure with C++${{ matrix.cxx_standard }} and nlohmann/json version ${{ matrix.json_version }}
         # CMAKE_POLICY_VERSION_MINIMUM: older nlohmann/json versions declare a minimum cmake < 3.10, rejected (< 3.5) or deprecated by cmake >= 4
+        # JSON_ImplicitConversions: build without nlohmann/json's implicit conversions (option ignored by versions < 3.9)
         run: >-
           cmake --preset ${{ matrix.toolchain }}-ci -DCMAKE_CXX_COMPILER=$CXX
           -DCMAKE_CXX_STANDARD=${{ matrix.cxx_standard }} -DCMAKE_POLICY_VERSION_MINIMUM=3.10
+          -DJSON_ImplicitConversions=OFF
       - name: Build
         run: cmake --build --preset ${{ matrix.toolchain }}-ci
       - name: Test
