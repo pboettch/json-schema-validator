@@ -26,8 +26,10 @@ target_compile_features(nlohmann_json_schema_validator PUBLIC
         cxx_range_for) # for C++11 - flags
 
 # TODO: This should be handled by the CI/presets, not the cmake
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
-        "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+# Not for clang-cl (MSVC-like command line), which takes -Wall as /Wall (all warnings)
+if (("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR
+        "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU") AND
+        NOT "${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "MSVC")
     target_compile_options(nlohmann_json_schema_validator
             PRIVATE
             -Wall -Wextra -Wshadow)
