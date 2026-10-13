@@ -20,6 +20,8 @@ private:
 class json_patch
 {
 public:
+	enum class saved_size : json::array_t::size_type {};
+
 	json_patch() = default;
 	json_patch(json &&patch);
 	json_patch(const json &patch);
@@ -28,8 +30,8 @@ public:
 	json_patch &replace(const json::json_pointer &, json value);
 	json_patch &remove(const json::json_pointer &);
 
-	json &get_json() { return j_; }
-	const json &get_json() const { return j_; }
+	saved_size save() const;
+	void restore(saved_size size);
 
 	operator json() const { return j_; }
 

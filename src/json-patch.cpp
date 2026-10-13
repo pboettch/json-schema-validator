@@ -101,6 +101,14 @@ json_patch &json_patch::remove(const json::json_pointer &ptr)
 	return *this;
 }
 
+json_patch::saved_size json_patch::save() const {
+	return saved_size{j_.get_ref<json::array_t const &>().size()};
+}
+
+void json_patch::restore(saved_size size) {
+	j_.get_ref<json::array_t &>().resize(static_cast<json::array_t::size_type>(size));
+}
+
 void json_patch::validateJsonPatch(json const &patch)
 {
 	// static put here to have it created at the first usage of validateJsonPatch
