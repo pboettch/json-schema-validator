@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nlohmann/json.hpp>
+#include <nlohmann/json-schema.hpp>
 #include <string>
 
 namespace nlohmann
@@ -17,7 +17,8 @@ private:
 	std::string ex_;
 };
 
-class json_patch
+// exported for its unit test, not part of the API
+class JSON_SCHEMA_VALIDATOR_API json_patch
 {
 public:
 	json_patch() = default;
