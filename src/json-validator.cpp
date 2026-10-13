@@ -227,7 +227,8 @@ public:
 			auto unk_kw = &file.unknown_keywords;
 			for (auto &rt : ref_tokens) {
 				// create a json_pointer from rt as rt can be an stringified integer doing find on an array won't work
-				json::json_pointer rt_ptr{"/" + rt};
+				// rt is an unescaped reference token (it may contain '/' or '~'), escape it
+				json::json_pointer rt_ptr{"/" + json_uri::escape(rt)};
 				if (unk_kw->contains(rt_ptr) == false)
 					(*unk_kw)[rt] = json::object();
 				unk_kw = &(*unk_kw)[rt_ptr];
