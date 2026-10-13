@@ -67,6 +67,45 @@ jobs:
         uses: lukka/run-cmake@v10.5
         with:
           workflowPreset: "${{ matrix.toolchain }}-ci"
+  strict:
+    name: Strict warnings
+    needs: [ pre-commit ]
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ gcc, llvm ]
+        json_version: [ develop, v3.12.0, v3.8.0 ]
+        cxx_standard: [ 11, 23 ]
+        include:
+          # Latest GCC release from the official image, latest LLVM release from apt.llvm.org
+          - toolchain: gcc
+            container: gcc:latest
+    env:
+      NLOHMANN_JSON_VERSION: ${{ matrix.json_version }}
+      CXXFLAGS: -Wall -Wextra -Wpedantic -Werror
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    steps:
+      - name: Setup latest gcc toolchain
+        run: echo "CXX=g++" >> $GITHUB_ENV
+        if: matrix.toolchain == 'gcc'
+      - name: Setup latest llvm toolchain
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh
+          sudo bash llvm.sh
+          echo "CXX=clang++-$(sed -n 's/^CURRENT_LLVM_STABLE=//p' llvm.sh)" >> $GITHUB_ENV
+        if: matrix.toolchain == 'llvm'
+      - uses: actions/checkout@v4
+      - name: Get latest cmake version
+        uses: lukka/get-cmake@latest
+      - name: Show compiler version
+        run: $CXX --version
+      - name: Configure with C++${{ matrix.cxx_standard }} and nlohmann/json version ${{ matrix.json_version }}
+        run: cmake --preset ${{ matrix.toolchain }}-ci -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_CXX_STANDARD=${{ matrix.cxx_standard }}
+      - name: Build
+        run: cmake --build --preset ${{ matrix.toolchain }}-ci
+      - name: Test
+        run: ctest --preset ${{ matrix.toolchain }}-ci
   coverage:
     name: Run coverage tests
     needs: [ test ]
