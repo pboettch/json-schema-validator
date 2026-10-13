@@ -29,28 +29,12 @@
         "reason": "default_string_format_check rejects unknown formats"
     },
     {
-        "file": "optional/format/uri.json",
-        "group": "validation of URIs",
-        "tests": [
-            "leading zero in an embedded IPv4 address is invalid"
-        ],
-        "reason": "the IPv4 address in an IPv6 literal accepts leading zeros"
-    },
-    {
         "file": "optional/format/email.json",
         "group": "validation of e-mail addresses",
         "tests": [
             "a lowercase IPv6 tag in an address literal is valid"
         ],
         "reason": "the address parser only accepts the tag IPv6:"
-    },
-    {
-        "file": "optional/format/hostname.json",
-        "group": "validation of host names",
-        "tests": [
-            "exceeds maximum overall length (256)"
-        ],
-        "reason": "the overall length of a host name is not checked"
     },
     {
         "file": "optional/format/hostname.json",
