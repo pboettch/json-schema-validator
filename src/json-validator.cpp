@@ -588,6 +588,11 @@ class type_schema : public schema
 					else_->validate(ptr, instance, patch, e);
 			}
 		}
+
+		// an empty (null) document is replaced by the root's default value (issue-243),
+		// null values inside a document are values and are kept
+		if (ptr.empty() && instance.is_null() && !default_value_.is_null())
+			patch.add(ptr, default_value_);
 	}
 
 protected:
