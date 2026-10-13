@@ -143,7 +143,9 @@ jobs:
           # https://github.com/danielealbano/lcov-action/issues/11
           remove_patterns: /test/,/cmake-build*/
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
         with:
+          # Not available for PRs from forks, which are uploaded tokenless
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage.info
           verbose: true
