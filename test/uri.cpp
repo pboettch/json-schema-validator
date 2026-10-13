@@ -83,6 +83,21 @@ static void pointer_plain_name(json_uri start,
 	EXPECT_EQ(a.identifier(), "");
 }
 
+// %-escapes in the fragment are decoded once, an incomplete or invalid escape is kept
+static void percent_decoding()
+{
+	json_uri base("http://example.com/schema.json");
+
+	EXPECT_EQ(base.derive("#/a%20b"), "http://example.com/schema.json # /a b");
+	EXPECT_EQ(base.derive("#/%41%42"), "http://example.com/schema.json # /AB");
+	EXPECT_EQ(base.derive("#/a%2525"), "http://example.com/schema.json # /a%25");
+	EXPECT_EQ(base.derive("#/a%zz"), "http://example.com/schema.json # /a%zz");
+	EXPECT_EQ(base.derive("#/a%2"), "http://example.com/schema.json # /a%2");
+	EXPECT_EQ(base.derive("#/a%"), "http://example.com/schema.json # /a%");
+	EXPECT_EQ(base.derive("#%a"), "http://example.com/schema.json # %a"); // looped forever
+	EXPECT_EQ(base.derive("#%"), "http://example.com/schema.json # %");
+}
+
 // "." and ".." segments are removed, so that different paths to the same document result in the same URI
 static void dot_segments()
 {
@@ -109,6 +124,7 @@ static void dot_segments()
 
 int main(void)
 {
+	percent_decoding();
 	dot_segments();
 
 	json_uri empty("");
