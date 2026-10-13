@@ -103,9 +103,24 @@ int main()
 	    {"https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top", true},
 	    {"tel:+1-816-555-1212", true},
 	    {"telnet://192.0.2.16:80/", true},
-	    {"urn:oasis:names:specification:docbook:dtd:xml:4.1.2", true}};
+	    {"urn:oasis:names:specification:docbook:dtd:xml:4.1.2", true},
+	    {"http://[::ffff:1.2.3.4]/", true},
+	    {"http://[::ffff:255.2.3.4]/", true},
+	    {"http://[::ffff:01.2.3.4]/", false},
+	    {"http://[::ffff:1.2.3.004]/", false},
+	    {"http://[::ffff:256.2.3.4]/", false}};
 
 	numberOfErrors += testStringFormat("uri", uriChecks);
+
+	const std::string label63(63, 'a');
+	const std::vector<std::pair<std::string, bool>> hostnameChecks{
+	    {"www.example.com", true},
+	    {label63 + "." + label63 + "." + label63 + "." + label63, true},                   // 255 characters
+	    {label63 + "." + label63 + "." + label63 + "." + label63.substr(1) + ".a", false}, // 256 characters
+	    {label63 + "a", false},
+	    {"-example.com", false}};
+
+	numberOfErrors += testStringFormat("hostname", hostnameChecks);
 
 	const std::vector<std::pair<std::string, bool>> emailChecks{
 	    {"test@example.com", true},
