@@ -1,0 +1,30 @@
+{
+    "definitions": {
+        "a": {
+            "type": "object"
+        },
+        "p": {
+            "$ref": "#/definitions/a",
+            "patternProperties": {
+                "^/": {
+                    "type": "string"
+                }
+            },
+            "x-ext": {
+                "a~b": {
+                    "c/d": {
+                        "type": "integer"
+                    }
+                }
+            }
+        }
+    },
+    "properties": {
+        "p": {
+            "$ref": "#/definitions/p"
+        },
+        "n": {
+            "$ref": "#/definitions/p/x-ext/a~0b/c~1d"
+        }
+    }
+}
