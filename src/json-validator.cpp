@@ -393,14 +393,27 @@ struct probe_scope {
 	probe_scope &operator=(const probe_scope &) = delete;
 };
 
+// Probes still collect default values: a successful branch keeps its defaults in the patch.
+// Only is_valid() discards the patch of the whole evaluation.
+thread_local bool discarding_defaults = false;
+
 // Every public validate() call is its own evaluation: a user's format or content checker may
 // run another validator while it is itself being invoked from inside a probe, and that inner
 // validation must report normally to its own handler.
 struct probe_context {
 	const unsigned saved_depth_;
-	probe_context()
-	    : saved_depth_(probe_depth) { probe_depth = 0; }
-	~probe_context() { probe_depth = saved_depth_; }
+	const bool saved_discarding_defaults_;
+	explicit probe_context(bool discard_defaults)
+	    : saved_depth_(probe_depth), saved_discarding_defaults_(discarding_defaults)
+	{
+		probe_depth = 0;
+		discarding_defaults = discard_defaults;
+	}
+	~probe_context()
+	{
+		probe_depth = saved_depth_;
+		discarding_defaults = saved_discarding_defaults_;
+	}
 	probe_context(const probe_context &) = delete;
 	probe_context &operator=(const probe_context &) = delete;
 };
@@ -506,6 +519,11 @@ class logical_combination : public schema
 	// that summary, and only when no enclosing probe is running, are the failed branches
 	// evaluated once more with a forwarding handler to deliver their individual errors straight
 	// to the consumer while the failing instance is alive.
+	//
+	// allOf reports each failed branch, a summary followed by the branch's errors; a probe only
+	// needs the verdict, which the first failure decides. anyOf does not stop at its first
+	// successful branch while defaults are collected: the defaults of every successful branch
+	// belong in the patch (Draft 7, section 3.3.2, no short-circuit while collecting annotations).
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
 		size_t count = 0;
@@ -523,13 +541,13 @@ class logical_combination : public schema
 				patch.get_json().get_ref<nlohmann::json::array_t &>().resize(oldPatchSize);
 				if (combine_logic == allOf) {
 					e.error(validation_error{ptr, "at least one subschema has failed, but all of them are required to validate", "allOf", {{"failed_subschema", index}}}, instance);
-					if (!probing())
-						report_branch(ptr, instance, e, index);
-					return;
+					if (probing())
+						return;
+					report_branch(ptr, instance, e, index);
 				}
 			}
 
-			if (combine_logic == anyOf && count == 1)
+			if (combine_logic == anyOf && count == 1 && discarding_defaults)
 				return;
 			if (combine_logic == oneOf && count > 1) {
 				e.error(validation_error{ptr, "more than one subschema has succeeded, but exactly one of them is required to validate", "oneOf", {{"successful_subschemas", count}}}, instance);
@@ -537,7 +555,7 @@ class logical_combination : public schema
 			}
 		}
 
-		if (count == 0) {
+		if (combine_logic != allOf && count == 0) {
 			e.error(validation_error{ptr, "no subschema has succeeded, but one of them is required to validate. Type: " + key + ", number of failed subschemas: " + std::to_string(subschemata_.size()), key, {{"failed_subschemas", subschemata_.size()}}}, instance);
 			if (!probing())
 				for (std::size_t index = 0; index < subschemata_.size(); ++index)
@@ -1596,7 +1614,7 @@ json json_validator::validate(const json &instance) const
 
 json json_validator::validate(const json &instance, error_handler &err, const json_uri &initial_uri) const
 {
-	probe_context fresh_context;
+	probe_context fresh_context(false);
 	json::json_pointer ptr;
 	json_patch patch;
 	root_->validate(ptr, instance, patch, err, initial_uri);
@@ -1605,7 +1623,7 @@ json json_validator::validate(const json &instance, error_handler &err, const js
 
 bool json_validator::is_valid(const json &instance, const json_uri &initial_uri) const
 {
-	probe_context fresh_context;
+	probe_context fresh_context(true);
 	probe_scope whole_document_is_a_probe;
 	probe_error_handler probe;
 	json::json_pointer ptr;

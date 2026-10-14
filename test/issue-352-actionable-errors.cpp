@@ -306,16 +306,33 @@ void test_details_survive_all_of()
 	collecting_error_handler errors;
 
 	validator.validate("Log", errors);
-	EXPECT_EQ(errors.errors.size(), 2);
-	if (errors.errors.size() != 2)
+	EXPECT_EQ(errors.errors.size(), 4);
+	if (errors.errors.size() != 4)
 		return;
 
+	// every failed branch is reported: its summary, then its errors
 	EXPECT_EQ(errors.errors[0].keyword, "allOf");
 	EXPECT_EQ(errors.errors[0].details, json({{"failed_subschema", 0}}));
 
 	EXPECT_EQ(errors.errors[1].keyword, "const");
 	EXPECT_EQ(errors.errors[1].details, json({{"value", json("Point")}}));
 	EXPECT_EQ(errors.errors[1].message, "[combination: allOf / case#0] instance not const");
+
+	EXPECT_EQ(errors.errors[2].keyword, "allOf");
+	EXPECT_EQ(errors.errors[2].details, json({{"failed_subschema", 1}}));
+
+	EXPECT_EQ(errors.errors[3].keyword, "const");
+	EXPECT_EQ(errors.errors[3].details, json({{"value", json("Linear")}}));
+	EXPECT_EQ(errors.errors[3].message, "[combination: allOf / case#1] instance not const");
+
+	// a branch which validates is not reported
+	const json partial_schema = {{"allOf", {{{"const", "Point"}}, {{"type", "string"}}, {{"const", "Linear"}}}}};
+	json_validator partial(partial_schema);
+	errors.errors.clear();
+	partial.validate("Log", errors);
+	EXPECT_EQ(errors.errors.size(), 4);
+	if (errors.errors.size() == 4)
+		EXPECT_EQ(errors.errors[2].details, json({{"failed_subschema", 2}}));
 }
 
 void test_details_survive_nested_combinations()
@@ -676,6 +693,42 @@ void test_combination_default_values()
 	EXPECT_EQ(patch, json::array());
 }
 
+// Draft 7, section 3.3.2: anyOf must not stop at its first successful branch while annotations
+// are collected, so the defaults of every successful branch are part of the patch, also when
+// the anyOf is itself evaluated inside a probe. is_valid() collects no defaults and stops early.
+void test_any_of_collects_defaults_of_every_successful_branch()
+{
+	const json any_of = {
+	    {"anyOf",
+	     {
+	         {{"properties", {{"x", {{"default", 1}}}}}},
+	         {{"required", {"a"}}, {"properties", {{"z", {{"default", 3}}}}}},
+	         {{"properties", {{"y", {{"default", 2}}}}}},
+	     }},
+	};
+	const json expected = json::parse(R"([{"op":"add","path":"/x","value":1},{"op":"add","path":"/y","value":2}])");
+
+	json_validator validator(any_of);
+	collecting_error_handler errors;
+	EXPECT_EQ(validator.validate(json::object(), errors), expected);
+	EXPECT_EQ(errors.errors.size(), 0);
+
+	const json nested_schema = {{"oneOf", {any_of, {{"type", "string"}}}}};
+	json_validator nested(nested_schema);
+	EXPECT_EQ(nested.validate(json::object(), errors), expected);
+	EXPECT_EQ(errors.errors.size(), 0);
+
+	static int calls;
+	auto count = [](const std::string &, const std::string &) { calls++; };
+	json_validator counted({{"anyOf", {json::object(), {{"format", "counted"}}}}}, nullptr, count);
+	calls = 0;
+	counted.validate("value", errors);
+	EXPECT_EQ(calls, 1);
+	calls = 0;
+	EXPECT_EQ(counted.is_valid("value"), true);
+	EXPECT_EQ(calls, 0);
+}
+
 void test_validation_error_is_a_value_type()
 {
 	static_assert(std::is_default_constructible<validation_error>::value, "validation_error must be default-constructible");
@@ -806,6 +859,7 @@ int main()
 	test_reentrant_validation_inside_probe();
 	test_probe_state_after_unwinding_and_reentrant_handler();
 	test_combination_default_values();
+	test_any_of_collects_defaults_of_every_successful_branch();
 	test_validation_error_is_a_value_type();
 	test_is_valid();
 	test_non_keyword_error_details();

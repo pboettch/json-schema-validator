@@ -15,8 +15,13 @@
   branches are then evaluated again to deliver their individual errors. Errors are no longer
   buffered; custom `format` or content checkers may therefore be called more than once for the
   same value when validation fails. The `allOf` summary is now reported at the combination's
-  own location with a fixed message, like `anyOf` and `oneOf`; the failing branch's first error
-  follows it instead of being embedded in the summary message.
+  own location with a fixed message, like `anyOf` and `oneOf`, and every failed `allOf` branch
+  is reported, each with its own summary followed by the branch's errors (previously only the
+  first failed branch, with its first error embedded in the summary message).
+- `anyOf` evaluates all of its branches, so the default values of every successful branch are
+  collected (previously only those of the first). JSON Schema does not allow short-circuit
+  evaluation while annotations are collected. `is_valid()` still stops at the first successful
+  branch.
 - `additionalProperties` failures are reported individually at the offending property instead
   of as a single summary at the containing object. `additionalProperties`, `additionalItems`
   and `propertyNames` set to `false` report a direct message.

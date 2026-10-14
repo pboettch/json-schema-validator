@@ -333,6 +333,8 @@ Keyword details are preserved when errors are propagated through `allOf`, `anyOf
 `oneOf`. Branches of these combinations are first evaluated for validity only, and the
 combination's summary error is reported from that result at the combination's own location;
 the failing branches' errors follow it with a `[combination: <keyword> / case#<index>]` prefix.
+`allOf` reports every failed branch, each with its own summary. `anyOf` evaluates all of its
+branches so that the default values of every successful branch are collected.
 When the combination fails and the
 handler does not throw, the failed branches are then evaluated again to deliver their individual
 errors, so custom `format` or content checkers may be invoked more than once for the same value
