@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "properties": {
+    "dataType": { "$ref": "#/myDefs/datatypes-enum" }
+  },
+  "required": ["dataType"],
+  "myDefs": {
+    "datatypes-enum": {
+      "oneOf": [
+        { "type": "string", "enum": ["bool", "boolA"] },
+        { "type": "object", "patternProperties": { "^[a-zA-Z0-9_]+$": { "$ref": "#/myDefs/datatypes-enum" } } }
+      ]
+    }
+  }
+}

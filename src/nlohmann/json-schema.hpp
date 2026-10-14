@@ -130,7 +130,7 @@ public:
 namespace json_schema
 {
 
-extern json draft7_schema_builtin;
+extern JSON_SCHEMA_VALIDATOR_API json draft7_schema_builtin;
 
 typedef std::function<void(const json_uri & /*id*/, json & /*value*/)> schema_loader;
 typedef std::function<void(const std::string & /*format*/, const std::string & /*value*/)> format_checker;

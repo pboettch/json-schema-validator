@@ -227,7 +227,8 @@ public:
 			auto unk_kw = &file.unknown_keywords;
 			for (auto &rt : ref_tokens) {
 				// create a json_pointer from rt as rt can be an stringified integer doing find on an array won't work
-				json::json_pointer rt_ptr{"/" + rt};
+				// rt is an unescaped reference token (it may contain '/' or '~'), escape it
+				json::json_pointer rt_ptr{"/" + json_uri::escape(rt)};
 				if (unk_kw->contains(rt_ptr) == false)
 					(*unk_kw)[rt] = json::object();
 				unk_kw = &(*unk_kw)[rt_ptr];
@@ -250,31 +251,26 @@ public:
 		if (sch != file.schemas.end())
 			return sch->second;
 
+		// get or create a schema_ref
+		auto r = file.unresolved.lower_bound(uri.fragment());
+		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.fragment(), r->first)))
+			return r->second; // unresolved, already seen previously - use existing reference
+
+		auto ref = file.unresolved.insert(r,
+		                                  {uri.fragment(), std::make_shared<schema_ref>(uri.to_string(), this)})
+		               ->second; // unresolved, create reference
+
 		// referencing an unknown keyword, turn it into schema
 		//
 		// an unknown keyword can only be referenced by a json-pointer,
 		// not by a plain name fragment
-		if (!uri.pointer().to_string().empty()) {
-			bool contains_pointer = file.unknown_keywords.contains(uri.pointer());
-			if (contains_pointer) {
-				auto &subschema = file.unknown_keywords.at(uri.pointer());
-				auto s = schema::make(subschema, this, {}, {{uri}});
-				if (s) { // if schema is valid (non-null)
-					file.unknown_keywords.erase(uri.fragment());
-					return s;
-				}
-			}
-		}
+		//
+		// the reference has been created before: a recursive reference to this schema
+		// found while creating it uses it, it is resolved when the schema is inserted
+		if (!uri.pointer().to_string().empty() && file.unknown_keywords.contains(uri.pointer()))
+			return schema::make(file.unknown_keywords.at(uri.pointer()), this, {}, {{uri}});
 
-		// get or create a schema_ref
-		auto r = file.unresolved.lower_bound(uri.fragment());
-		if (r != file.unresolved.end() && !(file.unresolved.key_comp()(uri.fragment(), r->first))) {
-			return r->second; // unresolved, already seen previously - use existing reference
-		} else {
-			return file.unresolved.insert(r,
-			                              {uri.fragment(), std::make_shared<schema_ref>(uri.to_string(), this)})
-			    ->second; // unresolved, create reference
-		}
+		return ref;
 	}
 
 	void set_root_schema(json sch)
@@ -641,9 +637,11 @@ class type_schema : public schema
 					else_->validate(ptr, instance, patch, e);
 			}
 		}
-		if (instance.is_null()) {
-			patch.add(nlohmann::json::json_pointer{}, default_value_);
-		}
+
+		// an empty (null) document is replaced by the root's default value (issue-243),
+		// null values inside a document are values and are kept
+		if (ptr.empty() && instance.is_null() && !default_value_.is_null())
+			patch.add(ptr, default_value_);
 	}
 
 protected:
@@ -962,7 +960,7 @@ class numeric : public schema
 	bool violates_multiple_of(T x) const
 	{
 		double res = std::remainder(x, multipleOf_.second);
-		double multiple = std::fabs(x / multipleOf_.second);
+		double multiple = std::fabs(static_cast<double>(x) / multipleOf_.second);
 		if (multiple > 1) {
 			res = res / multiple;
 		}
@@ -973,7 +971,7 @@ class numeric : public schema
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
-		T value = instance; // conversion of json to value_type
+		T value = instance.get<T>(); // conversion of json to value_type
 
 		if (multipleOf_.first && value != 0 && violates_multiple_of(value)) { // zero is multiple of everything
 			std::ostringstream message;

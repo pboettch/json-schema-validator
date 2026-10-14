@@ -18,9 +18,16 @@ jobs:
     name: Check pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-      - uses: pre-commit/action@v3.0.0
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ env.pythonLocation }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      - run: python -m pip install pre-commit
+      - run: pre-commit run --all-files --show-diff-on-failure --color=always
 
   test:
     name: Run ctests
@@ -59,14 +66,85 @@ jobs:
         run: |
           update-alternatives --install /usr/bin/clang++ clang++ $(which clang++-${{ matrix.compiler_version }}) 999
         if: matrix.compiler_version && matrix.toolchain == 'llvm'
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
         # container version is < 3.25 which does not have workflows
       - name: Get a working cmake version
-        uses: lukka/get-cmake@v3.25.2
+        uses: lukka/get-cmake@v4.4.2
+        with:
+          cmakeVersion: "~3.25.0"
       - name: Run CMake ${{ matrix.toolchain }}-ci workflow with nlohmann/json version ${{ matrix.json_version }}
-        uses: lukka/run-cmake@v10.5
+        uses: lukka/run-cmake@v10.9
         with:
           workflowPreset: "${{ matrix.toolchain }}-ci"
+  strict:
+    name: Strict warnings
+    needs: [ pre-commit ]
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ gcc, llvm ]
+        json_version: [ develop, v3.12.0, v3.8.0 ]
+        cxx_standard: [ 11, 23 ]
+        include:
+          # Latest GCC release from the official image, latest LLVM release from apt.llvm.org
+          - toolchain: gcc
+            container: gcc:latest
+    env:
+      NLOHMANN_JSON_VERSION: ${{ matrix.json_version }}
+      CXXFLAGS: -Wall -Wextra -Wpedantic -Werror
+    runs-on: ubuntu-latest
+    container: ${{ matrix.container }}
+    steps:
+      - name: Setup latest gcc toolchain
+        run: echo "CXX=g++" >> $GITHUB_ENV
+        if: matrix.toolchain == 'gcc'
+      - name: Setup latest llvm toolchain
+        # The default version of llvm.sh lags behind releases, use the major version of the latest LLVM release
+        run: |
+          version=$(curl -sSf -H "Authorization: Bearer ${{ github.token }}" \
+            https://api.github.com/repos/llvm/llvm-project/releases/latest | jq -r .tag_name | sed -E 's/^llvmorg-([0-9]+)\..*/\1/')
+          echo "Latest LLVM release: $version"
+          wget -q https://apt.llvm.org/llvm.sh
+          sudo bash llvm.sh $version
+          echo "CXX=clang++-$version" >> $GITHUB_ENV
+        if: matrix.toolchain == 'llvm'
+      - uses: actions/checkout@v7
+      - name: Get latest cmake version
+        uses: lukka/get-cmake@latest
+      - name: Show compiler version
+        run: $CXX --version
+      - name: Configure with C++${{ matrix.cxx_standard }} and nlohmann/json version ${{ matrix.json_version }}
+        # CMAKE_POLICY_VERSION_MINIMUM: older nlohmann/json versions declare a minimum cmake < 3.10, rejected (< 3.5) or deprecated by cmake >= 4
+        # JSON_ImplicitConversions: build without nlohmann/json's implicit conversions (option ignored by versions < 3.9)
+        run: >-
+          cmake --preset ${{ matrix.toolchain }}-ci -DCMAKE_CXX_COMPILER=$CXX
+          -DCMAKE_CXX_STANDARD=${{ matrix.cxx_standard }} -DCMAKE_POLICY_VERSION_MINIMUM=3.10
+          -DJSON_ImplicitConversions=OFF
+      - name: Build
+        run: cmake --build --preset ${{ matrix.toolchain }}-ci
+      - name: Test
+        run: ctest --preset ${{ matrix.toolchain }}-ci
+  windows:
+    name: Windows
+    needs: [ pre-commit ]
+    strategy:
+      fail-fast: false
+      matrix:
+        toolset: [ msvc, clang-cl ]
+        shared_libs: [ ON, OFF ]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Configure with ${{ matrix.toolset }}, shared library ${{ matrix.shared_libs }}
+        # Visual Studio generator (default on Windows), clang-cl is its ClangCL toolset
+        run: >-
+          cmake -S . -B build ${{ matrix.toolset == 'clang-cl' && '-T ClangCL' || '' }}
+          -DJSON_VALIDATOR_SHARED_LIBS=${{ matrix.shared_libs }}
+          -DJSON_VALIDATOR_BUILD_TESTS=ON -DJSON_VALIDATOR_INSTALL=OFF -DJSON_BuildTests=OFF
+      - name: Build
+        run: cmake --build build --config Debug --parallel
+      - name: Test
+        run: ctest --test-dir build --build-config Debug --output-on-failure --parallel 4
   coverage:
     name: Run coverage tests
     needs: [ test ]
@@ -74,11 +152,11 @@ jobs:
     container: ghcr.io/nlohmann/json-ci:v2.4.0
     if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v7
       - name: Get latest cmake version
         uses: lukka/get-cmake@latest
       - name: Get test coverage
-        uses: lukka/run-cmake@v10.5
+        uses: lukka/run-cmake@v10.9
         with:
           workflowPreset: ci-coverage
       - name: Get lcov data
@@ -87,8 +165,20 @@ jobs:
           # Note lcov-action prepends and appends wild-cards *. Account for those
           # https://github.com/danielealbano/lcov-action/issues/11
           remove_patterns: /test/,/cmake-build*/
+      - name: Install codecov dependencies
+        # The codecov action requires curl, which is missing in the container.
+        # Some third-party apt sources of the container are broken (expired key, missing Release file), ignore
+        # the failing update, the Ubuntu package lists are still updated
+        run: |
+          apt-get update || true
+          apt-get install -y --no-install-recommends curl
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v7
         with:
+          # Not available for PRs from forks, which are uploaded tokenless
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # Only upload the filtered lcov report, do not search for or generate (gcov) other reports
           files: coverage.info
+          disable_search: true
+          plugins: noop
           verbose: true

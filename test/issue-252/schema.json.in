@@ -1,0 +1,10 @@
+{
+    "$id": "@SCHEMA_ID@",
+    "type": "object",
+    "properties": {
+        "name": {
+            "$ref": "defs.json#/definitions/name"
+        }
+    },
+    "required": ["name"]
+}

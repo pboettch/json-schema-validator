@@ -70,10 +70,10 @@ static std::string base64_decode(const std::string &in)
 
 static void content(const std::string &contentEncoding, const std::string &contentMediaType, const json &instance)
 {
-	std::string content = instance;
+	std::string content = instance.get<std::string>();
 
 	if (contentEncoding == "base64")
-		content = base64_decode(instance);
+		content = base64_decode(instance.get<std::string>());
 	else if (contentEncoding != "")
 		throw std::invalid_argument("unable to check for contentEncoding '" + contentEncoding + "'");
 

@@ -1,4 +1,5 @@
-set(PIPE_IN_TEST_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.sh)
+# runs a program with arguments, the last argument is the file used as its standard input
+set(PIPE_IN_TEST_SCRIPT ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/test-pipe-in.cmake)
 
 # simple nlohmann_json_schema_validator-executable
 add_executable(json-schema-validate json-schema-validate.cpp)
@@ -96,6 +97,10 @@ add_test(NAME issue-255-error-message-limit-precision COMMAND issue-255-error-me
 add_executable(issue-105-verbose-combination-errors issue-105-verbose-combination-errors.cpp)
 target_link_libraries(issue-105-verbose-combination-errors nlohmann_json_schema_validator)
 add_test(NAME issue-105-verbose-combination-errors COMMAND issue-105-verbose-combination-errors)
+
+add_executable(issue-null-values-in-object issue-null-values-in-object.cpp)
+target_link_libraries(issue-null-values-in-object nlohmann_json_schema_validator)
+add_test(NAME issue-null-values-in-object COMMAND issue-null-values-in-object)
 
 add_executable(issue-352-actionable-errors issue-352-actionable-errors.cpp)
 target_link_libraries(issue-352-actionable-errors nlohmann_json_schema_validator)
