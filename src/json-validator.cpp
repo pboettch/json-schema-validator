@@ -486,11 +486,6 @@ class logical_not : public schema
 			e.error(validation_error{ptr, "the subschema has succeeded, but it is required to not validate", "not", json::object()}, instance);
 	}
 
-	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override
-	{
-		return subschema_->default_value(ptr, instance, e);
-	}
-
 public:
 	logical_not(json &sch,
 	            root_schema *root,
@@ -641,7 +636,7 @@ class type_schema : public schema
 		for (auto l : logic_)
 			l->validate(ptr, instance, patch, e);
 
-		if (if_) {
+		if (if_ && (then_ || else_)) {
 			probe_error_handler probe;
 			{
 				probe_scope scope;
@@ -681,7 +676,10 @@ public:
 	    : schema(root), type_(static_cast<uint8_t>(json::value_t::discarded) + 1)
 	{
 		// association between JSON-schema-type and NLohmann-types
-		static const std::vector<std::pair<std::string, json::value_t>> schema_types = {
+		static const struct {
+			const char *name;
+			json::value_t type;
+		} schema_types[] = {
 		    {"null", json::value_t::null},
 		    {"object", json::value_t::object},
 		    {"array", json::value_t::array},
@@ -698,23 +696,23 @@ public:
 			typeKeyword_ = attr.value();
 		if (attr == sch.end()) // no type field means all sub-types possible
 			for (auto &t : schema_types)
-				type_[static_cast<uint8_t>(t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
+				type_[static_cast<uint8_t>(t.type)] = type_schema::make(sch, t.type, root, uris, known_keywords);
 		else {
 			switch (attr.value().type()) { // "type": "type"
 
 			case json::value_t::string: {
 				auto schema_type = attr.value().get<std::string>();
 				for (auto &t : schema_types)
-					if (t.first == schema_type)
-						type_[static_cast<uint8_t>(t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
+					if (schema_type == t.name)
+						type_[static_cast<uint8_t>(t.type)] = type_schema::make(sch, t.type, root, uris, known_keywords);
 			} break;
 
 			case json::value_t::array: // "type": ["type1", "type2"]
 				for (auto &array_value : attr.value()) {
 					auto schema_type = array_value.get<std::string>();
 					for (auto &t : schema_types)
-						if (t.first == schema_type)
-							type_[static_cast<uint8_t>(t.second)] = type_schema::make(sch, t.second, root, uris, known_keywords);
+						if (schema_type == t.name)
+							type_[static_cast<uint8_t>(t.type)] = type_schema::make(sch, t.type, root, uris, known_keywords);
 				}
 				break;
 
@@ -784,24 +782,22 @@ public:
 			sch.erase(attr);
 		}
 
+		// if, then and else are compiled even when they have no effect alone, they can be referenced
 		attr = sch.find("if");
 		if (attr != sch.end()) {
-			auto attr_then = sch.find("then");
-			auto attr_else = sch.find("else");
+			if_ = schema::make(attr.value(), root, {"if"}, uris);
+			sch.erase(attr);
+		}
 
-			if (attr_then != sch.end() || attr_else != sch.end()) {
-				if_ = schema::make(attr.value(), root, {"if"}, uris);
+		attr = sch.find("then");
+		if (attr != sch.end()) {
+			then_ = schema::make(attr.value(), root, {"then"}, uris);
+			sch.erase(attr);
+		}
 
-				if (attr_then != sch.end()) {
-					then_ = schema::make(attr_then.value(), root, {"then"}, uris);
-					sch.erase(attr_then);
-				}
-
-				if (attr_else != sch.end()) {
-					else_ = schema::make(attr_else.value(), root, {"else"}, uris);
-					sch.erase(attr_else);
-				}
-			}
+		attr = sch.find("else");
+		if (attr != sch.end()) {
+			else_ = schema::make(attr.value(), root, {"else"}, uris);
 			sch.erase(attr);
 		}
 	}
@@ -847,6 +843,7 @@ class string : public schema
 			}
 		}
 
+		// the checkers are present, the constructor checks it
 		if (std::get<0>(content_)) {
 			const bool has_encoding = !std::get<1>(content_).empty();
 			const std::string keyword = has_encoding ? "contentEncoding" : "contentMediaType";
@@ -854,15 +851,11 @@ class string : public schema
 			if (has_encoding && !std::get<2>(content_).empty())
 				details["content_media_type"] = std::get<2>(content_);
 
-			if (root_->content_check() == nullptr)
-				e.error(validation_error{ptr, std::string("a content checker was not provided but a contentEncoding or contentMediaType for this string have been present: '") + std::get<1>(content_) + "' '" + std::get<2>(content_) + "'", keyword, details}, instance);
-			else {
-				try {
-					root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
-				} catch (const std::exception &ex) {
-					details["reason"] = ex.what();
-					e.error(validation_error{ptr, std::string("content-checking failed: ") + ex.what(), keyword, details}, instance);
-				}
+			try {
+				root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
+			} catch (const std::exception &ex) {
+				details["reason"] = ex.what();
+				e.error(validation_error{ptr, std::string("content-checking failed: ") + ex.what(), keyword, details}, instance);
 			}
 		} else if (instance.type() == json::value_t::binary) {
 			e.error(validation_error{ptr, "expected string, but get binary data", "type", {{"value", "string"}, {"actual_type", "binary"}}}, instance);
@@ -882,14 +875,10 @@ class string : public schema
 #endif
 
 		if (format_.first) {
-			if (root_->format_check() == nullptr)
-				e.error(validation_error{ptr, std::string("a format checker was not provided but a format keyword for this string is present: ") + format_.second, "format", {{"value", format_.second}}}, instance);
-			else {
-				try {
-					root_->format_check()(format_.second, instance.get<std::string>());
-				} catch (const std::exception &ex) {
-					e.error(validation_error{ptr, std::string("format-checking failed: ") + ex.what(), "format", {{"value", format_.second}, {"reason", ex.what()}}}, instance);
-				}
+			try {
+				root_->format_check()(format_.second, instance.get<std::string>());
+			} catch (const std::exception &ex) {
+				e.error(validation_error{ptr, std::string("format-checking failed: ") + ex.what(), "format", {{"value", format_.second}, {"reason", ex.what()}}}, instance);
 			}
 		}
 	}
@@ -954,7 +943,7 @@ public:
 		attr = sch.find("format");
 		if (attr != sch.end()) {
 			if (root_->format_check() == nullptr)
-				throw std::invalid_argument{"a format checker was not provided but a format keyword for this string is present: " + format_.second};
+				throw std::invalid_argument{"a format checker was not provided but a format keyword for this string is present: " + attr.value().get<std::string>()};
 
 			format_ = {true, attr.value().get<std::string>()};
 			sch.erase(attr);
@@ -1063,11 +1052,8 @@ public:
 
 class null : public schema
 {
-	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
-	{
-		if (!instance.is_null())
-			e.error(validation_error{ptr, "expected to be null", "type", {{"value", "null"}, {"actual_type", instance.type_name()}}}, instance);
-	}
+	// only used for null instances (type_schema), nothing to check
+	void validate(const json::json_pointer &, const json &, json_patch &, error_handler &) const override {}
 
 public:
 	null(json &, root_schema *root)
@@ -1091,6 +1077,18 @@ class boolean : public schema
 		if (!true_) { // false schema
 			e.error(validation_error{ptr, "instance invalid as per false-schema", "", {{"code", "false-schema"}}}, instance);
 		}
+	}
+
+protected:
+	virtual std::shared_ptr<schema> make_for_default_(
+	    std::shared_ptr<::schema> & /* sch */,
+	    root_schema * /* root */,
+	    std::vector<nlohmann::json_uri> & /* uris */,
+	    nlohmann::json &default_value) const override
+	{
+		auto result = std::make_shared<boolean>(*this);
+		result->set_default_value(default_value);
+		return result;
 	}
 
 public:
@@ -1483,10 +1481,12 @@ std::shared_ptr<schema> schema::make(json &schema,
 		auto attr = schema.find("$id"); // if $id is present, this schema can be referenced by this ID
 		                                // as an additional URI
 		if (attr != schema.end()) {
-			if (std::find(uris.begin(),
-			              uris.end(),
-			              attr.value().get<std::string>()) == uris.end())
-				uris.push_back(uris.back().derive(attr.value().get<std::string>())); // so add it to the list if it is not there already
+			// resolved against the current base URI, a relative $id can be the URI of the loaded file itself
+			auto id = uris.back().derive(attr.value().get<std::string>());
+			auto existing = std::find(uris.begin(), uris.end(), id);
+			if (existing != uris.end()) // already known, but the base URI for this schema now
+				uris.erase(existing);
+			uris.push_back(id);
 			schema.erase(attr);
 		}
 

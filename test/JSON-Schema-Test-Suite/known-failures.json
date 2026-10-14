@@ -1,0 +1,90 @@
+[
+    {
+        "file": "ref.json",
+        "group": "$ref prevents a sibling $id from changing the base uri",
+        "reason": "the base URI of a $ref is changed by a sibling $id, as in draft 2019-09 and later"
+    },
+    {
+        "file": "type.json",
+        "group": "integer type matches integers",
+        "tests": [
+            "a float with zero fractional part is an integer"
+        ],
+        "reason": "1.0 is a float for nlohmann::json and not accepted as integer, see #166"
+    },
+    {
+        "file": "optional/cross-draft.json",
+        "group": "refs to future drafts are processed as future drafts",
+        "tests": [
+            "missing bar is invalid"
+        ],
+        "reason": "only draft-7 is supported, dependentRequired of draft 2019-09 is unknown"
+    },
+    {
+        "file": "optional/format/unknown.json",
+        "group": "unknown format",
+        "tests": [
+            "unknown formats ignore strings"
+        ],
+        "reason": "default_string_format_check rejects unknown formats"
+    },
+    {
+        "file": "optional/format/email.json",
+        "group": "validation of e-mail addresses",
+        "tests": [
+            "a lowercase IPv6 tag in an address literal is valid"
+        ],
+        "reason": "the address parser only accepts the tag IPv6:"
+    },
+    {
+        "file": "optional/format/hostname.json",
+        "group": "validation of A-label (punycode) host names",
+        "tests": [
+            "invalid Punycode",
+            "contains illegal char U+302E Hangul single dot tone mark",
+            "Begins with a Spacing Combining Mark",
+            "Begins with a Nonspacing Mark",
+            "Begins with an Enclosing Mark",
+            "Exceptions that are DISALLOWED, right-to-left chars",
+            "Exceptions that are DISALLOWED, left-to-right chars",
+            "MIDDLE DOT with no preceding 'l'",
+            "MIDDLE DOT with nothing preceding",
+            "MIDDLE DOT with no following 'l'",
+            "MIDDLE DOT with nothing following",
+            "Greek KERAIA not followed by Greek",
+            "Greek KERAIA not followed by anything",
+            "Hebrew GERESH not preceded by Hebrew",
+            "Hebrew GERESH not preceded by anything",
+            "Hebrew GERSHAYIM not preceded by Hebrew",
+            "Hebrew GERSHAYIM not preceded by anything",
+            "KATAKANA MIDDLE DOT with no Hiragana, Katakana, or Han",
+            "KATAKANA MIDDLE DOT with no other characters",
+            "Arabic-Indic digits mixed with Extended Arabic-Indic digits",
+            "ZERO WIDTH JOINER not preceded by Virama",
+            "ZERO WIDTH JOINER not preceded by anything",
+            "contains \"--\" in the 3rd and 4th position"
+        ],
+        "reason": "A-labels (xn--) are not decoded, IDNA rules are not checked"
+    },
+    {
+        "file": "optional/format/ecmascript-regex.json",
+        "group": "\\a is not an ECMA 262 control escape",
+        "tests": [
+            "when used as a pattern"
+        ],
+        "reason": "std::regex accepts \\a"
+    },
+    {
+        "file": "optional/format/ecmascript-regex.json",
+        "group": "ECMA 262 named groups and backreferences are valid",
+        "reason": "std::regex implements ECMAScript 3, without named groups"
+    },
+    {
+        "file": "optional/format/ecmascript-regex.json",
+        "group": "ECMA 262 lookbehind is valid, including variable width",
+        "tests": [
+            "a variable-width lookbehind (ES2018)"
+        ],
+        "reason": "std::regex implements ECMAScript 3, without lookbehind"
+    }
+]

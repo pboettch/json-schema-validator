@@ -27,6 +27,12 @@ testStringFormat(const std::string &format,
 				std::cerr << "[ERROR] String with " << format << " format '" << stringValid->first
 				          << "' did NOT validate even though it should!\n";
 			}
+
+			// the message does not contain the value, the error handler gets the instance (#353)
+			if (!stringValid->first.empty() && std::string(exception.what()).find(stringValid->first) != std::string::npos) {
+				++numberOfErrors;
+				std::cerr << "[ERROR] Message for " << format << " format contains the value '" << stringValid->first << "'\n";
+			}
 		}
 	}
 
@@ -82,6 +88,9 @@ int main()
 
 	numberOfErrors += testStringFormat("ipv4", ipv4Checks);
 
+	numberOfErrors += testStringFormat("email", {{"j\xc3\xb6rg@example.com", false}}); // non-ASCII, UTF-8
+	numberOfErrors += testStringFormat("unknown-format", {{"value", false}});
+
 	const std::vector<std::pair<std::string, bool>> uriChecks{
 	    {"http://www.google.com/search?q=regular%20expression", true},
 	    {"http://www.google.com/", true},
@@ -94,9 +103,24 @@ int main()
 	    {"https://john.doe@www.example.com:123/forum/questions/?tag=networking&order=newest#top", true},
 	    {"tel:+1-816-555-1212", true},
 	    {"telnet://192.0.2.16:80/", true},
-	    {"urn:oasis:names:specification:docbook:dtd:xml:4.1.2", true}};
+	    {"urn:oasis:names:specification:docbook:dtd:xml:4.1.2", true},
+	    {"http://[::ffff:1.2.3.4]/", true},
+	    {"http://[::ffff:255.2.3.4]/", true},
+	    {"http://[::ffff:01.2.3.4]/", false},
+	    {"http://[::ffff:1.2.3.004]/", false},
+	    {"http://[::ffff:256.2.3.4]/", false}};
 
 	numberOfErrors += testStringFormat("uri", uriChecks);
+
+	const std::string label63(63, 'a');
+	const std::vector<std::pair<std::string, bool>> hostnameChecks{
+	    {"www.example.com", true},
+	    {label63 + "." + label63 + "." + label63 + "." + label63, true},                   // 255 characters
+	    {label63 + "." + label63 + "." + label63 + "." + label63.substr(1) + ".a", false}, // 256 characters
+	    {label63 + "a", false},
+	    {"-example.com", false}};
+
+	numberOfErrors += testStringFormat("hostname", hostnameChecks);
 
 	const std::vector<std::pair<std::string, bool>> emailChecks{
 	    {"test@example.com", true},
@@ -104,6 +128,32 @@ int main()
 
 	numberOfErrors += testStringFormat("email", emailChecks);
 	numberOfErrors += testStringFormat("idn-email", emailChecks);
+
+	const std::vector<std::pair<std::string, bool>> uuidChecks{
+	    {"2EB8AA08-AA98-11EA-B4AA-73B441D16380", true},
+	    {"2eb8aa08-aa98-11ea-b4aa-73b441d16380", true},
+	    {"2eb8aa08-AA98-11ea-B4Aa-73B441D16380", true},
+	    {"00000000-0000-0000-0000-000000000000", true},
+	    {"98d80576-482e-427f-8434-7f86890ab222", true},
+	    {"99c17cbb-656f-564a-940f-1a4568f03487", true},
+	    {"99c17cbb-656f-664a-940f-1a4568f03487", true},
+	    {"99c17cbb-656f-f64a-940f-1a4568f03487", true},
+	    {"2eb8aa08-aa98-11ea-b4aa-73b441d1638", false},
+	    {"2eb8aa08-aa98-11ea-73b441d16380", false},
+	    {"2eb8aa08-aa98-11ea-b4ga-73b441d16380", false},
+	    {"2eb8aa08aa9811eab4aa73b441d16380", false},
+	    {"2eb8aa08aa98-11ea-b4aa73b441d16380", false},
+	    {"2eb8-aa08-aa98-11ea-b4aa73b44-1d16380", false},
+	    {"2eb8aa08aa9811eab4aa73b441d16380----", false}};
+
+	numberOfErrors += testStringFormat("uuid", uuidChecks);
+
+	numberOfErrors += testStringFormat("uri-reference", {{"http://example.com/a?b#c", true}, {"//example.com/a", true}, {"/a/b", true}, {"a:b/c", true}, {"./a:b", true}, {"", true}, {"#f", true}, {"a b", false}, {"/a%zz", false}, {"1:b", false}, {"/\xc3\xa4", false}});
+	numberOfErrors += testStringFormat("iri", {{"http://\xc3\xa4.example/\xc3\xb6?\xc3\xbc#\xc3\x9f", true}, {"/\xc3\xa4", false}, {"\xc3\xa4:b", false}, {"http://example.com:8\xc3\xa4/", false}});
+	numberOfErrors += testStringFormat("iri-reference", {{"/\xc3\xa4", true}, {"\xc3\xa4", true}, {"#\xc3\xa4", true}, {"/a\\b", false}});
+	numberOfErrors += testStringFormat("uri-template", {{"http://example.com/{a}/{+b}{?c,d*}{#e:3}", true}, {"\xc3\xa4{a.b}", true}, {"{}", false}, {"{a", false}, {"a}", false}, {"{a:0}", false}, {"a b", false}});
+	numberOfErrors += testStringFormat("json-pointer", {{"", true}, {"/", true}, {"/a~0b~1c", true}, {"/a//b/", true}, {"abc", false}, {"/a~", false}, {"/a~2", false}, {"#/a", false}});
+	numberOfErrors += testStringFormat("relative-json-pointer", {{"0", true}, {"1#", true}, {"10/a~1b", true}, {"", false}, {"/a", false}, {"01", false}, {"-1", false}, {"1#/a", false}});
 
 	return numberOfErrors;
 }

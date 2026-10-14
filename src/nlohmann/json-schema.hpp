@@ -124,7 +124,8 @@ public:
 		return l.as_tuple() == r.as_tuple();
 	}
 
-	friend std::ostream &operator<<(std::ostream &os, const json_uri &u);
+	// exported explicitly, the export of the class does not include its friends
+	friend JSON_SCHEMA_VALIDATOR_API std::ostream &operator<<(std::ostream &os, const json_uri &u);
 };
 
 namespace json_schema

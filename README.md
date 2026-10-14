@@ -389,7 +389,7 @@ json_validator validator(loader, // or nullptr for no loader
                          nlohmann::json_schema::default_string_format_check);
 ```
 
-Supported formats: `date-time, date, time, email, hostname, ipv4, ipv6, uuid, regex`
+Supported formats: `date-time, date, time, email, idn-email, hostname, ipv4, ipv6, uri, uri-reference, iri, iri-reference, uri-template, json-pointer, relative-json-pointer, uuid, regex`
 
 More formats can be added in `src/string-format-check.cpp`. Please contribute implementions for missing json schema draft formats.
 

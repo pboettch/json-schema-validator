@@ -146,5 +146,20 @@
                 "valid": false
             }
         ]
+    },
+    {
+        "description": "contains with null instance elements",
+        "schema": {
+            "contains": {
+                "type": "null"
+            }
+        },
+        "tests": [
+            {
+                "description": "allows null items",
+                "data": [ null ],
+                "valid": true
+            }
+        ]
     }
 ]

@@ -40,6 +40,16 @@
                 "description": "ignores other non-objects",
                 "data": 12,
                 "valid": true
+            },
+            {
+                "description": "ignores null",
+                "data": null,
+                "valid": true
+            },
+            {
+                "description": "ignores booleans",
+                "data": true,
+                "valid": true
             }
         ]
     },
@@ -95,6 +105,53 @@
             {
                 "description": "object with any properties is invalid",
                 "data": {"foo": 1},
+                "valid": false
+            },
+            {
+                "description": "empty object is valid",
+                "data": {},
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "propertyNames with const",
+        "schema": {"propertyNames": {"const": "foo"}},
+        "tests": [
+            {
+                "description": "object with property foo is valid",
+                "data": {"foo": 1},
+                "valid": true
+            },
+            {
+                "description": "object with any other property is invalid",
+                "data": {"bar": 1},
+                "valid": false
+            },
+            {
+                "description": "empty object is valid",
+                "data": {},
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "propertyNames with enum",
+        "schema": {"propertyNames": {"enum": ["foo", "bar"]}},
+        "tests": [
+            {
+                "description": "object with property foo is valid",
+                "data": {"foo": 1},
+                "valid": true
+            },
+            {
+                "description": "object with property foo and bar is valid",
+                "data": {"foo": 1, "bar": 1},
+                "valid": true
+            },
+            {
+                "description": "object with any other property is invalid",
+                "data": {"baz": 1},
                 "valid": false
             },
             {

@@ -65,6 +65,21 @@ static const json default_schema = R"(
     }
 })"_json;
 
+// the default next to a $ref to a boolean schema
+static const json boolean_schema = R"(
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "properties": {
+        "anything": {
+            "$ref": "#/definitions/anything",
+            "default": 30
+        }
+    },
+    "definitions": {
+        "anything": true
+    }
+})"_json;
+
 static void loader(const json_uri & /*uri*/, json &schema)
 {
 	schema = default_schema;
@@ -99,6 +114,21 @@ int main(void)
 
 		// height must be 10 according to the default specified in the length definition while width must be 10 overridden by the width element
 		const auto expected = R"({"height":10,"width":20})"_json;
+		if (actual != expected) {
+			std::cerr << "Patch with defaults contains wrong value: '" << actual << "' instead of expected '" << expected.dump() << "'" << std::endl;
+			return 1;
+		}
+	}
+
+	validator.set_root_schema(boolean_schema);
+
+	{
+		json empty = R"({})"_json;
+
+		const auto default_patch = validator.validate(empty);
+		const auto actual = empty.patch(default_patch);
+
+		const auto expected = R"({"anything":30})"_json;
 		if (actual != expected) {
 			std::cerr << "Patch with defaults contains wrong value: '" << actual << "' instead of expected '" << expected.dump() << "'" << std::endl;
 			return 1;
