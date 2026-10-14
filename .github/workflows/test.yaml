@@ -124,6 +124,25 @@ jobs:
         run: cmake --build --preset ${{ matrix.toolchain }}-ci
       - name: Test
         run: ctest --preset ${{ matrix.toolchain }}-ci
+  arm64:
+    name: Linux arm64
+    needs: [ pre-commit ]
+    # A single configuration: char is unsigned on arm64 Linux, signed in all other jobs (x86_64, Windows)
+    runs-on: ubuntu-24.04-arm
+    env:
+      CXXFLAGS: -Wall -Wextra -Wpedantic -Werror
+    steps:
+      - uses: actions/checkout@v7
+      - name: Show compiler version
+        run: c++ --version
+      - name: Configure with the shared library
+        run: >-
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DJSON_VALIDATOR_SHARED_LIBS=ON
+          -DJSON_VALIDATOR_BUILD_TESTS=ON -DJSON_VALIDATOR_INSTALL=OFF -DJSON_BuildTests=OFF
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel 4
   windows:
     name: Windows
     needs: [ pre-commit ]
