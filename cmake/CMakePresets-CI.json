@@ -48,10 +48,6 @@
         "CMAKE_LINKER": {
           "type": "FILEPATH",
           "value": "ld"
-        },
-        "CMAKE_CXX_FLAGS": {
-          "type": "STRING",
-          "value": "-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
         }
       }
     },
@@ -84,10 +80,6 @@
         "CMAKE_LINKER": {
           "type": "FILEPATH",
           "value": "lld"
-        },
-        "CMAKE_CXX_FLAGS": {
-          "type": "STRING",
-          "value": "-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer"
         }
       }
     },
@@ -105,10 +97,6 @@
         "JSON_VALIDATOR_TEST_COVERAGE": {
           "type": "BOOL",
           "value": true
-        },
-        "CMAKE_CXX_FLAGS": {
-          "type": "STRING",
-          "value": ""
         }
       }
     },
@@ -197,11 +185,7 @@
       "inherits": [
         "ci-base"
       ],
-      "configurePreset": "gcc-ci",
-      "environment": {
-        "ASAN_OPTIONS": "detect_stack_use_after_return=1:detect_leaks=0",
-        "UBSAN_OPTIONS": "print_stacktrace=1"
-      }
+      "configurePreset": "gcc-ci"
     },
     {
       "name": "intel-ci",
@@ -217,11 +201,7 @@
       "inherits": [
         "ci-base"
       ],
-      "configurePreset": "llvm-ci",
-      "environment": {
-        "ASAN_OPTIONS": "detect_stack_use_after_return=1:detect_leaks=0",
-        "UBSAN_OPTIONS": "print_stacktrace=1"
-      }
+      "configurePreset": "llvm-ci"
     }
   ],
   "workflowPresets": [

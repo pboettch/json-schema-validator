@@ -46,6 +46,13 @@ jobs:
             compiler_version: latest
     env:
       NLOHMANN_JSON_VERSION: ${{ matrix.json_version }}
+      # Lifetime bugs such as a stack-use-after-return pass the tests silently, run the LLVM
+      # toolchain under ASan and UBSan to catch them. Not GCC: its sanitizer runtime
+      # (libasan.so.8) cannot be loaded in this container. Passed as CXXFLAGS, not as a preset
+      # cache variable, so that the strict job's CXXFLAGS still apply to the same presets.
+      CXXFLAGS: ${{ matrix.toolchain == 'llvm' && '-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer' || '' }}
+      ASAN_OPTIONS: detect_stack_use_after_return=1:detect_leaks=0
+      UBSAN_OPTIONS: print_stacktrace=1
     runs-on: ubuntu-latest
     container: ghcr.io/nlohmann/json-ci:v2.4.0
     steps:
