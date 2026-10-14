@@ -23,6 +23,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <stdexcept>
+
 #ifdef NLOHMANN_JSON_VERSION_MAJOR
 #	if (NLOHMANN_JSON_VERSION_MAJOR * 10000 + NLOHMANN_JSON_VERSION_MINOR * 100 + NLOHMANN_JSON_VERSION_PATCH) < 30800
 #		error "Please use this library with NLohmann's JSON version 3.8.0 or higher"
@@ -135,12 +137,40 @@ typedef std::function<void(const json_uri & /*id*/, json & /*value*/)> schema_lo
 typedef std::function<void(const std::string & /*format*/, const std::string & /*value*/)> format_checker;
 typedef std::function<void(const std::string & /*contentEncoding*/, const std::string & /*contentMediaType*/, const json & /*instance*/)> content_checker;
 
-// Interface for validation error handlers
+// Machine-readable description of a validation failure. This is a plain value type: it owns
+// everything it contains and may be copied and stored freely. The instance which
+// failed is passed to error_handler::error separately, by reference, exactly as in the original
+// callback; it is valid for the duration of that call only.
+//
+// The keyword is empty when the validator does not provide schema-keyword details for that
+// failure. Keyword-specific information, including the schema keyword value when available,
+// belongs in details.
+struct validation_error {
+	json::json_pointer instance_location;
+	std::string message;
+	std::string keyword;
+	json details;
+};
+
+// Interface for validation error handlers.
 class JSON_SCHEMA_VALIDATOR_API error_handler
 {
 public:
 	virtual ~error_handler() {}
-	virtual void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) = 0;
+
+	// New handlers should override this structured callback. By default it forwards to
+	// the original callback below so existing handlers remain source-compatible.
+	virtual void error(const validation_error &error, const json &instance)
+	{
+		this->error(error.instance_location, instance, error.message);
+	}
+
+	virtual void error(const json::json_pointer & /*ptr*/,
+	                   const json & /*instance*/,
+	                   const std::string & /*message*/)
+	{
+		throw std::logic_error("error_handler must override an error callback");
+	}
 };
 
 class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
@@ -148,7 +178,14 @@ class JSON_SCHEMA_VALIDATOR_API basic_error_handler : public error_handler
 	bool error_{false};
 
 public:
-	void error(const json::json_pointer & /*ptr*/, const json & /*instance*/, const std::string & /*message*/) override
+	void error(const validation_error &error, const json &instance) override
+	{
+		error_handler::error(error, instance);
+	}
+
+	void error(const json::json_pointer & /*ptr*/,
+	           const json & /*instance*/,
+	           const std::string & /*message*/) override
 	{
 		error_ = true;
 	}
@@ -191,6 +228,10 @@ public:
 
 	// validate a json-document based on the root-schema with a custom error-handler
 	json validate(const json &, error_handler &, const json_uri &initial_uri = json_uri("#")) const;
+
+	// answer only whether a json-document is valid: no diagnostics are produced and no default
+	// values are collected, so failed subschemas are never evaluated a second time
+	bool is_valid(const json &, const json_uri &initial_uri = json_uri("#")) const;
 };
 
 } // namespace json_schema

@@ -1,3 +1,34 @@
+## Release 2.5.0
+
+- Structured validation errors: `error_handler::error(const validation_error &, const json &)`
+  reports the failed JSON Schema `keyword` and a machine-readable `details` object alongside the
+  existing location, instance and message. The previous three-argument callback remains
+  source-compatible and is called by default. `required` and array-valued `dependencies`
+  errors identify the missing property without repeating the complete keyword array in every
+  error. Fixes #352, related to #321 and #322.
+- Added `json_validator::is_valid()` for validity-only checks: one evaluation, no diagnostics,
+  no default values.
+- ABI change: `error_handler` gains a virtual function. Binaries linked against 2.4.x must be
+  rebuilt; the library `SOVERSION` is unchanged.
+- Logical combinations (`allOf`, `anyOf`, `oneOf`) evaluate their branches for validity first
+  and report the summary error from that result; when the handler does not throw, the failed
+  branches are then evaluated again to deliver their individual errors. Errors are no longer
+  buffered; custom `format` or content checkers may therefore be called more than once for the
+  same value when validation fails. The `allOf` summary is now reported at the combination's
+  own location with a fixed message, like `anyOf` and `oneOf`, and every failed `allOf` branch
+  is reported, each with its own summary followed by the branch's errors (previously only the
+  first failed branch, with its first error embedded in the summary message).
+- `anyOf` evaluates all of its branches, so the default values of every successful branch are
+  collected (previously only those of the first). JSON Schema does not allow short-circuit
+  evaluation while annotations are collected. `is_valid()` still stops at the first successful
+  branch.
+- `additionalProperties` failures are reported individually at the offending property instead
+  of as a single summary at the containing object. `additionalProperties`, `additionalItems`
+  and `propertyNames` set to `false` report a direct message.
+- Tuple `items` and `additionalItems` failures report the correct array index (previously
+  always `/0`).
+- Each violated numeric constraint produces a separate error (previously concatenated).
+
 ## Release 2.4.1
 
 - Fix the email format check (`is_address`) on platforms where `char` is unsigned (arm64, ppc64el, s390x, ...) by @jamesjer in <https://github.com/pboettch/json-schema-validator/pull/376>

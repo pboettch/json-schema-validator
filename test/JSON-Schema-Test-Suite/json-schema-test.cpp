@@ -222,6 +222,18 @@ int main(int argc, char *argv[])
 				group_failed++;
 				std::cout << "      --> Test Case exited with " << valid << " NOT expected.\n";
 			}
+
+			// the validity-only entry point must agree with the full validation
+			bool flag = false;
+			try {
+				flag = validator.is_valid(test_case["data"]);
+			} catch (const std::exception &e) {
+				std::cout << "    is_valid() threw: " << e.what() << "\n";
+			}
+			if (flag != valid) {
+				group_failed++;
+				std::cout << "      --> is_valid() returned " << flag << " but validate() gave " << valid << ".\n";
+			}
 			group_total++;
 			std::cout << "\n";
 		}

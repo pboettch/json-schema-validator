@@ -86,7 +86,7 @@ class schema_ref : public schema
 		if (target)
 			target->validate(ptr, instance, patch, e);
 		else
-			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+			e.error(validation_error{ptr, "unresolved or freed schema-reference " + id_, "$ref", {{"value", id_}}}, instance);
 	}
 
 	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override final
@@ -98,7 +98,7 @@ class schema_ref : public schema
 		if (target)
 			return target->default_value(ptr, instance, e);
 
-		e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+		e.error(validation_error{ptr, "unresolved or freed schema-reference " + id_, "$ref", {{"value", id_}}}, instance);
 
 		return default_value_;
 	}
@@ -340,20 +340,20 @@ public:
 	              const json_uri &initial) const
 	{
 		if (!root_) {
-			e.error(ptr, "", "no root schema has yet been set for validating an instance");
+			e.error(validation_error{ptr, "no root schema has yet been set for validating an instance", "", {{"code", "no-root-schema"}}}, "");
 			return;
 		}
 
 		auto file_entry = files_.find(initial.location());
 		if (file_entry == files_.end()) {
-			e.error(ptr, "", "no file found serving requested root-URI. " + initial.location());
+			e.error(validation_error{ptr, "no file found serving requested root-URI. " + initial.location(), "", {{"code", "schema-file-not-found"}, {"location", initial.location()}}}, "");
 			return;
 		}
 
 		auto &file = file_entry->second;
 		auto sch = file.schemas.find(initial.fragment());
 		if (sch == file.schemas.end()) {
-			e.error(ptr, "", "no schema find for request initial URI: " + initial.to_string());
+			e.error(validation_error{ptr, "no schema find for request initial URI: " + initial.to_string(), "", {{"code", "schema-not-found"}, {"location", initial.location()}, {"fragment", initial.fragment()}}}, "");
 			return;
 		}
 
@@ -367,25 +367,107 @@ public:
 namespace
 {
 
-class first_error_handler : public error_handler
+// Internal handlers. None of them retains an error past the callback: each either records a
+// flag or forwards immediately. This is what allows the instance to be passed by reference.
+
+// Speculative evaluation ("probing") asks a subschema only whether it validates: not/if/contains,
+// and the branches of allOf/anyOf/oneOf. While a probe is running nothing rendered for an error
+// can reach a user handler, so combinators skip their diagnostics phase and error sites skip
+// copying schema data into details. The probe state is a thread-local depth so that it is seen
+// through any forwarding handler in between and needs no RTTI.
+class probe_error_handler : public error_handler
 {
+	bool failed_{false};
+
 public:
-	bool error_{false};
-	json::json_pointer ptr_;
-	json instance_;
-	std::string message_;
+	void error(const validation_error &, const json &) override { failed_ = true; }
+	operator bool() const { return failed_; }
+};
 
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+thread_local unsigned probe_depth = 0;
+
+struct probe_scope {
+	probe_scope() { ++probe_depth; }
+	~probe_scope() { --probe_depth; }
+	probe_scope(const probe_scope &) = delete;
+	probe_scope &operator=(const probe_scope &) = delete;
+};
+
+// Probes still collect default values: a successful branch keeps its defaults in the patch.
+// Only is_valid() discards the patch of the whole evaluation.
+thread_local bool discarding_defaults = false;
+
+// Every public validate() call is its own evaluation: a user's format or content checker may
+// run another validator while it is itself being invoked from inside a probe, and that inner
+// validation must report normally to its own handler.
+struct probe_context {
+	const unsigned saved_depth_;
+	const bool saved_discarding_defaults_;
+	explicit probe_context(bool discard_defaults)
+	    : saved_depth_(probe_depth), saved_discarding_defaults_(discarding_defaults)
 	{
-		if (*this)
-			return;
-		error_ = true;
-		ptr_ = ptr;
-		instance_ = instance;
-		message_ = message;
+		probe_depth = 0;
+		discarding_defaults = discard_defaults;
 	}
+	~probe_context()
+	{
+		probe_depth = saved_depth_;
+		discarding_defaults = saved_discarding_defaults_;
+	}
+	probe_context(const probe_context &) = delete;
+	probe_context &operator=(const probe_context &) = delete;
+};
 
-	operator bool() const { return error_; }
+static bool probing()
+{
+	return probe_depth != 0;
+}
+
+// Schema data placed in details["value"] (enum lists, const values, ...) is copied for each
+// error. Nothing reads details during a probe, so nothing is copied for one.
+static json keyword_value(const json &value)
+{
+	return probing() ? json() : value;
+}
+
+// Forwards errors with a message prefix. Used by the diagnostics phase of logical combinations.
+class prefixing_error_handler : public error_handler
+{
+	error_handler &next_;
+	const std::string prefix_;
+
+public:
+	prefixing_error_handler(error_handler &next, std::string prefix)
+	    : next_(next), prefix_(std::move(prefix)) {}
+
+	void error(const validation_error &error, const json &instance) override
+	{
+		next_.error(validation_error{error.instance_location, prefix_ + error.message, error.keyword, error.details}, instance);
+	}
+};
+
+// Adds the property name to errors reported while validating that name against propertyNames.
+// The details carrying it are built only when an error is forwarded, and not during a probe.
+class property_name_error_handler : public error_handler
+{
+	error_handler &next_;
+	const std::string &property_;
+
+public:
+	property_name_error_handler(error_handler &next, const std::string &property)
+	    : next_(next), property_(property) {}
+
+	void error(const validation_error &error, const json &instance) override
+	{
+		if (probing()) {
+			next_.error(error, instance);
+			return;
+		}
+		json details = error.details;
+		if (!details.contains("property"))
+			details["property"] = property_;
+		next_.error(validation_error{error.instance_location, error.message, error.keyword, std::move(details)}, instance);
+	}
 };
 
 class logical_not : public schema
@@ -394,11 +476,14 @@ class logical_not : public schema
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
-		first_error_handler esub;
-		subschema_->validate(ptr, instance, patch, esub);
+		probe_error_handler probe;
+		{
+			probe_scope scope;
+			subschema_->validate(ptr, instance, patch, probe);
+		}
 
-		if (!esub)
-			e.error(ptr, instance, "the subschema has succeeded, but it is required to not validate");
+		if (!probe)
+			e.error(validation_error{ptr, "the subschema has succeeded, but it is required to not validate", "not", json::object()}, instance);
 	}
 
 public:
@@ -417,66 +502,72 @@ enum logical_combination_types {
 	oneOf
 };
 
-class logical_combination_error_handler : public error_handler
-{
-public:
-	struct error_entry {
-		json::json_pointer ptr_;
-		json instance_;
-		std::string message_;
-	};
-
-	std::vector<error_entry> error_entry_list_;
-
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
-	{
-		error_entry_list_.push_back(error_entry{ptr, instance, message});
-	}
-
-	void propagate(error_handler &e, const std::string &prefix) const
-	{
-		for (const error_entry &entry : error_entry_list_)
-			e.error(entry.ptr_, entry.instance_, prefix + entry.message_);
-	}
-
-	operator bool() const { return !error_entry_list_.empty(); }
-};
-
 template <enum logical_combination_types combine_logic>
 class logical_combination : public schema
 {
 	std::vector<std::shared_ptr<schema>> subschemata_;
 
+	// Speculative evaluation is done in two phases. The probe phase evaluates branches for
+	// validity only; defaults written by a failed branch are rolled back. Its verdict is
+	// authoritative: whenever the combination fails, the summary error is emitted from it, so a
+	// failure is reported even if a later re-evaluation were to behave differently. Only after
+	// that summary, and only when no enclosing probe is running, are the failed branches
+	// evaluated once more with a forwarding handler to deliver their individual errors straight
+	// to the consumer while the failing instance is alive.
+	//
+	// allOf reports each failed branch, a summary followed by the branch's errors; a probe only
+	// needs the verdict, which the first failure decides. anyOf does not stop at its first
+	// successful branch while defaults are collected: the defaults of every successful branch
+	// belong in the patch (Draft 7, section 3.3.2, no short-circuit while collecting annotations).
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const final
 	{
 		size_t count = 0;
-		logical_combination_error_handler error_summary;
 
 		for (std::size_t index = 0; index < subschemata_.size(); ++index) {
-			const std::shared_ptr<schema> &s = subschemata_[index];
-			logical_combination_error_handler esub;
+			probe_error_handler probe;
 			auto oldPatchSize = patch.get_json().size();
-			s->validate(ptr, instance, patch, esub);
-			if (!esub)
+			{
+				probe_scope scope;
+				subschemata_[index]->validate(ptr, instance, patch, probe);
+			}
+			if (!probe)
 				count++;
 			else {
 				patch.get_json().get_ref<nlohmann::json::array_t &>().resize(oldPatchSize);
-				esub.propagate(error_summary, "case#" + std::to_string(index) + "] ");
+				if (combine_logic == allOf) {
+					e.error(validation_error{ptr, "at least one subschema has failed, but all of them are required to validate", "allOf", {{"failed_subschema", index}}}, instance);
+					if (probing())
+						return;
+					report_branch(ptr, instance, e, index);
+				}
 			}
 
-			if (is_validate_complete(instance, ptr, e, esub, count, index))
+			if (combine_logic == anyOf && count == 1 && discarding_defaults)
 				return;
+			if (combine_logic == oneOf && count > 1) {
+				e.error(validation_error{ptr, "more than one subschema has succeeded, but exactly one of them is required to validate", "oneOf", {{"successful_subschemas", count}}}, instance);
+				return;
+			}
 		}
 
-		if (count == 0) {
-			e.error(ptr, instance, "no subschema has succeeded, but one of them is required to validate. Type: " + key + ", number of failed subschemas: " + std::to_string(subschemata_.size()));
-			error_summary.propagate(e, "[combination: " + key + " / ");
+		if (combine_logic != allOf && count == 0) {
+			e.error(validation_error{ptr, "no subschema has succeeded, but one of them is required to validate. Type: " + key + ", number of failed subschemas: " + std::to_string(subschemata_.size()), key, {{"failed_subschemas", subschemata_.size()}}}, instance);
+			if (!probing())
+				for (std::size_t index = 0; index < subschemata_.size(); ++index)
+					report_branch(ptr, instance, e, index);
 		}
 	}
 
-	// specialized for each of the logical_combination_types
+	// Diagnostics for one failed branch: re-evaluate it, forwarding each error with the case
+	// prefix. Defaults it writes are discarded with the scratch patch, one branch at a time.
+	void report_branch(const json::json_pointer &ptr, const json &instance, error_handler &e, size_t index) const
+	{
+		json_patch discarded_defaults;
+		prefixing_error_handler report(e, "[combination: " + key + " / case#" + std::to_string(index) + "] ");
+		subschemata_[index]->validate(ptr, instance, discarded_defaults, report);
+	}
+
 	static const std::string key;
-	static bool is_validate_complete(const json &, const json::json_pointer &, error_handler &, const logical_combination_error_handler &, size_t, size_t);
 
 public:
 	logical_combination(json &sch,
@@ -500,33 +591,10 @@ const std::string logical_combination<anyOf>::key = "anyOf";
 template <>
 const std::string logical_combination<oneOf>::key = "oneOf";
 
-template <>
-bool logical_combination<allOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &e, const logical_combination_error_handler &esub, size_t, size_t current_schema_index)
-{
-	if (esub) {
-		e.error(esub.error_entry_list_.front().ptr_, esub.error_entry_list_.front().instance_, "at least one subschema has failed, but all of them are required to validate - " + esub.error_entry_list_.front().message_);
-		esub.propagate(e, "[combination: allOf / case#" + std::to_string(current_schema_index) + "] ");
-	}
-	return esub;
-}
-
-template <>
-bool logical_combination<anyOf>::is_validate_complete(const json &, const json::json_pointer &, error_handler &, const logical_combination_error_handler &, size_t count, size_t)
-{
-	return count == 1;
-}
-
-template <>
-bool logical_combination<oneOf>::is_validate_complete(const json &instance, const json::json_pointer &ptr, error_handler &e, const logical_combination_error_handler &, size_t count, size_t)
-{
-	if (count > 1)
-		e.error(ptr, instance, "more than one subschema has succeeded, but exactly one of them is required to validate");
-	return count > 1;
-}
-
 class type_schema : public schema
 {
 	std::vector<std::shared_ptr<schema>> type_;
+	json typeKeyword_;
 	std::pair<bool, json> enum_, const_;
 	std::vector<std::shared_ptr<schema>> logic_;
 
@@ -545,8 +613,9 @@ class type_schema : public schema
 
 		if (type)
 			type->validate(ptr, instance, patch, e);
-		else
-			e.error(ptr, instance, "unexpected instance type");
+		else {
+			e.error(validation_error{ptr, "unexpected instance type", "type", {{"value", keyword_value(typeKeyword_)}, {"actual_type", instance.type_name()}}}, instance);
+		}
 
 		if (enum_.first) {
 			bool seen_in_enum = false;
@@ -557,21 +626,23 @@ class type_schema : public schema
 				}
 
 			if (!seen_in_enum)
-				e.error(ptr, instance, "instance not found in required enum");
+				e.error(validation_error{ptr, "instance not found in required enum", "enum", {{"value", keyword_value(enum_.second)}}}, instance);
 		}
 
 		if (const_.first &&
 		    const_.second != instance)
-			e.error(ptr, instance, "instance not const");
+			e.error(validation_error{ptr, "instance not const", "const", {{"value", keyword_value(const_.second)}}}, instance);
 
 		for (auto l : logic_)
 			l->validate(ptr, instance, patch, e);
 
 		if (if_ && (then_ || else_)) {
-			first_error_handler err;
-
-			if_->validate(ptr, instance, patch, err);
-			if (!err) {
+			probe_error_handler probe;
+			{
+				probe_scope scope;
+				if_->validate(ptr, instance, patch, probe);
+			}
+			if (!probe) {
 				if (then_)
 					then_->validate(ptr, instance, patch, e);
 			} else {
@@ -621,6 +692,8 @@ public:
 		std::set<std::string> known_keywords;
 
 		auto attr = sch.find("type");
+		if (attr != sch.end())
+			typeKeyword_ = attr.value();
 		if (attr == sch.end()) // no type field means all sub-types possible
 			for (auto &t : schema_types)
 				type_[static_cast<uint8_t>(t.type)] = type_schema::make(sch, t.type, root, uris, known_keywords);
@@ -758,7 +831,7 @@ class string : public schema
 			if (utf8_length(instance.get<std::string>()) < minLength_.second) {
 				std::ostringstream s;
 				s << "instance is too short as per minLength:" << minLength_.second;
-				e.error(ptr, instance, s.str());
+				e.error(validation_error{ptr, s.str(), "minLength", {{"value", minLength_.second}}}, instance);
 			}
 		}
 
@@ -766,19 +839,26 @@ class string : public schema
 			if (utf8_length(instance.get<std::string>()) > maxLength_.second) {
 				std::ostringstream s;
 				s << "instance is too long as per maxLength: " << maxLength_.second;
-				e.error(ptr, instance, s.str());
+				e.error(validation_error{ptr, s.str(), "maxLength", {{"value", maxLength_.second}}}, instance);
 			}
 		}
 
 		// the checkers are present, the constructor checks it
 		if (std::get<0>(content_)) {
+			const bool has_encoding = !std::get<1>(content_).empty();
+			const std::string keyword = has_encoding ? "contentEncoding" : "contentMediaType";
+			json details = {{"value", has_encoding ? std::get<1>(content_) : std::get<2>(content_)}};
+			if (has_encoding && !std::get<2>(content_).empty())
+				details["content_media_type"] = std::get<2>(content_);
+
 			try {
 				root_->content_check()(std::get<1>(content_), std::get<2>(content_), instance);
 			} catch (const std::exception &ex) {
-				e.error(ptr, instance, std::string("content-checking failed: ") + ex.what());
+				details["reason"] = ex.what();
+				e.error(validation_error{ptr, std::string("content-checking failed: ") + ex.what(), keyword, details}, instance);
 			}
 		} else if (instance.type() == json::value_t::binary) {
-			e.error(ptr, instance, "expected string, but get binary data");
+			e.error(validation_error{ptr, "expected string, but get binary data", "type", {{"value", "string"}, {"actual_type", "binary"}}}, instance);
 		}
 
 		if (instance.type() != json::value_t::string) {
@@ -787,15 +867,18 @@ class string : public schema
 
 #ifndef NO_STD_REGEX
 		if (pattern_.first &&
-		    !REGEX_NAMESPACE::regex_search(instance.get<std::string>(), pattern_.second))
-			e.error(ptr, instance, "instance does not match regex pattern: " + patternString_);
+		    !REGEX_NAMESPACE::regex_search(instance.get<std::string>(), pattern_.second)) {
+			json details = json::object();
+			details["value"] = patternString_;
+			e.error(validation_error{ptr, "instance does not match regex pattern: " + patternString_, "pattern", details}, instance);
+		}
 #endif
 
 		if (format_.first) {
 			try {
 				root_->format_check()(format_.second, instance.get<std::string>());
 			} catch (const std::exception &ex) {
-				e.error(ptr, instance, std::string("format-checking failed: ") + ex.what());
+				e.error(validation_error{ptr, std::string("format-checking failed: ") + ex.what(), "format", {{"value", format_.second}, {"reason", ex.what()}}}, instance);
 			}
 		}
 	}
@@ -878,6 +961,7 @@ class numeric : public schema
 	bool exclusiveMinimum_ = false;
 
 	std::pair<bool, json::number_float_t> multipleOf_{false, 0};
+	json multipleOfKeyword_;
 
 	// multipleOf - if the remainder of the division is 0 -> OK
 	bool violates_multiple_of(T x) const
@@ -896,31 +980,34 @@ class numeric : public schema
 	{
 		T value = instance.get<T>(); // conversion of json to value_type
 
-		std::ostringstream oss;
-
-		if (multipleOf_.first && value != 0) // zero is multiple of everything
-			if (violates_multiple_of(value))
-				oss << "instance is not a multiple of " << json(multipleOf_.second);
+		if (multipleOf_.first && value != 0 && violates_multiple_of(value)) { // zero is multiple of everything
+			std::ostringstream message;
+			message << "instance is not a multiple of " << json(multipleOf_.second);
+			e.error(validation_error{ptr, message.str(), "multipleOf", {{"value", multipleOfKeyword_}}}, instance);
+		}
 
 		if (maximum_.first) {
-			if (exclusiveMaximum_ && value >= maximum_.second)
-				oss << "instance exceeds or equals maximum of " << json(maximum_.second);
-			else if (value > maximum_.second)
-				oss << "instance exceeds maximum of " << json(maximum_.second);
+			if (exclusiveMaximum_ && value >= maximum_.second) {
+				std::ostringstream message;
+				message << "instance exceeds or equals maximum of " << json(maximum_.second);
+				e.error(validation_error{ptr, message.str(), "exclusiveMaximum", {{"value", maximum_.second}}}, instance);
+			} else if (value > maximum_.second) {
+				std::ostringstream message;
+				message << "instance exceeds maximum of " << json(maximum_.second);
+				e.error(validation_error{ptr, message.str(), "maximum", {{"value", maximum_.second}}}, instance);
+			}
 		}
 
 		if (minimum_.first) {
-			if (exclusiveMinimum_ && value <= minimum_.second)
-				oss << "instance is below or equals minimum of " << json(minimum_.second);
-			else if (value < minimum_.second)
-				oss << "instance is below minimum of " << json(minimum_.second);
-		}
-
-		oss.seekp(0, std::ios::end);
-		auto size = oss.tellp();
-		if (size != 0) {
-			oss.seekp(0, std::ios::beg);
-			e.error(ptr, instance, oss.str());
+			if (exclusiveMinimum_ && value <= minimum_.second) {
+				std::ostringstream message;
+				message << "instance is below or equals minimum of " << json(minimum_.second);
+				e.error(validation_error{ptr, message.str(), "exclusiveMinimum", {{"value", minimum_.second}}}, instance);
+			} else if (value < minimum_.second) {
+				std::ostringstream message;
+				message << "instance is below minimum of " << json(minimum_.second);
+				e.error(validation_error{ptr, message.str(), "minimum", {{"value", minimum_.second}}}, instance);
+			}
 		}
 	}
 
@@ -957,6 +1044,7 @@ public:
 		attr = sch.find("multipleOf");
 		if (attr != sch.end()) {
 			multipleOf_ = {true, attr.value().get<json::number_float_t>()};
+			multipleOfKeyword_ = attr.value();
 			kw.insert("multipleOf");
 		}
 	}
@@ -987,15 +1075,7 @@ class boolean : public schema
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
 		if (!true_) { // false schema
-			// empty array
-			// switch (instance.type()) {
-			// case json::value_t::array:
-			//	if (instance.size() != 0) // valid false-schema
-			//		e.error(ptr, instance, "false-schema required empty array");
-			//	return;
-			//}
-
-			e.error(ptr, instance, "instance invalid as per false-schema");
+			e.error(validation_error{ptr, "instance invalid as per false-schema", "", {{"code", "false-schema"}}}, instance);
 		}
 	}
 
@@ -1018,18 +1098,19 @@ public:
 
 class required : public schema
 {
+	const std::string property_;
 	const std::vector<std::string> required_;
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override final
 	{
 		for (auto &r : required_)
 			if (instance.find(r) == instance.end())
-				e.error(ptr, instance, "required property '" + r + "' not found in object as a dependency");
+				e.error(validation_error{ptr, "required property '" + r + "' not found in object as a dependency", "dependencies", {{"property", property_}, {"missing_property", r}}}, instance);
 	}
 
 public:
-	required(const std::vector<std::string> &r, root_schema *root)
-	    : schema(root), required_(r) {}
+	required(const std::string &property, const std::vector<std::string> &r, root_schema *root)
+	    : schema(root), property_(property), required_(r) {}
 };
 
 class object : public schema
@@ -1043,27 +1124,33 @@ class object : public schema
 	std::vector<std::pair<REGEX_NAMESPACE::regex, std::shared_ptr<schema>>> patternProperties_;
 #endif
 	std::shared_ptr<schema> additionalProperties_;
+	bool denyAdditionalProperties_{false};
 
 	std::map<std::string, std::shared_ptr<schema>> dependencies_;
 
 	std::shared_ptr<schema> propertyNames_;
+	bool denyPropertyNames_{false};
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override
 	{
 		if (maxProperties_.first && instance.size() > maxProperties_.second)
-			e.error(ptr, instance, "too many properties");
+			e.error(validation_error{ptr, "too many properties", "maxProperties", {{"value", maxProperties_.second}}}, instance);
 
 		if (minProperties_.first && instance.size() < minProperties_.second)
-			e.error(ptr, instance, "too few properties");
+			e.error(validation_error{ptr, "too few properties", "minProperties", {{"value", minProperties_.second}}}, instance);
 
 		for (auto &r : required_)
 			if (instance.find(r) == instance.end())
-				e.error(ptr, instance, "required property '" + r + "' not found in object");
+				e.error(validation_error{ptr, "required property '" + r + "' not found in object", "required", {{"missing_property", r}}}, instance);
 
 		// for each property in instance
 		for (auto &p : instance.items()) {
-			if (propertyNames_)
-				propertyNames_->validate(ptr, p.key(), patch, e);
+			if (propertyNames_) {
+				property_name_error_handler property_name_error(e, p.key());
+				propertyNames_->validate(ptr, p.key(), patch, property_name_error);
+			} else if (denyPropertyNames_) {
+				e.error(validation_error{ptr, "invalid property name '" + p.key() + "'", "propertyNames", {{"value", false}, {"property", p.key()}}}, p.key());
+			}
 
 			bool a_prop_or_pattern_matched = false;
 			auto schema_p = properties_.find(p.key());
@@ -1083,11 +1170,12 @@ class object : public schema
 #endif
 
 			// check additionalProperties as a last resort
-			if (!a_prop_or_pattern_matched && additionalProperties_) {
-				first_error_handler additional_prop_err;
-				additionalProperties_->validate(ptr / p.key(), p.value(), patch, additional_prop_err);
-				if (additional_prop_err)
-					e.error(ptr, instance, "validation failed for additional property '" + p.key() + "': " + additional_prop_err.message_);
+			if (!a_prop_or_pattern_matched) {
+				if (additionalProperties_) {
+					additionalProperties_->validate(ptr / p.key(), p.value(), patch, e);
+				} else if (denyAdditionalProperties_) {
+					e.error(validation_error{ptr / p.key(), "unexpected additional property '" + p.key() + "'", "additionalProperties", {{"value", false}}}, p.value());
+				}
 			}
 		}
 
@@ -1157,7 +1245,11 @@ public:
 
 		attr = sch.find("additionalProperties");
 		if (attr != sch.end()) {
-			additionalProperties_ = schema::make(attr.value(), root, {"additionalProperties"}, uris);
+			auto additionalProperties = schema::make(attr.value(), root, {"additionalProperties"}, uris);
+			if (attr.value().is_boolean())
+				denyAdditionalProperties_ = !attr.value().get<bool>();
+			else
+				additionalProperties_ = std::move(additionalProperties);
 			sch.erase(attr);
 		}
 
@@ -1168,7 +1260,7 @@ public:
 				case json::value_t::array:
 					dependencies_.emplace(dep.key(),
 					                      std::make_shared<required>(
-					                          dep.value().get<std::vector<std::string>>(), root));
+					                          dep.key(), dep.value().get<std::vector<std::string>>(), root));
 					break;
 
 				default:
@@ -1181,7 +1273,11 @@ public:
 
 		attr = sch.find("propertyNames");
 		if (attr != sch.end()) {
-			propertyNames_ = schema::make(attr.value(), root, {"propertyNames"}, uris);
+			auto propertyNames = schema::make(attr.value(), root, {"propertyNames"}, uris);
+			if (attr.value().is_boolean())
+				denyPropertyNames_ = !attr.value().get<bool>();
+			else
+				propertyNames_ = std::move(propertyNames);
 			sch.erase(attr);
 		}
 
@@ -1202,22 +1298,23 @@ class array : public schema
 
 	std::vector<std::shared_ptr<schema>> items_;
 	std::shared_ptr<schema> additionalItems_;
+	bool denyAdditionalItems_{false};
 
 	std::shared_ptr<schema> contains_;
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &patch, error_handler &e) const override
 	{
 		if (maxItems_.first && instance.size() > maxItems_.second)
-			e.error(ptr, instance, "array has too many items");
+			e.error(validation_error{ptr, "array has too many items", "maxItems", {{"value", maxItems_.second}}}, instance);
 
 		if (minItems_.first && instance.size() < minItems_.second)
-			e.error(ptr, instance, "array has too few items");
+			e.error(validation_error{ptr, "array has too few items", "minItems", {{"value", minItems_.second}}}, instance);
 
 		if (uniqueItems_) {
 			for (auto it = instance.cbegin(); it != instance.cend(); ++it) {
 				auto v = std::find(it + 1, instance.end(), *it);
 				if (v != instance.end())
-					e.error(ptr, instance, "items have to be unique for this array");
+					e.error(validation_error{ptr, "items have to be unique for this array", "uniqueItems", {{"value", true}, {"duplicate", keyword_value(*it)}}}, instance);
 			}
 		}
 
@@ -1230,33 +1327,38 @@ class array : public schema
 		else {
 			auto item = items_.cbegin();
 			for (auto &i : instance) {
-				std::shared_ptr<schema> item_validator;
-				if (item == items_.cend())
-					item_validator = additionalItems_;
-				else {
-					item_validator = *item;
+				const bool is_additional_item = item == items_.cend();
+				if (is_additional_item) {
+					if (additionalItems_) {
+						additionalItems_->validate(ptr / index, i, patch, e);
+					} else if (denyAdditionalItems_) {
+						e.error(validation_error{ptr / index, "unexpected additional item", "additionalItems", {{"value", false}}}, i);
+					} else {
+						break;
+					}
+				} else {
+					(*item)->validate(ptr / index, i, patch, e);
 					item++;
 				}
-
-				if (!item_validator)
-					break;
-
-				item_validator->validate(ptr / index, i, patch, e);
+				index++;
 			}
 		}
 
 		if (contains_) {
 			bool contained = false;
 			for (auto &item : instance) {
-				first_error_handler local_e;
-				contains_->validate(ptr, item, patch, local_e);
-				if (!local_e) {
+				probe_error_handler probe;
+				{
+					probe_scope scope;
+					contains_->validate(ptr, item, patch, probe);
+				}
+				if (!probe) {
 					contained = true;
 					break;
 				}
 			}
 			if (!contained)
-				e.error(ptr, instance, "array does not contain required element as per 'contains'");
+				e.error(validation_error{ptr, "array does not contain required element as per 'contains'", "contains", json::object()}, instance);
 		}
 	}
 
@@ -1292,7 +1394,11 @@ public:
 
 				auto attr_add = sch.find("additionalItems");
 				if (attr_add != sch.end()) {
-					additionalItems_ = schema::make(attr_add.value(), root, {"additionalItems"}, uris);
+					auto additionalItems = schema::make(attr_add.value(), root, {"additionalItems"}, uris);
+					if (attr_add.value().is_boolean())
+						denyAdditionalItems_ = !attr_add.value().get<bool>();
+					else
+						additionalItems_ = std::move(additionalItems);
 					sch.erase(attr_add);
 				}
 
@@ -1439,9 +1545,9 @@ std::shared_ptr<schema> schema::make(json &schema,
 
 class throwing_error_handler : public error_handler
 {
-	void error(const json::json_pointer &ptr, const json &instance, const std::string &message) override
+	void error(const validation_error &error, const json &instance) override
 	{
-		throw std::invalid_argument(std::string("At ") + ptr.to_string() + " of " + instance.dump() + " - " + message + "\n");
+		throw std::invalid_argument(std::string("At ") + error.instance_location.to_string() + " of " + instance.dump() + " - " + error.message + "\n");
 	}
 };
 
@@ -1508,10 +1614,22 @@ json json_validator::validate(const json &instance) const
 
 json json_validator::validate(const json &instance, error_handler &err, const json_uri &initial_uri) const
 {
+	probe_context fresh_context(false);
 	json::json_pointer ptr;
 	json_patch patch;
 	root_->validate(ptr, instance, patch, err, initial_uri);
 	return patch;
+}
+
+bool json_validator::is_valid(const json &instance, const json_uri &initial_uri) const
+{
+	probe_context fresh_context(true);
+	probe_scope whole_document_is_a_probe;
+	probe_error_handler probe;
+	json::json_pointer ptr;
+	json_patch discarded_defaults;
+	root_->validate(ptr, instance, discarded_defaults, probe, initial_uri);
+	return !probe;
 }
 
 } // namespace json_schema

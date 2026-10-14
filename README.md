@@ -242,11 +242,11 @@ int main()
     /* json-parse the people - with custom error handler */
     class custom_error_handler : public nlohmann::json_schema::basic_error_handler
     {
-        void error(const nlohmann::json_pointer<nlohmann::basic_json<>> &pointer, const json &instance,
-            const std::string &message) override
+        void error(const nlohmann::json_schema::validation_error &error, const json &instance) override
         {
-            nlohmann::json_schema::basic_error_handler::error(pointer, instance, message);
-            std::cerr << "ERROR: '" << pointer << "' - '" << instance << "': " << message << "\n";
+            nlohmann::json_schema::basic_error_handler::error(error, instance);
+            std::cerr << "ERROR: '" << error.instance_location << "' - '"
+                      << instance << "': " << error.message << "\n";
         }
     };
 
@@ -267,6 +267,82 @@ int main()
     return EXIT_SUCCESS;
 }
 ```
+
+## Validation errors
+
+New `error_handler` implementations receive a `validation_error` containing the instance
+location, human-readable message, failed JSON Schema `keyword`, and an extensible `details`
+object, together with a reference to the instance value which failed. `validation_error` is a
+plain value type and may be copied and stored freely; the instance reference is valid for the
+duration of the callback, as it always has been, so handlers which retain it must copy it. When
+available, the schema keyword value is stored in `details["value"]`; other keyword-specific
+information can be added alongside it.
+
+Handlers which override the previous three-argument callback remain source-compatible. The
+structured callback forwards to that overload by default; new handlers should override the
+structured callback directly. A handler which overrides neither callback throws `std::logic_error`
+when an error is reported rather than silently discarding it.
+
+Structured details are provided for scalar, object, array, reference, and logical-combination
+constraints. This includes `type`, numeric and length limits, `pattern`, `format`, content
+keywords, `required`, dependencies, property and item constraints, `enum`, `const`, `$ref`,
+`not`, `allOf`, `anyOf`, and `oneOf`.
+
+The details object uses the following common members:
+
+| Member                                   | Meaning                                                        |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| `value`                                  | Parsed value of the failed schema keyword, when retained       |
+|                                          | (not repeated for `required` / `dependencies` list entries)    |
+| `actual_type`                            | JSON type of the instance for a `type` failure                 |
+| `missing_property`                       | Required property which is absent                              |
+| `property`                               | Property associated with an object constraint                  |
+| `duplicate`                              | Repeated value for a `uniqueItems` failure                     |
+| `reason`                                 | Error reported by a format or content checker                  |
+| `content_media_type`                     | Media type paired with a `contentEncoding` failure             |
+| `failed_subschema` / `failed_subschemas` | Logical-combination branch information                         |
+| `successful_subschemas`                  | Successful `oneOf` branches when validation stopped            |
+| `location` / `fragment`                  | Requested schema location for setup failures                   |
+| `code`                                   | Stable identifier for a non-keyword validator or setup failure |
+
+Validator-level failures are identified through `details["code"]`. Schema-valued applicators
+such as `contains` and logical combinations report branch or count information rather than
+copying their complete subschemas into every error. Each violated numeric constraint produces
+a separate error. Denied additional properties and items are reported at the offending child
+location with a direct message.
+
+```C++
+class collecting_handler : public nlohmann::json_schema::error_handler
+{
+    void error(const nlohmann::json_schema::validation_error &error, const json &instance) override
+    {
+        errors.push_back(error); // value type: safe to keep
+        failing_instances.push_back(instance); // reference: copy if it is needed later
+
+        if (error.keyword == "enum")
+            std::cerr << "Allowed values: " << error.details.at("value") << "\n";
+    }
+
+public:
+    std::vector<nlohmann::json_schema::validation_error> errors;
+    std::vector<json> failing_instances;
+};
+```
+
+Keyword details are preserved when errors are propagated through `allOf`, `anyOf`, and
+`oneOf`. Branches of these combinations are first evaluated for validity only, and the
+combination's summary error is reported from that result at the combination's own location;
+the failing branches' errors follow it with a `[combination: <keyword> / case#<index>]` prefix.
+`allOf` reports every failed branch, each with its own summary. `anyOf` evaluates all of its
+branches so that the default values of every successful branch are collected.
+When the combination fails and the
+handler does not throw, the failed branches are then evaluated again to deliver their individual
+errors, so custom `format` or content checkers may be invoked more than once for the same value
+in that case; a failure nested inside several combinations is re-evaluated once per level.
+Applications which only need to know whether a document is valid should call
+`json_validator::is_valid()`: it evaluates the document once, renders no diagnostics and collects
+no default values. `basic_error_handler` remains available for handlers which only need boolean
+state and `reset()`.
 
 # Compliance
 
