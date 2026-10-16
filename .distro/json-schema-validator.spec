@@ -5,7 +5,8 @@ Release:        %autorelease
 License:        MIT
 URL:            https://github.com/pboettch/json-schema-validator
 
-Source:         https://github.com/pboettch/json-schema-validator/archive/refs/tags/v%{version}.tar.gz
+# the release tags have no "v" prefix
+Source:         %{url}/archive/%{version}/%{name}-%{version}.tar.gz
 
 BuildRequires:  ninja-build
 BuildRequires:  cmake
