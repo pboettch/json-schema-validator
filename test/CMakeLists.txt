@@ -105,3 +105,7 @@ add_test(NAME issue-105-verbose-combination-errors COMMAND issue-105-verbose-com
 add_executable(issue-null-values-in-object issue-null-values-in-object.cpp)
 target_link_libraries(issue-null-values-in-object nlohmann_json_schema_validator)
 add_test(NAME issue-null-values-in-object COMMAND issue-null-values-in-object)
+
+add_executable(numeric-limits numeric-limits.cpp)
+target_link_libraries(numeric-limits nlohmann_json_schema_validator)
+add_test(NAME numeric-limits COMMAND numeric-limits)

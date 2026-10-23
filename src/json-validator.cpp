@@ -10,6 +10,7 @@
 
 #include "json-patch.hpp"
 
+#include <cmath>
 #include <deque>
 #include <memory>
 #include <set>
@@ -868,53 +869,128 @@ public:
 	}
 };
 
-template <typename T>
+// compare two numbers by their value, whether they are stored as signed, unsigned or floating point
+//
+// converting both to one of these types is not exact: unsigned values above INT64_MAX wrap when
+// converted to signed, fractions are truncated when converted to an integer, and integers above 2^53
+// are rounded when converted to double
+bool is_negative_integer(const json &x)
+{
+	return x.is_number_integer() && !x.is_number_unsigned() && x.get<json::number_integer_t>() < 0;
+}
+
+int compare_integers(const json &a, const json &b)
+{
+	bool a_negative = is_negative_integer(a);
+	if (a_negative != is_negative_integer(b))
+		return a_negative ? -1 : 1;
+
+	if (a_negative) {
+		auto x = a.get<json::number_integer_t>();
+		auto y = b.get<json::number_integer_t>();
+		return (x > y) - (x < y);
+	}
+
+	auto x = a.get<json::number_unsigned_t>();
+	auto y = b.get<json::number_unsigned_t>();
+	return (x > y) - (x < y);
+}
+
+// returns -1, 0 or 1, NaN is greater than every other number and equal to itself
+int compare_numbers(const json &a, const json &b)
+{
+	if (!a.is_number_float() && !b.is_number_float())
+		return compare_integers(a, b);
+
+	if (a.is_number_float() && b.is_number_float()) {
+		auto x = a.get<json::number_float_t>();
+		auto y = b.get<json::number_float_t>();
+		if (std::isnan(x) || std::isnan(y))
+			return std::isnan(x) - std::isnan(y);
+		return (x > y) - (x < y);
+	}
+
+	if (a.is_number_float())
+		return -compare_numbers(b, a);
+
+	// a is an integer, b a floating point number: compare a with the integral part of b, then
+	// with its fraction
+	auto d = b.get<json::number_float_t>();
+	if (std::isnan(d))
+		return -1;
+	auto integral = std::floor(d);
+	if (integral < -9223372036854775808.0) // -2^63, below every integer
+		return 1;
+	if (integral >= 18446744073709551616.0) // 2^64, above every integer
+		return -1;
+
+	json integral_json;
+	if (integral < 0)
+		integral_json = static_cast<json::number_integer_t>(integral);
+	else
+		integral_json = static_cast<json::number_unsigned_t>(integral);
+
+	int c = compare_integers(a, integral_json);
+	if (c != 0)
+		return c;
+	return integral < d ? -1 : 0;
+}
+
 class numeric : public schema
 {
-	std::pair<bool, T> maximum_{false, 0};
-	std::pair<bool, T> minimum_{false, 0};
-
-	bool exclusiveMaximum_ = false;
-	bool exclusiveMinimum_ = false;
+	// the bounds are kept as they are in the schema, they are compared with compare_numbers(),
+	// a bound and its exclusive variant can be present together
+	std::pair<bool, json> maximum_{false, nullptr};
+	std::pair<bool, json> minimum_{false, nullptr};
+	std::pair<bool, json> exclusiveMaximum_{false, nullptr};
+	std::pair<bool, json> exclusiveMinimum_{false, nullptr};
 
 	std::pair<bool, json::number_float_t> multipleOf_{false, 0};
 
 	// multipleOf - if the remainder of the division is 0 -> OK
-	bool violates_multiple_of(T x) const
+	bool violates_multiple_of(const json &instance) const
 	{
-		double res = std::remainder(x, multipleOf_.second);
-		double multiple = std::fabs(static_cast<double>(x) / multipleOf_.second);
+		auto m = multipleOf_.second;
+
+		// an integer and a whole multipleOf are checked exactly, as double an integer above 2^53 is rounded
+		if (!instance.is_number_float() && std::floor(m) == m && m >= 1 && m < 18446744073709551616.0) {
+			auto divisor = static_cast<json::number_unsigned_t>(m);
+			json::number_unsigned_t magnitude;
+			if (is_negative_integer(instance))
+				magnitude = 0 - static_cast<json::number_unsigned_t>(instance.get<json::number_integer_t>());
+			else
+				magnitude = instance.get<json::number_unsigned_t>();
+			return magnitude % divisor != 0;
+		}
+
+		auto x = instance.get<json::number_float_t>();
+		double res = std::remainder(x, m);
+		double multiple = std::fabs(x / m);
 		if (multiple > 1) {
 			res = res / multiple;
 		}
-		double eps = std::nextafter(x, 0) - static_cast<double>(x);
+		double eps = std::nextafter(x, 0) - x;
 
 		return std::fabs(res) > std::fabs(eps);
 	}
 
 	void validate(const json::json_pointer &ptr, const json &instance, json_patch &, error_handler &e) const override
 	{
-		T value = instance.get<T>(); // conversion of json to value_type
-
 		std::ostringstream oss;
 
-		if (multipleOf_.first && value != 0) // zero is multiple of everything
-			if (violates_multiple_of(value))
+		if (multipleOf_.first && instance != 0) // zero is multiple of everything
+			if (violates_multiple_of(instance))
 				oss << "instance is not a multiple of " << json(multipleOf_.second);
 
-		if (maximum_.first) {
-			if (exclusiveMaximum_ && value >= maximum_.second)
-				oss << "instance exceeds or equals maximum of " << json(maximum_.second);
-			else if (value > maximum_.second)
-				oss << "instance exceeds maximum of " << json(maximum_.second);
-		}
+		if (exclusiveMaximum_.first && compare_numbers(instance, exclusiveMaximum_.second) >= 0)
+			oss << "instance exceeds or equals maximum of " << exclusiveMaximum_.second;
+		else if (maximum_.first && compare_numbers(instance, maximum_.second) > 0)
+			oss << "instance exceeds maximum of " << maximum_.second;
 
-		if (minimum_.first) {
-			if (exclusiveMinimum_ && value <= minimum_.second)
-				oss << "instance is below or equals minimum of " << json(minimum_.second);
-			else if (value < minimum_.second)
-				oss << "instance is below minimum of " << json(minimum_.second);
-		}
+		if (exclusiveMinimum_.first && compare_numbers(instance, exclusiveMinimum_.second) <= 0)
+			oss << "instance is below or equals minimum of " << exclusiveMinimum_.second;
+		else if (minimum_.first && compare_numbers(instance, minimum_.second) < 0)
+			oss << "instance is below minimum of " << minimum_.second;
 
 		oss.seekp(0, std::ios::end);
 		auto size = oss.tellp();
@@ -924,37 +1000,29 @@ class numeric : public schema
 		}
 	}
 
+	static std::pair<bool, json> bound(const json &sch, const std::string &name, std::set<std::string> &kw)
+	{
+		auto attr = sch.find(name);
+		if (attr == sch.end())
+			return {false, nullptr};
+
+		if (!attr.value().is_number())
+			throw std::invalid_argument(name + " has to be a number");
+
+		kw.insert(name);
+		return {true, attr.value()};
+	}
+
 public:
 	numeric(const json &sch, root_schema *root, std::set<std::string> &kw)
 	    : schema(root)
 	{
-		auto attr = sch.find("maximum");
-		if (attr != sch.end()) {
-			maximum_ = {true, attr.value().get<T>()};
-			kw.insert("maximum");
-		}
+		maximum_ = bound(sch, "maximum", kw);
+		minimum_ = bound(sch, "minimum", kw);
+		exclusiveMaximum_ = bound(sch, "exclusiveMaximum", kw);
+		exclusiveMinimum_ = bound(sch, "exclusiveMinimum", kw);
 
-		attr = sch.find("minimum");
-		if (attr != sch.end()) {
-			minimum_ = {true, attr.value().get<T>()};
-			kw.insert("minimum");
-		}
-
-		attr = sch.find("exclusiveMaximum");
-		if (attr != sch.end()) {
-			exclusiveMaximum_ = true;
-			maximum_ = {true, attr.value().get<T>()};
-			kw.insert("exclusiveMaximum");
-		}
-
-		attr = sch.find("exclusiveMinimum");
-		if (attr != sch.end()) {
-			exclusiveMinimum_ = true;
-			minimum_ = {true, attr.value().get<T>()};
-			kw.insert("exclusiveMinimum");
-		}
-
-		attr = sch.find("multipleOf");
+		auto attr = sch.find("multipleOf");
 		if (attr != sch.end()) {
 			multipleOf_ = {true, attr.value().get<json::number_float_t>()};
 			kw.insert("multipleOf");
@@ -1323,9 +1391,8 @@ std::shared_ptr<schema> type_schema::make(json &schema,
 
 	case json::value_t::number_unsigned:
 	case json::value_t::number_integer:
-		return std::make_shared<numeric<json::number_integer_t>>(schema, root, kw);
 	case json::value_t::number_float:
-		return std::make_shared<numeric<json::number_float_t>>(schema, root, kw);
+		return std::make_shared<numeric>(schema, root, kw);
 	case json::value_t::string:
 		return std::make_shared<string>(schema, root);
 	case json::value_t::boolean:
