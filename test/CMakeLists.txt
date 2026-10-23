@@ -105,3 +105,9 @@ add_test(NAME issue-105-verbose-combination-errors COMMAND issue-105-verbose-com
 add_executable(issue-null-values-in-object issue-null-values-in-object.cpp)
 target_link_libraries(issue-null-values-in-object nlohmann_json_schema_validator)
 add_test(NAME issue-null-values-in-object COMMAND issue-null-values-in-object)
+
+add_executable(unique-items unique-items.cpp)
+target_link_libraries(unique-items nlohmann_json_schema_validator)
+add_test(NAME unique-items COMMAND unique-items)
+# 200000 items, n^2 comparisons take minutes
+set_tests_properties(unique-items PROPERTIES TIMEOUT 60)

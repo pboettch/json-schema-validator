@@ -10,6 +10,8 @@
 
 #include "json-patch.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <deque>
 #include <memory>
 #include <set>
@@ -868,6 +870,153 @@ public:
 	}
 };
 
+// compare two numbers by their value, whether they are stored as signed, unsigned or floating point
+//
+// converting both to one of these types is not exact: unsigned values above INT64_MAX wrap when
+// converted to signed, fractions are truncated when converted to an integer, and integers above 2^53
+// are rounded when converted to double
+bool is_negative_integer(const json &x)
+{
+	return x.is_number_integer() && !x.is_number_unsigned() && x.get<json::number_integer_t>() < 0;
+}
+
+int compare_integers(const json &a, const json &b)
+{
+	bool a_negative = is_negative_integer(a);
+	if (a_negative != is_negative_integer(b))
+		return a_negative ? -1 : 1;
+
+	if (a_negative) {
+		auto x = a.get<json::number_integer_t>();
+		auto y = b.get<json::number_integer_t>();
+		return (x > y) - (x < y);
+	}
+
+	auto x = a.get<json::number_unsigned_t>();
+	auto y = b.get<json::number_unsigned_t>();
+	return (x > y) - (x < y);
+}
+
+// returns -1, 0 or 1, NaN is greater than every other number and equal to itself
+int compare_numbers(const json &a, const json &b)
+{
+	if (!a.is_number_float() && !b.is_number_float())
+		return compare_integers(a, b);
+
+	if (a.is_number_float() && b.is_number_float()) {
+		auto x = a.get<json::number_float_t>();
+		auto y = b.get<json::number_float_t>();
+		if (std::isnan(x) || std::isnan(y))
+			return std::isnan(x) - std::isnan(y);
+		return (x > y) - (x < y);
+	}
+
+	if (a.is_number_float())
+		return -compare_numbers(b, a);
+
+	// a is an integer, b a floating point number: compare a with the integral part of b, then
+	// with its fraction
+	auto d = b.get<json::number_float_t>();
+	if (std::isnan(d))
+		return -1;
+	auto integral = std::floor(d);
+	if (integral < -9223372036854775808.0) // -2^63, below every integer
+		return 1;
+	if (integral >= 18446744073709551616.0) // 2^64, above every integer
+		return -1;
+
+	json integral_json;
+	if (integral < 0)
+		integral_json = static_cast<json::number_integer_t>(integral);
+	else
+		integral_json = static_cast<json::number_unsigned_t>(integral);
+
+	int c = compare_integers(a, integral_json);
+	if (c != 0)
+		return c;
+	return integral < d ? -1 : 0;
+}
+
+// a total order of JSON values, which is needed to sort them, numbers are compared by their value
+//
+// nlohmann::json's operator< compares an integer with a floating point number by converting the
+// integer to double, so it is not a strict weak order for integers above 2^53
+int compare_values(const json &a, const json &b)
+{
+	auto rank = [](const json &v) -> int {
+		switch (v.type()) {
+		case json::value_t::null:
+			return 0;
+		case json::value_t::boolean:
+			return 1;
+		case json::value_t::number_integer:
+		case json::value_t::number_unsigned:
+		case json::value_t::number_float:
+			return 2;
+		case json::value_t::string:
+			return 3;
+		case json::value_t::array:
+			return 4;
+		case json::value_t::object:
+			return 5;
+		default: // binary and discarded
+			return 6;
+		}
+	};
+
+	int a_rank = rank(a);
+	int b_rank = rank(b);
+	if (a_rank != b_rank)
+		return a_rank < b_rank ? -1 : 1;
+
+	switch (a_rank) {
+	case 0:
+		return 0;
+
+	case 1: {
+		auto x = a.get<bool>();
+		auto y = b.get<bool>();
+		return (x > y) - (x < y);
+	}
+
+	case 2:
+		return compare_numbers(a, b);
+
+	case 3: {
+		int c = a.get_ref<const json::string_t &>().compare(b.get_ref<const json::string_t &>());
+		return (c > 0) - (c < 0);
+	}
+
+	case 4: {
+		auto x = a.cbegin();
+		auto y = b.cbegin();
+		for (; x != a.cend() && y != b.cend(); ++x, ++y) {
+			int c = compare_values(*x, *y);
+			if (c != 0)
+				return c;
+		}
+		return (x != a.cend()) - (y != b.cend());
+	}
+
+	case 5: { // the members of an object are iterated in the order of their names
+		auto x = a.cbegin();
+		auto y = b.cbegin();
+		for (; x != a.cend() && y != b.cend(); ++x, ++y) {
+			int k = x.key().compare(y.key());
+			if (k != 0)
+				return (k > 0) - (k < 0);
+			int c = compare_values(x.value(), y.value());
+			if (c != 0)
+				return c;
+		}
+		return (x != a.cend()) - (y != b.cend());
+	}
+
+	default:
+		return a == b ? 0 : (a < b ? -1 : 1);
+	}
+}
+
 template <typename T>
 class numeric : public schema
 {
@@ -1213,12 +1362,20 @@ class array : public schema
 		if (minItems_.first && instance.size() < minItems_.second)
 			e.error(ptr, instance, "array has too few items");
 
+		// sorted, equal items are next to each other, n log n instead of n^2 comparisons
 		if (uniqueItems_) {
-			for (auto it = instance.cbegin(); it != instance.cend(); ++it) {
-				auto v = std::find(it + 1, instance.end(), *it);
-				if (v != instance.end())
+			std::vector<const json *> items;
+			items.reserve(instance.size());
+			for (auto &item : instance)
+				items.push_back(&item);
+
+			std::sort(items.begin(), items.end(), [](const json *a, const json *b) { return compare_values(*a, *b) < 0; });
+
+			for (size_t i = 1; i < items.size(); i++)
+				if (compare_values(*items[i - 1], *items[i]) == 0) {
 					e.error(ptr, instance, "items have to be unique for this array");
-			}
+					break;
+				}
 		}
 
 		size_t index = 0;
