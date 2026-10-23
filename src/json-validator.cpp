@@ -72,6 +72,39 @@ public:
 	                                    std::vector<nlohmann::json_uri> uris);
 };
 
+// marks a schema-reference as being followed on this thread, for as long as it exists
+//
+// following a reference which is already being followed for the same instance recurses until the
+// stack overflows, e.g. {"$ref": "#"} or two definitions which reference each other: the schema
+// does not consume any part of the instance in between. JSON Schema leaves the result undefined.
+template <typename Key>
+class recursion_guard
+{
+	static std::set<Key> &followed()
+	{
+		static thread_local std::set<Key> followed_;
+		return followed_;
+	}
+
+	Key key_;
+	bool entered_;
+
+public:
+	explicit recursion_guard(const Key &key)
+	    : key_(key), entered_(followed().insert(key).second) {}
+
+	~recursion_guard()
+	{
+		if (entered_)
+			followed().erase(key_);
+	}
+
+	recursion_guard(const recursion_guard &) = delete;
+	recursion_guard &operator=(const recursion_guard &) = delete;
+
+	explicit operator bool() const { return entered_; }
+};
+
 class schema_ref : public schema
 {
 	const std::string id_;
@@ -83,10 +116,16 @@ class schema_ref : public schema
 	{
 		auto target = target_.lock();
 
-		if (target)
+		if (!target) {
+			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+			return;
+		}
+
+		recursion_guard<std::pair<const schema_ref *, const json *>> guard({this, &instance});
+		if (guard)
 			target->validate(ptr, instance, patch, e);
 		else
-			e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
+			e.error(ptr, instance, "schema-reference " + id_ + " is reached again for the same instance, infinite recursion");
 	}
 
 	const json &default_value(const json::json_pointer &ptr, const json &instance, error_handler &e) const override final
@@ -95,8 +134,13 @@ class schema_ref : public schema
 			return default_value_;
 
 		auto target = target_.lock();
-		if (target)
+		if (target) {
+			// a cycle of references without a default value has no default value
+			recursion_guard<const schema_ref *> guard(this);
+			if (!guard)
+				return default_value_;
 			return target->default_value(ptr, instance, e);
+		}
 
 		e.error(ptr, instance, "unresolved or freed schema-reference " + id_);
 

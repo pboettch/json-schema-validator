@@ -105,3 +105,7 @@ add_test(NAME issue-105-verbose-combination-errors COMMAND issue-105-verbose-com
 add_executable(issue-null-values-in-object issue-null-values-in-object.cpp)
 target_link_libraries(issue-null-values-in-object nlohmann_json_schema_validator)
 add_test(NAME issue-null-values-in-object COMMAND issue-null-values-in-object)
+
+add_executable(ref-infinite-recursion ref-infinite-recursion.cpp)
+target_link_libraries(ref-infinite-recursion nlohmann_json_schema_validator)
+add_test(NAME ref-infinite-recursion COMMAND ref-infinite-recursion)
